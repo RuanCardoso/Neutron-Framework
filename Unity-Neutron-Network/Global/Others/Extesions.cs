@@ -60,11 +60,11 @@ public static class Extesions
         else return data;
     }
 
-    public static byte[] Decompress(this byte[] data, Compression compressionType, int length = 0)
+    public static byte[] Decompress(this byte[] data, Compression compressionType, int offset = 0, int length = 0)
     {
         if (compressionType == Compression.Deflate)
         {
-            using (MemoryStream input = new MemoryStream(data))
+            using (MemoryStream input = new MemoryStream(data, offset, length))
             {
                 using (MemoryStream output = new MemoryStream())
                 {
@@ -81,7 +81,7 @@ public static class Extesions
             if (data == null)
                 throw new ArgumentNullException("inputData must be non-null");
 
-            using (var compressedMs = new MemoryStream(data))
+            using (var compressedMs = new MemoryStream(data, offset, length))
             {
                 using (var decompressedMs = new MemoryStream())
                 {
@@ -96,9 +96,12 @@ public static class Extesions
         }
         else
         {
-            return data;
+            byte[] nData = new byte[length];
+            Buffer.BlockCopy(data, 0, nData, 0, length);
+            return nData;
         }
     }
+
     public static T DeserializeObject<T>(this byte[] message)
     {
         BinaryFormatter formatter = new BinaryFormatter();
@@ -116,6 +119,7 @@ public static class Extesions
             return default;
         }
     }
+
     public static byte[] StringToByteArray(this String hex)
     {
         int NumberChars = hex.Length;
@@ -124,6 +128,7 @@ public static class Extesions
             bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
         return bytes;
     }
+
     public static bool IsConnected(this TcpClient socket)
     {
         try
@@ -182,6 +187,17 @@ public static class Extesions
     {
         if (executeOnServer) Utils.Enqueue(action, ref Neutron.Server.monoBehaviourActions);
         else Utils.Enqueue(action, ref neutronInstance.monoBehaviourActions);
+    }
+
+    public static T DeepClone<T>(this object list)
+    {
+        using (MemoryStream stream = new MemoryStream())
+        {
+            BinaryFormatter formatter = new BinaryFormatter();
+            formatter.Serialize(stream, list);
+            stream.Position = 0;
+            return (T)formatter.Deserialize(stream);
+        }
     }
 
     public static IEnumerable<byte[]> Split(this byte[] bArray, int intBufforLengt)

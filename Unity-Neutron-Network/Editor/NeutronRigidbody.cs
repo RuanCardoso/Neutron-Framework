@@ -1,9 +1,12 @@
 ﻿using UnityEditor;
+using UnityEngine;
 
 [CustomEditor (typeof (NeutronRigidbody))]
 public class WhenChangingEditor : Editor {
     public override void OnInspectorGUI () {
         base.OnInspectorGUI ();
+
+        GUI.skin.GetStyle("HelpBox").fontSize = 13;
 
         NeutronRigidbody eTarget = (NeutronRigidbody) target;
 

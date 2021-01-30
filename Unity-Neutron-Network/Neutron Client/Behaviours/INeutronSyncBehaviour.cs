@@ -9,8 +9,9 @@ using UnityEngine;
 
 public class NeutronSyncBehaviour : NeutronBehaviour
 {
-    private Dictionary<string, object> observerDict = new Dictionary<string, object>();
+    private Dictionary<string, object> observerDict = new Dictionary<string, object>(); // thread safe.
     [SerializeField] [Range(0, 10000)] private int updateFrequency = 100;
+
     private HashSet<Type> supportedTypes = new HashSet<Type>()
     {
         typeof(int),
@@ -18,7 +19,15 @@ public class NeutronSyncBehaviour : NeutronBehaviour
         typeof(float),
         typeof(string),
         typeof(SerializableColor),
-        typeof(SerializableVector3)
+        typeof(SerializableVector3),
+        typeof(SerializableQuaternion),
+        typeof(ObservableList<int>),
+        typeof(ObservableList<bool>),
+        typeof(ObservableList<float>),
+        typeof(ObservableList<string>),
+        typeof(ObservableList<SerializableColor>),
+        typeof(ObservableList<SerializableVector3>),
+        typeof(ObservableList<SerializableQuaternion>),
     };
 
     public void Init()
@@ -58,11 +67,29 @@ public class NeutronSyncBehaviour : NeutronBehaviour
                 object value = Fields[i].GetValue(this);
                 if (supportedTypes.Contains(value.GetType()))
                 {
+                    if (Fields[i].FieldType.IsGenericType)
+                    {
+                        var fieldDelegate = value.GetType().GetField("onChanged", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (fieldDelegate != null)
+                        {
+                            try
+                            {
+                                object del = Delegate.CreateDelegate(fieldDelegate.FieldType, this, "OnObservableListChanged");
+                                fieldDelegate.SetValue(value, del);
+                            }
+                            catch (Exception message) { Debug.LogError(message.Message); }
+                        }
+                    }
                     observerDict.Add(Fields[i].Name, value);
                 }
             }
         }
         return true;
+    }
+
+    public virtual void OnObservableListChanged()
+    {
+        Debug.LogError("criou ae dssdsd");
     }
 
     private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
@@ -87,7 +114,6 @@ public class NeutronSyncBehaviour : NeutronBehaviour
                 writer.Write(props);
                 ServerView?.player.Send(sendTo, writer.ToArray(), broadcast, null, protocolType);
             }
-            Debug.Log(props);
         }
         catch (Exception ex) { Debug.LogError(ex.Message); }
     }

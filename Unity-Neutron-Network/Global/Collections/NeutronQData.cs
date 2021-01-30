@@ -11,6 +11,6 @@ public class NeutronQueueData : ConcurrentQueue<byte[]>
     public new void Enqueue(byte[] data)
     {
         base.Enqueue(data);
-        if (onChanged != null) onChanged();
+        onChanged?.Invoke();
     }
 }

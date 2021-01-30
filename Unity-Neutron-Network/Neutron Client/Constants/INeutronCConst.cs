@@ -6,11 +6,10 @@ using System.Net.Sockets;
 using UnityEngine;
 
 public class NeutronCConst : MonoBehaviour { // It inherits from MonoBehaviour because it is an instance of GameObject.
-    protected const Compression COMPRESSION_MODE = Compression.Deflate; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
+    protected const Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
     //------------------------------------------------------------------------------------------------------------
     protected IPEndPoint _IEPRef;
-    protected IPEndPoint _IEPSend; // IP and Port that the Neutron will use to connect.
-    protected TCPBuffer tcpBuffer = new TCPBuffer();
+    protected string ipAddress;
     //-------------------------------------------------------------------------------------------------------------
     public ConcurrentQueue<Action> monoBehaviourActions;
     public ConcurrentQueue<Action> monoBehaviourRPCActions;
@@ -26,7 +25,6 @@ public class NeutronCConst : MonoBehaviour { // It inherits from MonoBehaviour b
     protected long ping = 0;
     protected double packetLoss = 0;
     protected int pingAmount = 0;
-    protected bool QuickPackets = false;
     //-------------------------------------------------------------------------------------------------------------
     protected Dictionary<int, float> timeRPC;
     //-------------------------------------------------------------------------------------------------------------

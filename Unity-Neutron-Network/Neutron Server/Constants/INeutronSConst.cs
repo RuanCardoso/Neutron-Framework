@@ -12,6 +12,7 @@ public class NeutronSConst : MonoBehaviour // It inherits from MonoBehaviour bec
     public const string LOCAL_HOST = "http://127.0.0.1"; // local host.
     public const float TELEPORT_DISTANCE_TOLERANCE = 5f; // maximum teleport distance.
     public const float SPEEDHACK_TOLERANCE = 10f; // 0.1 = 0.1 x 1000 = 100 -> 1000/100 = 10 pckts per seconds.
+    public const int MAX_MESSAGE_SIZE = 512;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     [NonSerialized] public Compression compressionMode = Compression.Deflate; // Level of compression of the bytes.
     [NonSerialized] public ConcurrentQueue<Action> monoBehaviourActions = new ConcurrentQueue<Action>(); // Thread-Safe - All shares that inherit from 

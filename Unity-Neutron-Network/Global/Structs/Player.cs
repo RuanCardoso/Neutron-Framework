@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization;
+using System.Threading;
 using UnityEngine;
 
 [Serializable]
@@ -80,22 +81,20 @@ public class Player : IEquatable<Player>, INotify, ISerializable, IEqualityCompa
     /// </summary>
     [NonSerialized] public UdpClient udpClient;
     /// <summary>
-    /// Buffer of client.
+    /// cts.
     /// </summary>
-    [NonSerialized] public TCPBuffer buffer = new TCPBuffer();
+    public CancellationTokenSource _cts;
 
     public Player() { }// the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
-    public Player(int ID, TcpClient tcpClient)
+    public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
     {
         this.ID = ID;
         this.Nickname = "Unknown";
         this.tcpClient = tcpClient;
         this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(ProtocolType.Udp)));
         this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
-
-        Utils.Logger(udpClient.Client.DontFragment);
-        Utils.Logger(udpClient.DontFragment);
+        this._cts = _cts;
     }
 
     public Player(SerializationInfo info, StreamingContext context)

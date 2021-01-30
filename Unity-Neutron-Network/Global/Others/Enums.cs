@@ -1,6 +1,7 @@
 ﻿using System;
 
-public enum SendTo {
+public enum SendTo : byte
+{
     /// <summary>
     /// Broadcast data to all Players, including you.
     /// </summary>
@@ -15,7 +16,8 @@ public enum SendTo {
     Others,
 }
 
-public enum Packet {
+public enum Packet : byte
+{
     Connected,
     DisconnectedByReason,
     Login,
@@ -49,7 +51,8 @@ public enum Packet {
     //======================================================
 }
 
-public enum CachedPacket {
+public enum CachedPacket : byte
+{
     /// <summary>
     /// Used to instantiate other players on this client.
     /// </summary>
@@ -63,13 +66,15 @@ public enum CachedPacket {
 }
 
 [Flags]
-public enum WhenChanging {
+public enum WhenChanging : byte
+{
     Position = 1,
     Rotation = 2,
     Velocity = 4,
 }
 
-public enum Compression {
+public enum Compression : byte
+{
     /// <summary>
     /// Compress data using deflate mode.
     /// </summary>
@@ -84,7 +89,8 @@ public enum Compression {
     None,
 }
 
-public enum Broadcast {
+public enum Broadcast : byte
+{
     /// <summary>
     /// Broadcast data on the server.
     /// </summary>
@@ -112,7 +118,7 @@ public enum Broadcast {
     None,
 }
 
-public enum ClientType
+public enum ClientType : byte
 {
     MainPlayer,
     Bot,

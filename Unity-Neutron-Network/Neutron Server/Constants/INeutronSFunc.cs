@@ -69,8 +69,9 @@ public class NeutronSFunc : NeutronSConst
             // Actions are thread-safe.
             new Action(() =>
             {
-                Destroy(removedPlayer.serverView.gameObject); // destroy player object.
-                }).ExecuteOnMainThread();
+                if (removedPlayer.serverView != null)
+                    Destroy(removedPlayer.serverView.gameObject); // destroy player object.
+            }).ExecuteOnMainThread();
             return removed;
         }
         else return removed;
@@ -198,7 +199,7 @@ public class NeutronSFunc : NeutronSConst
         }
     }
     //------------------------------------------------------------------------------------------------------------------//
-    protected void HandleDisconnect(TcpClient mSocket)
+    protected void HandleDisconnect(TcpClient mSocket, CancellationTokenSource cts)
     {
         if (GetPlayer(mSocket, out Player player)) // thread safe
         {
@@ -208,6 +209,7 @@ public class NeutronSFunc : NeutronSConst
                 onPlayerDisconnected?.Invoke(player); // Thread safe.
             }
             mSocket?.Close(); // close the socket.
+            cts.Cancel();
         }
     }
 
@@ -220,8 +222,9 @@ public class NeutronSFunc : NeutronSConst
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.WritePacket(Packet.StressTest);
-                for (int z = 0; z < 10; z++) writer.Write(1);
-                mSocket.Send(SendTo.Only, writer.ToArray(), Broadcast.None, null, ProtocolType.Tcp);
+                for (int z = 0; z < 100; z++) writer.Write("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+                for (int z = 0; z < 100; z++)
+                    mSocket.Send(SendTo.Only, writer.ToArray(), Broadcast.None, null, ProtocolType.Tcp);
             }
         }
 
@@ -415,8 +418,7 @@ public class NeutronSFunc : NeutronSConst
 
                     writer.WritePacket(mCommand);
                     writer.Write(serializedChannels.Length);
-                    writer.Write(serializedChannels);
-                    Utils.LoggerError("oxe: " + serializedChannels.Length);
+                    writer.Write(channels.Serialize());
                     mSender.Send(SendTo.Only, writer.ToArray(), Broadcast.None, null, ProtocolType.Tcp);
                 }
             }

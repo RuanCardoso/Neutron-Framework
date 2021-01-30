@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 [RequireComponent(typeof(NeutronEvents))]
@@ -30,8 +31,11 @@ public class NeutronServer : NeutronSDatabase
             {
                 TcpClient _cAccepted = await _TCPSocket.AcceptTcpClientAsync();
                 _cAccepted.NoDelay = noDelay;
+                //_cAccepted.ReceiveBufferSize = 12;
 
-                Player nPlayer = new Player(Utils.GetUniqueID(_cAccepted.RemoteEndPoint()), _cAccepted); // Create new player.
+                CancellationTokenSource _cts = new CancellationTokenSource();
+
+                Player nPlayer = new Player(Utils.GetUniqueID(_cAccepted.RemoteEndPoint()), _cAccepted, _cts); // Create new player.
                 if (AddPlayer(nPlayer)) // Add player to the server. Thread safe
                 {
                     IPEndPoint RemoteEndPoint = _cAccepted.RemoteEndPoint(); // End Point of client.
@@ -42,8 +46,8 @@ public class NeutronServer : NeutronSDatabase
                     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
-                        ReadTCPData(nPlayer, nPlayer.buffer); // starts read tcp data.
-                        ReadUDPData(nPlayer); // starts read tcp data.
+                        ReadTCPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
+                        ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
                     });
                 }
             }
@@ -56,70 +60,44 @@ public class NeutronServer : NeutronSDatabase
         } while (Initialized);
     }
 
-    async void ReadTCPData(Player _client, TCPBuffer tcp)
+    async void ReadTCPData(Player _client, object obj)
     {
+        byte[] messageLenBuffer = new byte[sizeof(int)];
+        byte[] buffer = new byte[MAX_MESSAGE_SIZE];
         try
         {
-            MessageFraming messageFraming = new MessageFraming();
-            int bytesRead = 0;
-            do
-            {
-                bytesRead = await _client.tcpClient.GetStream().ReadAsync(tcp.buffer, 0, TCPBuffer.BUFFER_SIZE); // read data from client.
-                if (bytesRead > 0)
+            CancellationToken token = (CancellationToken)obj;
+
+            using (var netStream = _client.tcpClient.GetStream())
+                do
                 {
-                    try
+                    if (await Communication.ReadAsyncBytes(netStream, messageLenBuffer, 0, sizeof(int)))
                     {
-                        Utils.LoggerError("clientLenght: " + bytesRead);
-                        using (NeutronReader neutronReader = new NeutronReader(tcp.buffer, 0, bytesRead))
+                        int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
+                        buffer = new byte[fixedLength + sizeof(int)];
+                        if (await Communication.ReadAsyncBytes(netStream, buffer, sizeof(int), fixedLength))
                         {
-                            int prefixedSize = neutronReader.ReadInt32() + sizeof(int);
-                            if (messageFraming.lengthOfPacket == -1 && (prefixedSize > 0 && prefixedSize < 65536))
-                                messageFraming.lengthOfPacket = prefixedSize;
-
-                            byte[] receivedMessage = neutronReader.ToArray();
-                            messageFraming.memoryBuffer.Write(receivedMessage, 0, receivedMessage.Length);
-                            messageFraming.offset += bytesRead;
-                            Utils.LoggerError($"lop{messageFraming.lengthOfPacket} prefixeS: {prefixedSize}");
-                            if ((messageFraming.offset % messageFraming.lengthOfPacket) == 0)
+                            using (NeutronReader messageReader = new NeutronReader(buffer, sizeof(int), fixedLength))
                             {
-                                if (messageFraming.offset == messageFraming.lengthOfPacket)
-                                {
-                                    byte[] fullPckt = messageFraming.memoryBuffer.ToArray();
-                                    if (messageFraming.lengthOfPacket == fullPckt.Length)
-                                    {
-                                        var messages = fullPckt.Split(messageFraming.lengthOfPacket);
-                                        foreach (var message in messages)
-                                        {
-                                            byte[] fullMessage = new byte[message.Length - sizeof(int)];
-                                            Buffer.BlockCopy(message, sizeof(int), fullMessage, 0, fullMessage.Length);
-                                            byte[] uncompressedMessage = fullMessage.Decompress(compressionMode);
-                                            PacketProcessing(_client.tcpClient, uncompressedMessage, false); // process packet
-                                        }
-                                    }
-                                    else Utils.LoggerError("corrupted packet");
-
-                                    messageFraming.lengthOfPacket = -1;
-                                    messageFraming.offset = 0;
-                                    messageFraming.memoryBuffer = new NeutronWriter();
-                                }
-                                else Utils.LoggerError("corrupted packet, invalid MOD");
+                                PacketProcessing(_client.tcpClient, messageReader.ToArray(), false);
                             }
                         }
                     }
-                    catch (Exception ex) { Utils.LoggerError(ex.Message); }
-                }
-                else HandleDisconnect(_client.tcpClient); // disconnect client from server. thread safe.
-            } while (Initialized && bytesRead > 0);
+                    else { HandleDisconnect(_client.tcpClient, _client._cts); }
+                } while (_client.tcpClient != null && Initialized && !token.IsCancellationRequested);
         }
-        catch
+        catch (Exception ex)
         {
             if (!Initialized) return;
-            HandleDisconnect(_client.tcpClient); // disconnect client from server. thread safe.
+            Utils.StackTrace(ex);
+            HandleDisconnect(_client.tcpClient, _client._cts); // disconnect client from server. thread safe.
         }
     }
 
-    async void ReadUDPData(Player _owner)
+    async void ReadUDPData(Player _owner, object obj)
     {
+        CancellationToken token = (CancellationToken)obj;
+
         try
         {
             UdpReceiveResult udpReceiveResult; // udp buffer
@@ -133,7 +111,7 @@ public class NeutronServer : NeutronSDatabase
 
                     PacketProcessing(_owner.tcpClient, decompressedBuffer, true); // process packets.
                 }
-            } while (Initialized && udpReceiveResult.Buffer.Length > 0);
+            } while (Initialized && udpReceiveResult.Buffer.Length > 0 && !token.IsCancellationRequested);
         }
         catch (SocketException ex) { Utils.LoggerError(ex.Message); }
     }
@@ -158,10 +136,10 @@ public class NeutronServer : NeutronSDatabase
                                 {
                                     using (NeutronWriter writerOnly = new NeutronWriter())
                                     {
-                                        writerOnly.Write(buffer.Length); // length of message.
+                                        writerOnly.WriteFixedLength(buffer.Length); // length of message.
                                         writerOnly.Write(buffer); // message.
                                         byte[] nBuffer = writerOnly.ToArray();
-                                        Utils.LoggerError($"serverLenght: {buffer.Length} : " + nBuffer.Length);
+                                        //Utils.LoggerError($"serverLenght: {buffer.Length} : " + nBuffer.Length);
                                         if (player.tcpClient != null)
                                             await _stream?.WriteAsync(nBuffer, 0, nBuffer.Length); // send message.
                                     }
@@ -302,7 +280,7 @@ public class NeutronServer : NeutronSDatabase
     void Start()
     {
 #if !NET_STANDARD_2_0
-#if !DEVELOPMENT_BUILD
+#if !DEVELOPMENT_BUILD || DEVELOPMENT_BUILD
         if (!_ready) // check server is ready...
         {
             Utils.LoggerError("Failed to initialize server -> error code: 0x1003");
@@ -312,9 +290,9 @@ public class NeutronServer : NeutronSDatabase
         if (dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
         StartCoroutine(Utils.KeepFramerate(FPS));
         Initilize();
-#elif DEVELOPMENT_BUILD
+        //#elif DEVELOPMENT_BUILD
         Console.Clear();
-        Utils.Logger("Development build is not supported on the Server.");
+        //Utils.Logger("Development build is not supported on the Server.");
 #endif
 #elif NET_STANDARD_2_0
         Console.Clear();

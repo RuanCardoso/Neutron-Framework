@@ -50,11 +50,11 @@ public class NeutronCFunc : NeutronCConst
         {
             using (NeutronWriter writerOnly = new NeutronWriter())
             {
-                writerOnly.Write(buffer.Length);
+                writerOnly.WriteFixedLength(buffer.Length);
                 writerOnly.Write(buffer);
                 byte[] nBuffer = writerOnly.ToArray();
                 //----------------------------------------------------------------------------
-                if (!QuickPackets) await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
+                await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
                 //else await networkStream.WriteAsync(buffer, 0, buffer.Length);
             }
         }
@@ -123,7 +123,7 @@ public class NeutronCFunc : NeutronCConst
     {
         Utils.Logger(status);
         //-------------------------------------------------------
-        _.myPlayer = new Player(uniqueID, null);
+        _.myPlayer = new Player(uniqueID, null, null);
         _.myPlayer.isBot = isBot;
         //-------------------------------------------------------
         if (_.onNeutronConnected != null)
@@ -430,7 +430,7 @@ public class NeutronCFunc : NeutronCConst
 
     private void OnConnected(bool success, Neutron localinstance)
     {
-        InitializeContainer();
+        if(success) InitializeContainer();
     }
 
     private void OnPlayerLeftRoom(Player player, Neutron localInstance)

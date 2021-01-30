@@ -123,15 +123,23 @@ public class Neutron : UDPManager
     /// This event is triggered when your nickname is changed.
     /// </summary>
     public Events.OnNicknameChanged onNicknameChanged { get; set; }
+
+    private CancellationTokenSource _cts = new CancellationTokenSource();
+
+    private void Update()
+    {
+        if (!isConnected) return;
+
+        Utils.Dequeue(ref monoBehaviourActions, 10);
+        Utils.Dequeue(ref monoBehaviourRPCActions, 10);
+    }
+
     /// <summary>
     /// This function will trigger the OnPlayerConnected callback.
     /// Do not call this function in Awake.
     /// </summary>
     /// <param name="ipAddress">The ip of server to connect</param>
-    /// <param name="port">The port to connect</param>
-    /// <param name="disableInServer">Disable this client on server</param>
-    /// <param name="quickPackets">Enable if server quick packets are enabled</param>
-    public async void Connect(string ipAddress, bool quickPackets = false)
+    public async void Connect(string ipAddress)
     {
         if (!isBot)
         {
@@ -148,31 +156,26 @@ public class Neutron : UDPManager
 #endif
         }
 
-        IData IData = Data.LoadSettings();
-        if (IData == null) { Utils.LoggerError("Failed to load settings."); return; }
-
-        Internal();
-        //-----------------------------------------------------------------------------------------------------------
-        QuickPackets = quickPackets;
-        //-----------------------------------------------------------------------------------------------------------
         if (ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase)) ipAddress = "127.0.0.1";
-        //-----------------------------------------------------------------------------------------------------------
-        _IEPSend = new IPEndPoint(IPAddress.Parse(ipAddress), IData.serverPort);
-        //-----------------------------------------------------------------------------------------------------------
+        this.ipAddress = ipAddress; // set ip address.
+        IData IData = Data.LoadSettings(); // load settings
+        if (!Utils.LoggerError("Failed to load settings.", IData)) return;
+        Internal(); // initialize cliente.
         if (!isConnected)
         {
             try
             {
+                //////////////////////////////////////////////////////////////////////////////////
                 Utils.Logger("Wait, connecting to the server.");
-                //-------------------------------------------------------------------
-                await _TCPSocket.ConnectAsync(_IEPSend.Address, _IEPSend.Port);
-                //-------------------------------------------------------------------
+                //////////////////////////////////////////////////////////////////////////////////
+                await _TCPSocket.ConnectAsync(ipAddress, IData.serverPort); // await connection.
                 if (_TCPSocket.Connected)
                 {
-                    if (InitConnect()) new Thread(() => TCPListenThread()).Start();
-                    //-------------------------------------------------------------------
-                    StartUDP();
-                    //-------------------------------------------------------------------
+                    if (InitConnect()) ThreadPool.QueueUserWorkItem((e) =>
+                    {
+                        ReadTCPData(e);
+                        ReadUDPData();
+                    }, _cts.Token);
                     isConnected = true;
                 }
                 else if (!_TCPSocket.Connected)
@@ -188,26 +191,11 @@ public class Neutron : UDPManager
                 //------------------------------------------------------------------------
                 onNeutronConnected(false, _);
             }
-            EventsProcessor();
         }
         else Utils.LoggerError("Connection Refused!");
     }
 
-    private void EventsProcessor()
-    {
-        GameObject eObject = new GameObject("EventProcessor");
-        eObject.AddComponent<ProcessEvents>();
-        //-------------------------------------------------------------------
-        ProcessEvents processEvents = eObject.GetComponent<ProcessEvents>();
-        //-------------------------------------------------------------------
-        processEvents.owner = _;
-        processEvents.DPF = 10;
-        processEvents.MAO = monoBehaviourActions;
-        processEvents.MAT = monoBehaviourRPCActions;
-        DontDestroyOnLoad(eObject);
-    }
-
-    private void StartUDP()
+    private void ReadUDPData()
     {
         Thread _thread = new Thread(new ThreadStart(() =>
         {
@@ -221,98 +209,36 @@ public class Neutron : UDPManager
         _thread.Start();
     }
 
-    private async void TCPListenThread()
+    private async void ReadTCPData(object obj)
     {
-        MessageFraming messageFraming = new MessageFraming();
-        //using (messageFraming.memoryBuffer)
+        CancellationToken token = (CancellationToken)obj;
+
+        byte[] messageLenBuffer = new byte[sizeof(int)];
+        try
         {
-            do
-            {
-                if (!_TCPSocket.IsConnected())
+            using (var netStream = _TCPSocket.GetStream()) // client
+                do
                 {
-                    _TCPSocket.Close();
-                }
-                else
-                {
-                    int bytesRead = await _TCPSocket.GetStream().ReadAsync(tcpBuffer.buffer, 0, TCPBuffer.BUFFER_SIZE);
-                    if (bytesRead > 0)
+                    if (await Communication.ReadAsyncBytes(netStream, messageLenBuffer, 0, sizeof(int)))
                     {
-                        try
+                        int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
+                        byte[] messageBuffer = new byte[fixedLength + sizeof(int)];
+                        if (await Communication.ReadAsyncBytes(netStream, messageBuffer, sizeof(int), fixedLength))
                         {
-                            Utils.LoggerError("clientLenght: " + bytesRead);
-                            using (NeutronReader neutronReader = new NeutronReader(tcpBuffer.buffer, 0, bytesRead))
+                            using (NeutronReader messageReader = new NeutronReader(messageBuffer, sizeof(int), fixedLength))
                             {
-                                int prefixedSize = neutronReader.ReadInt32() + sizeof(int);
-                                if (messageFraming.lengthOfPacket == -1 && (prefixedSize > 0 && prefixedSize < 65536))
-                                    messageFraming.lengthOfPacket = prefixedSize;
-
-                                byte[] receivedMessage = neutronReader.ToArray();
-                                messageFraming.memoryBuffer.Write(receivedMessage, 0, receivedMessage.Length);
-                                messageFraming.offset += bytesRead;
-                                Utils.LoggerError($"lop{messageFraming.lengthOfPacket} prefixeS: {prefixedSize}");
-                                if ((messageFraming.offset % messageFraming.lengthOfPacket) == 0)
-                                {
-                                    if (messageFraming.offset == messageFraming.lengthOfPacket)
-                                    {
-                                        byte[] fullPckt = messageFraming.memoryBuffer.ToArray();
-                                        if (messageFraming.lengthOfPacket == fullPckt.Length)
-                                        {
-                                            var messages = fullPckt.Split(messageFraming.lengthOfPacket);
-                                            foreach (var message in messages)
-                                            {
-                                                byte[] fullMessage = new byte[message.Length - sizeof(int)];
-                                                Buffer.BlockCopy(message, sizeof(int), fullMessage, 0, fullMessage.Length);
-                                                byte[] uncompressedMessage = fullMessage.Decompress(COMPRESSION_MODE);
-                                                ProcessClientData(uncompressedMessage, uncompressedMessage.Length);
-                                            }
-                                        }
-                                        else Utils.LoggerError("corrupted packet");
-
-                                        messageFraming.lengthOfPacket = -1;
-                                        messageFraming.offset = 0;
-                                        messageFraming.memoryBuffer = new NeutronWriter();
-                                    }
-                                    else Utils.LoggerError("corrupted packet, invalid MOD");
-                                }
-
-
-                                //if (hmm > 0) lengthOfPacket = hmm;
-                                //Utils.LoggerError($"PacketLenght: {lengthOfPacket} : {offset}");
-                                //if ((offset % (lengthOfPacket + sizeof(int))) == 0) // check if packet is completed.
-                                //{
-                                //    Utils.LoggerError($"competedPacketLenght: {lengthOfPacket} : " + neutronReader.ToArray().Length);
-                                //    byte[] arrivedPacket = neutronReader.ToArray(); // Packet completed. copy byte array
-                                //    var messages = arrivedPacket.Split(lengthOfPacket + sizeof(int)); // Split packet by length of messages.
-                                //    foreach (var message in messages)
-                                //    {
-                                //        using (NeutronReader neutronMessage = new NeutronReader(message))
-                                //        {
-                                //            int messageLen = neutronMessage.ReadInt32(); // read length of message.
-                                //            Utils.LoggerError($"messageLen: {messageLen}");
-                                //            byte[] messageData = neutronMessage.ReadBytes(messageLen); // get the message.
-                                //            Utils.LoggerError($"messageData: {messageData.Length}");
-                                //            byte[] uncompressedMessage = messageData.Decompress(COMPRESSION_MODE);
-                                //            ProcessClientData(uncompressedMessage, uncompressedMessage.Length);
-                                //        }
-                                //    }
-                                //    offset = 0;
-                                //}
+                                ProcessClientData(messageReader.ToArray(), messageReader.ToArray().Length);
                             }
-                            //var frame = Communication.MessageFraming(tcpBuffer.buffer, bytesRead, COMPRESSION_MODE);
-                            //if (frame != null)
-                            //{
-                            //    foreach (var fr in frame)
-                            //    {
-                            //        ProcessClientData(fr, fr.Length);
-                            //    }
-                            //}
                         }
-                        catch (Exception ex) { Utils.LoggerError("C434452: " + ex.Message); }
                     }
-                    else break;
-                }
-            } while (_TCPSocket != null);
+                    else
+                    {
+                        _TCPSocket.Close();
+                        _cts.Cancel();
+                    }
+                } while (!token.IsCancellationRequested);
         }
+        catch (Exception ex) { Utils.StackTrace(ex); }
     }
 
     public void GetNetworkStats(out long Ping, out double PcktLoss, float delay)
@@ -331,7 +257,7 @@ public class Neutron : UDPManager
                     }
                     else packetLoss += 1;
                 };
-                pingSender.SendAsync(_IEPSend.Address, null);
+                pingSender.SendAsync(ipAddress, null);
             }
             tNetworkStatsDelay = 0;
         }
@@ -366,7 +292,7 @@ public class Neutron : UDPManager
                         //----------------------------------------------------------------
                         HandleConnected(playerStatus, playerUniqueID, playerIsBot);
                         //----------------------------------------------------------------
-                        UDPEndpoint = new IPEndPoint(_IEPSend.Address, playerUDPPort);
+                        UDPEndpoint = new IPEndPoint(IPAddress.Parse(ipAddress), playerUDPPort);
                         break;
                     case Packet.DisconnectedByReason:
                         HandleDisconnect(mReader.ReadString());
@@ -412,8 +338,7 @@ public class Neutron : UDPManager
                         break;
                     case Packet.GetChannels:
                         int len = mReader.ReadInt32();
-                        object[] obj = mReader.ReadBytes(len).DeserializeObject<object[]>();
-                        HandleGetChannels((byte[])obj[0]);
+                        HandleGetChannels(mReader.ReadBytes(len));
                         break;
                     case Packet.JoinChannel:
                         HandleJoinChannel(mReader.ReadBytes(dataLength));
@@ -489,7 +414,7 @@ public class Neutron : UDPManager
                 }
             }
         }
-        catch (SocketException ex) { Utils.LoggerError(ex.Message + ":" + ex.ErrorCode); }
+        catch (Exception ex) { Utils.StackTrace(ex); }
     }
 
     //public static void SendVoice (byte[] buffer, int lastPos) {

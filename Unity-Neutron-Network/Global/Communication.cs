@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class Communication
@@ -246,34 +248,18 @@ public class Communication
         return prefabObject;
     }
 
-    public static IEnumerable<byte[]> MessageFraming(byte[] buffer, int bytesRead, Compression compression)
+    public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int count)
     {
-        int offset = 0;
-        offset += bytesRead;
-        Utils.LoggerError("clientLenght: " + bytesRead);
-        using (NeutronReader neutronReader = new NeutronReader(buffer, 0, bytesRead))
+        int bytesRead;
+        try
         {
-            int lengthOfPacket = neutronReader.ReadInt32(); // length of packet;
-            Utils.LoggerError($"server PacketLenght: {lengthOfPacket} : {offset}");
-            if ((offset % (lengthOfPacket + sizeof(int))) == 0) // check if packet is completed.
+            while (count > 0 && (bytesRead = await stream.ReadAsync(buffer, offset, count)) > 0)
             {
-                Utils.LoggerError($"competedPacketLenght: {lengthOfPacket} : " + neutronReader.ToArray().Length);
-                byte[] arrivedPacket = neutronReader.ToArray(); // Packet completed. copy byte array
-                var messages = arrivedPacket.Split(lengthOfPacket + sizeof(int)); // Split packet by length of messages.
-                foreach (var message in messages)
-                {
-                    using (NeutronReader neutronMessage = new NeutronReader(message))
-                    {
-                        int messageLen = neutronMessage.ReadInt32(); // read length of message.
-                        Utils.LoggerError($"messageLen: {messageLen}");
-                        byte[] messageData = neutronMessage.ReadBytes(messageLen); // get the message.
-                        Utils.LoggerError($"messageData: {messageData.Length}");
-                        byte[] uncompressedMessage = messageData.Decompress(compression);
-                        yield return uncompressedMessage;
-                    }
-                }
-                offset = 0;
+                offset += bytesRead;
+                count -= bytesRead;
             }
+            return count == 0;
         }
+        catch { return false; }
     }
 }
