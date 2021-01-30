@@ -41,8 +41,9 @@ public class Utils
 
     public static int GetUniqueID(IPEndPoint endPoint)
     {
-        return Math.Abs(endPoint.GetHashCode());
+        return Math.Abs(endPoint.GetHashCode() ^ endPoint.Port ^ new System.Random().Next(1, 999));
     }
+
     public static int ValidateAndDeserializeJson<T>(string json, out T obj)
     {
         obj = default;

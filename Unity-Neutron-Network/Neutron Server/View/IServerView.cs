@@ -3,41 +3,44 @@ using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class ServerView : Properties
+namespace NeutronNetwork
 {
-    [NonSerialized] public NeutronSyncBehaviour neutronSyncBehaviour;
-    //-------------------------------------------------
-    public Player player;
-
-    private void Awake()
+    public class ServerView : Properties
     {
-        neutronSyncBehaviour = GetComponent<NeutronSyncBehaviour>();
-        neutronSyncBehaviour.Init();
+        [NonSerialized] public NeutronSyncBehaviour neutronSyncBehaviour;
+        //-------------------------------------------------
+        public Player player;
+
+        private void Awake()
+        {
+            neutronSyncBehaviour = GetComponent<NeutronSyncBehaviour>();
+            neutronSyncBehaviour.Init();
+        }
+
+        private void Start()
+        {
+            _rigidbody = GetComponent<Rigidbody>();
+            _controller = GetComponent<CharacterController>();
+        }
+
+        private void Update()
+        {
+            lastPosition = transform.position;
+            lastRotation = transform.eulerAngles;
+        }
     }
 
-    private void Start()
+    public class Properties : PlayerComponents
     {
-        _rigidbody = GetComponent<Rigidbody>();
-        _controller = GetComponent<CharacterController>();
+        [Header("Properties")]
+        public Vector3 lastPosition;
+        public Vector3 lastRotation;
     }
 
-    private void Update()
+    public class PlayerComponents : MonoBehaviour
     {
-        lastPosition = transform.position;
-        lastRotation = transform.eulerAngles;
+        [Header("Components")]
+        public Rigidbody _rigidbody;
+        public CharacterController _controller;
     }
-}
-
-public class Properties : PlayerComponents
-{
-    [Header("Properties")]
-    public Vector3 lastPosition;
-    public Vector3 lastRotation;
-}
-
-public class PlayerComponents : MonoBehaviour
-{
-    [Header("Components")]
-    public Rigidbody _rigidbody;
-    public CharacterController _controller;
 }

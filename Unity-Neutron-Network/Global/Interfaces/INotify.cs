@@ -1,3 +1,7 @@
-﻿public interface INotify {
-    int ID { get; }
+﻿namespace NeutronNetwork.Internal.Client
+{
+    public interface INotify
+    {
+        int ID { get; }
+    }
 }

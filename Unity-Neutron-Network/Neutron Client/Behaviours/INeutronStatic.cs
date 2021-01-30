@@ -1,4 +1,7 @@
 ﻿using UnityEngine;
 
-public class NeutronStatic : MonoBehaviour
-{ }
+namespace NeutronNetwork
+{
+    public class NeutronStatic : MonoBehaviour
+    { }
+}

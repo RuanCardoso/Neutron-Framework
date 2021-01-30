@@ -1,16 +1,15 @@
-﻿using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using System.Collections.Concurrent;
 
-public class NeutronQueueData : ConcurrentQueue<byte[]>
+namespace NeutronNetwork.Internal.Wrappers
 {
-    public delegate void OnChanged();
-    public event OnChanged onChanged;
-    public new void Enqueue(byte[] data)
+    public class NeutronQueueData : ConcurrentQueue<byte[]>
     {
-        base.Enqueue(data);
-        onChanged?.Invoke();
+        public delegate void OnChanged();
+        public event OnChanged onChanged;
+        public new void Enqueue(byte[] data)
+        {
+            base.Enqueue(data);
+            onChanged?.Invoke();
+        }
     }
 }

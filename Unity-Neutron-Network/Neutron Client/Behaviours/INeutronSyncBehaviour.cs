@@ -1,4 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using NeutronNetwork;
+using NeutronNetwork.Internal.Extesions;
+using NeutronNetwork.Internal.Server;
+using NeutronNetwork.Wrappers;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -7,12 +11,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class NeutronSyncBehaviour : NeutronBehaviour
+namespace NeutronNetwork
 {
-    private Dictionary<string, object> observerDict = new Dictionary<string, object>(); // thread safe.
-    [SerializeField] [Range(0, 10000)] private int updateFrequency = 100;
+    public class NeutronSyncBehaviour : NeutronBehaviour
+    {
+        private Dictionary<string, object> observerDict = new Dictionary<string, object>(); // thread safe.
+        [SerializeField] [Range(0, 10000)] private int updateFrequency = 100;
 
-    private HashSet<Type> supportedTypes = new HashSet<Type>()
+        private HashSet<Type> supportedTypes = new HashSet<Type>()
     {
         typeof(int),
         typeof(bool),
@@ -30,132 +36,133 @@ public class NeutronSyncBehaviour : NeutronBehaviour
         typeof(ObservableList<SerializableQuaternion>),
     };
 
-    public void Init()
-    {
-        ThreadPool.QueueUserWorkItem((e) => SyncVar());
-    }
-
-    private bool CheckKeyExists<T>(string key, out T value)
-    {
-        value = default;
-        bool contains = observerDict.ContainsKey(key);
-        if (contains) value = (T)observerDict[key];
-        return contains;
-    }
-
-    private bool ChangesObserver<T>(string fieldName, T newValue)
-    {
-        if (CheckKeyExists(fieldName, out T oldValue))
+        public void Init()
         {
-            if (!oldValue.Equals(newValue))
+            ThreadPool.QueueUserWorkItem((e) => SyncVar());
+        }
+
+        private bool CheckKeyExists<T>(string key, out T value)
+        {
+            value = default;
+            bool contains = observerDict.ContainsKey(key);
+            if (contains) value = (T)observerDict[key];
+            return contains;
+        }
+
+        private bool ChangesObserver<T>(string fieldName, T newValue)
+        {
+            if (CheckKeyExists(fieldName, out T oldValue))
             {
-                observerDict[fieldName] = newValue;
-                return true;
+                if (!oldValue.Equals(newValue))
+                {
+                    observerDict[fieldName] = newValue;
+                    return true;
+                }
+                else return false;
             }
             else return false;
         }
-        else return false;
-    }
 
-    private bool AddFields(FieldInfo[] Fields)
-    {
-        for (int i = 0; i < Fields.Length; i++)
+        private bool AddFields(FieldInfo[] Fields)
         {
-            SyncVarAttribute fieldAttribute = Fields[i].GetCustomAttribute<SyncVarAttribute>();
-            if (fieldAttribute != null)
+            for (int i = 0; i < Fields.Length; i++)
             {
-                object value = Fields[i].GetValue(this);
-                if (supportedTypes.Contains(value.GetType()))
+                SyncVarAttribute fieldAttribute = Fields[i].GetCustomAttribute<SyncVarAttribute>();
+                if (fieldAttribute != null)
                 {
-                    if (Fields[i].FieldType.IsGenericType)
+                    object value = Fields[i].GetValue(this);
+                    if (supportedTypes.Contains(value.GetType()))
                     {
-                        var fieldDelegate = value.GetType().GetField("onChanged", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (fieldDelegate != null)
+                        if (Fields[i].FieldType.IsGenericType)
                         {
-                            try
+                            var fieldDelegate = value.GetType().GetField("onChanged", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (fieldDelegate != null)
                             {
-                                object del = Delegate.CreateDelegate(fieldDelegate.FieldType, this, "OnObservableListChanged");
-                                fieldDelegate.SetValue(value, del);
+                                try
+                                {
+                                    object del = Delegate.CreateDelegate(fieldDelegate.FieldType, this, "OnObservableListChanged");
+                                    fieldDelegate.SetValue(value, del);
+                                }
+                                catch (Exception message) { Debug.LogError(message.Message); }
                             }
-                            catch (Exception message) { Debug.LogError(message.Message); }
                         }
+                        observerDict.Add(Fields[i].Name, value);
                     }
-                    observerDict.Add(Fields[i].Name, value);
                 }
             }
+            return true;
         }
-        return true;
-    }
 
-    public virtual void OnObservableListChanged()
-    {
-        Debug.LogError("criou ae dssdsd");
-    }
-
-    private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
-    {
-        if (!string.IsNullOrEmpty(functionName))
+        public virtual void OnObservableListChanged()
         {
-            MethodInfo method = this.GetType().GetMethod(functionName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            method?.Invoke(this, null);
+            Debug.LogError("criou ae dssdsd");
         }
-        Send(sendTo, broadcast, protocolType);
-    }
 
-    private void Send(SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
-    {
-        try
+        private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
         {
-            string props = JsonConvert.SerializeObject(observerDict);
-            using (NeutronWriter writer = new NeutronWriter())
+            if (!string.IsNullOrEmpty(functionName))
             {
-                writer.WritePacket(Packet.SyncBehaviour);
-                writer.Write(ServerView.player.ID);
-                writer.Write(props);
-                ServerView?.player.Send(sendTo, writer.ToArray(), broadcast, null, protocolType);
+                MethodInfo method = this.GetType().GetMethod(functionName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                method?.Invoke(this, null);
             }
+            Send(sendTo, broadcast, protocolType);
         }
-        catch (Exception ex) { Debug.LogError(ex.Message); }
-    }
 
-    private async void SyncVar()
-    {
-        FieldInfo[] Fields = this.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        if (AddFields(Fields))
+        private void Send(SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
         {
-            while (NeutronServer.Initialized)
+            try
             {
-                for (int i = 0; i < Fields.Length; i++)
+                string props = JsonConvert.SerializeObject(observerDict);
+                using (NeutronWriter writer = new NeutronWriter())
                 {
-                    FieldInfo Field = Fields[i];
-                    SyncVarAttribute fieldAttribute = Field.GetCustomAttribute<SyncVarAttribute>();
-                    if (fieldAttribute != null)
+                    writer.WritePacket(Packet.SyncBehaviour);
+                    writer.Write(ServerView.player.ID);
+                    writer.Write(props);
+                    ServerView?.player.Send(sendTo, writer.ToArray(), broadcast, null, protocolType);
+                }
+            }
+            catch (Exception ex) { Debug.LogError(ex.Message); }
+        }
+
+        private async void SyncVar()
+        {
+            FieldInfo[] Fields = this.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (AddFields(Fields))
+            {
+                while (NeutronServer.Initialized)
+                {
+                    for (int i = 0; i < Fields.Length; i++)
                     {
-                        object type = Field.GetValue(this);
-                        if (supportedTypes.Contains(type.GetType()))
+                        FieldInfo Field = Fields[i];
+                        SyncVarAttribute fieldAttribute = Field.GetCustomAttribute<SyncVarAttribute>();
+                        if (fieldAttribute != null)
                         {
-                            switch (type)
+                            object type = Field.GetValue(this);
+                            if (supportedTypes.Contains(type.GetType()))
                             {
-                                case var value:
-                                    {
-                                        if (ChangesObserver(Field.Name, value))
+                                switch (type)
+                                {
+                                    case var value:
                                         {
-                                            InvokeOptions(fieldAttribute.function, fieldAttribute.sendTo, fieldAttribute.broadcast, fieldAttribute.protocolType);
+                                            if (ChangesObserver(Field.Name, value))
+                                            {
+                                                InvokeOptions(fieldAttribute.function, fieldAttribute.sendTo, fieldAttribute.broadcast, fieldAttribute.protocolType);
+                                            }
                                         }
-                                    }
-                                    break;
+                                        break;
+                                }
                             }
+                            else { Utils.LoggerError($"[SyncVar] unsupported type -> [{type.GetType().Name}], Use the serializable class -> [Serializable{type.GetType().Name}]"); }
                         }
-                        else { Utils.LoggerError($"[SyncVar] unsupported type -> [{type.GetType().Name}], Use the serializable class -> [Serializable{type.GetType().Name}]"); }
                     }
+                    await Task.Delay(updateFrequency);
                 }
-                await Task.Delay(updateFrequency);
             }
         }
-    }
 
-    protected void OnNotifyChange(NeutronSyncBehaviour syncBehaviour, string propertiesName, Broadcast broadcast)
-    {
-        if (ServerView != null) NeutronSFunc.onChanged(ServerView.player, syncBehaviour, propertiesName, broadcast);
+        protected void OnNotifyChange(NeutronSyncBehaviour syncBehaviour, string propertiesName, Broadcast broadcast)
+        {
+            if (ServerView != null) NeutronSFunc.onChanged(ServerView.player, syncBehaviour, propertiesName, broadcast);
+        }
     }
 }
