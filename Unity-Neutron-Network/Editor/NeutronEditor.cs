@@ -1,5 +1,6 @@
 ﻿using NeutronNetwork;
 using NeutronNetwork.Internal.Comms;
+using NeutronNetwork.Internal.Cipher;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,40 +20,50 @@ public class NeutronEditor : EditorWindow
     //------------------------------------------------------------------------------------------------------------
     [SerializeField] Compression compressionOptions;
     //------------------------------------------------------------------------------------------------------------
-    [SerializeField] int serverPort = 5055, voicePort = 5056, backLog = 10, FPS = 45, DPF = 30, sendRate = 3;
-    [SerializeField] bool quickPackets, noDelay, antiCheat = true, dontDestroyOnLoad = true, UDPDontFragment = true;
-    [SerializeField] int speedHackTolerance = 10, teleportTolerance = 15;
-    [SerializeField] string loginUri = "/Network/login.php";
+    [SerializeField] int serverPort = 5055, voicePort = 5056, backLog = 10, serverFPS = 45, serverDPF = 30, serverSendRate = 3, serverSendRateUDP = 3;
+    [SerializeField] int serverReceiveRate = 3, serverReceiveRateUDP = 3, clientReceiveRate = 3, clientReceiveRateUDP = 3, clientFPS = 45, clientDPF = 30, clientSendRate = 3, clientSendRateUDP = 3;
+    [SerializeField] bool serverNoDelay, clientNoDelay, antiCheat = true, dontDestroyOnLoad = true, UDPDontFragment = true;
+    [SerializeField] int speedHackTolerance = 10, teleportTolerance = 15, max_rec_msg, max_send_msg, limit_of_conn_by_ip;
+    [SerializeField] string ipAddress = "localhost";
 
-    [MenuItem("Neutron/Neutron Overview")]
+    private Vector2 scroll, scrollEditor;
+
+    [MenuItem("Neutron/Neutron Settings")]
     static void Config()
     {
         var editorAsm = typeof(Editor).Assembly;
         var inspWndType = editorAsm.GetType("UnityEditor.InspectorWindow");
-        GetWindow<NeutronEditor>("Neutron Overview", true, inspWndType);
+        var editor = GetWindow<NeutronEditor>("Neutron Overview", true, inspWndType);
+
+        //editor.maxSize = new Vector2(10, 10);
+        editor.minSize = new Vector2(300, 300);
     }
-    Vector2 scroll;
+
     private void OnGUI()
     {
+        //maxSize = new Vector2(10, 10);
+        minSize = new Vector2(300, 300);
+
+        GUIStyle styleText = new GUIStyle(GUI.skin.textArea);
+        styleText.fontStyle = FontStyle.Bold;
+        styleText.alignment = TextAnchor.MiddleLeft;
+        styleText.richText = true;
+        styleText.wordWrap = true;
+
         GUIStyle skinToolbar = ((GUISkin)Resources.Load("Skin/Toolbar", typeof(GUISkin))).GetStyle("TextField");
-        //--------------------------------------------------------------------------------------------------------------
-        windowSelected = GUILayout.Toolbar(windowSelected, new string[] { "Overview", "PC Viewer" }, skinToolbar);
-        //--------------------------------------------------------------------------------------------------------------
-        if (windowSelected == 1)
-        {
-            if (GUILayout.Button("Force Refresh"))
-            {
-                onRPCViewerLoaded = false;
-                FindViewers();
-            }
-        }
-        //--------------------------------------------------------------------------------------------------------------
+        windowSelected = GUILayout.Toolbar(windowSelected, new string[] { "Settings", "Permissions", "Calls" }, skinToolbar);
         switch (windowSelected)
         {
             case 0:
+                onRPCViewerLoaded = false;
                 OnOverview();
                 break;
-            case 1:
+            case 2:
+                if (GUILayout.Button("Force Refresh"))
+                {
+                    onRPCViewerLoaded = false;
+                    FindViewers();
+                }
                 FindViewers();
                 scroll = EditorGUILayout.BeginScrollView(scroll);
                 for (int i = 0; i < viewers.Count; i++)
@@ -60,12 +71,6 @@ public class NeutronEditor : EditorWindow
                     duplicateEntrys.Clear();
                     foreach (var mI in viewers[i])
                     {
-                        GUIStyle styleText = new GUIStyle(GUI.skin.textArea);
-                        styleText.fontStyle = FontStyle.Bold;
-                        styleText.alignment = TextAnchor.MiddleLeft;
-                        styleText.richText = true;
-                        styleText.wordWrap = true;
-
                         var parametersInfor = mI.CustomAttributes.ToArray();
                         var attrName = parametersInfor[0].AttributeType.Name;
                         var value = (int)parametersInfor[0].ConstructorArguments.First().Value;
@@ -89,42 +94,98 @@ public class NeutronEditor : EditorWindow
         onRPCViewerLoaded = false;
     }
 
+    bool fodoultServerAndClientSettings = true;
+    bool fodoultServerSettings = false;
+    bool fodoultClientSettings = false;
+    bool fodoultServerConstants = false;
+
     void OnOverview()
     {
-        onRPCViewerLoaded = false;
-        //------------------------------------------------------------------------------------
-        GUIStyle styleText = new GUIStyle(GUI.skin.label);
-        styleText.fontStyle = FontStyle.Bold;
-        //------------------------------------------------------------------------------------
-        EditorGUILayout.LabelField("Server Settings", styleText);
-        compressionOptions = (Compression)EditorGUILayout.EnumPopup("Compression Mode", compressionOptions);
-        serverPort = EditorGUILayout.IntField("Server Port", serverPort);
-        voicePort = EditorGUILayout.IntField("Voice Port", voicePort);
-        backLog = EditorGUILayout.IntField("Backlog", backLog);
-        FPS = EditorGUILayout.IntField("FPS", FPS);
-        DPF = EditorGUILayout.IntField("DPF", DPF);
-        sendRate = EditorGUILayout.IntField("SendRate", sendRate);
-        //------------------------------------------------------------------------------------
-        quickPackets = EditorGUILayout.Toggle("Quick Packets", quickPackets);
-        noDelay = EditorGUILayout.Toggle("No Delay", noDelay);
-        dontDestroyOnLoad = EditorGUILayout.Toggle("Dont Destroy On Load", dontDestroyOnLoad);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        antiCheat = EditorGUILayout.BeginToggleGroup("Anti-Cheat", antiCheat);
-        speedHackTolerance = EditorGUILayout.IntField("Speedhack Tolerance", speedHackTolerance);
-        teleportTolerance = EditorGUILayout.IntField("Teleport Tolerance", teleportTolerance);
-        EditorGUILayout.EndToggleGroup();
+        GUIStyle intFieldStyle = new GUIStyle(GUI.skin.label);
+        intFieldStyle.fontStyle = FontStyle.BoldAndItalic;
+        intFieldStyle.fontSize = 10;
+
+        scrollEditor = EditorGUILayout.BeginScrollView(scrollEditor);
+        EditorGUI.BeginChangeCheck();
+        fodoultServerAndClientSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultServerAndClientSettings, "[Server & Client Settings]");
+        if (fodoultServerAndClientSettings)
+        {
+            compressionOptions = (Compression)EditorGUILayout.EnumPopup("Compression Mode", compressionOptions);
+            ipAddress = EditorGUILayout.TextField("Address", ipAddress);
+            serverPort = EditorGUILayout.IntField("Port", serverPort);
+        }
         EditorGUILayout.EndFoldoutHeaderGroup();
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.LabelField("Database Settings", styleText);
-        loginUri = EditorGUILayout.TextField("URI Login", loginUri);
-        EditorGUILayout.LabelField("Others Settings", styleText);
-        EditorGUILayout.LabelField("-", "-");
-        EditorGUILayout.LabelField("-", "-");
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        if (GUILayout.Button("Save"))
+        fodoultServerSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultServerSettings, "[Server Settings]");
+        if (fodoultServerSettings)
         {
-            SaveJsonSettings();
+            backLog = EditorGUILayout.IntField("Backlog", backLog);
+            serverFPS = EditorGUILayout.IntField("FPS", serverFPS);
+            serverDPF = EditorGUILayout.IntField("DPF", serverDPF);
+            serverSendRate = EditorGUILayout.IntField("Send Rate(TCP)", serverSendRate);
+            serverReceiveRate = EditorGUILayout.IntField("Receive Rate(TCP)", serverReceiveRate);
+            serverSendRateUDP = EditorGUILayout.IntField("Send Rate(UDP)", serverSendRateUDP);
+            serverReceiveRateUDP = EditorGUILayout.IntField("Receive Rate(UDP)", serverReceiveRateUDP);
+            serverNoDelay = EditorGUILayout.Toggle("No Delay", serverNoDelay);
+            dontDestroyOnLoad = EditorGUILayout.Toggle("Dont Destroy On Load", dontDestroyOnLoad);
+
+            fodoultServerConstants = EditorGUILayout.Foldout(fodoultServerConstants, "Server Constants");
+            if (fodoultServerConstants)
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                antiCheat = EditorGUILayout.ToggleLeft("Anti-Cheat", antiCheat);
+                EditorGUILayout.EndHorizontal();
+                if (antiCheat)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.PrefixLabel("SPEED_TOLERANCE", intFieldStyle, intFieldStyle);
+                    speedHackTolerance = EditorGUILayout.IntField(string.Empty, speedHackTolerance);
+                    EditorGUILayout.EndHorizontal();
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.PrefixLabel("TELE_DIS_TOLERANCE", intFieldStyle, intFieldStyle);
+                    teleportTolerance = EditorGUILayout.IntField(string.Empty, teleportTolerance);
+                    EditorGUILayout.EndHorizontal();
+                }
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("MAX_REC_MSG_SIZE", intFieldStyle, intFieldStyle);
+                max_rec_msg = EditorGUILayout.IntField(string.Empty, max_rec_msg);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("MAX_SEND_MSG_SIZE", intFieldStyle, intFieldStyle);
+                max_send_msg = EditorGUILayout.IntField(string.Empty, max_send_msg);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("LIMIT_OF_CONN_BY_IP", intFieldStyle, intFieldStyle);
+                limit_of_conn_by_ip = EditorGUILayout.IntField(string.Empty, limit_of_conn_by_ip);
+                EditorGUILayout.EndHorizontal();
+            }
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        fodoultClientSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultClientSettings, "[Client Settings]");
+        if (fodoultClientSettings)
+        {
+            clientFPS = EditorGUILayout.IntField("FPS", clientFPS);
+            clientDPF = EditorGUILayout.IntField("DPF", clientDPF);
+            clientSendRate = EditorGUILayout.IntField("Send Rate(TCP)", clientSendRate);
+            clientReceiveRate = EditorGUILayout.IntField("Receive Rate(TCP)", clientReceiveRate);
+            clientSendRateUDP = EditorGUILayout.IntField("Send Rate(UDP)", clientSendRateUDP);
+            clientReceiveRateUDP = EditorGUILayout.IntField("Receive Rate(UDP)", clientReceiveRateUDP);
+            clientNoDelay = EditorGUILayout.Toggle("No Delay", clientNoDelay);
+        }
+        EditorGUILayout.EndFoldoutHeaderGroup();
+        if (EditorGUI.EndChangeCheck()) SaveSettings();
+        EditorGUILayout.EndScrollView();
+    }
+
+    void LoadSettings() => JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(Data.PASS), this);
+
+    void SaveSettings()
+    {
+        File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(Data.PASS));
+        AssetDatabase.Refresh();
+        Utils.Logger("Saved!");
     }
 
     private void OnEnable()
@@ -135,26 +196,6 @@ public class NeutronEditor : EditorWindow
     private void OnFocus()
     {
         LoadSettings();
-    }
-
-    void LoadSettings()
-    {
-        try
-        {
-            TextAsset fromJson = Resources.Load<TextAsset>("neutronsettings");
-            //------------------------------------------------------------------
-            JsonUtility.FromJsonOverwrite(fromJson.text, this);
-        }
-        catch { }
-    }
-
-    void SaveJsonSettings()
-    {
-        string toJson = JsonUtility.ToJson(this);
-        //------------------------------------------------------------------------------------
-        File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, toJson);
-        //------------------------------------------------------------------------------------
-        AssetDatabase.Refresh();
     }
 
     void FindViewers()

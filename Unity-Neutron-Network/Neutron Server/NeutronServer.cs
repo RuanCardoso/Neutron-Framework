@@ -32,7 +32,7 @@ namespace NeutronNetwork.Internal.Server
             {
                 try
                 {
-                    TcpClient _clientAccepted = await _TCPSocket.AcceptTcpClientAsync();
+                    TcpClient _clientAccepted = await _TCPListen.AcceptTcpClientAsync();
                     _clientAccepted.NoDelay = noDelay; // If true, sends data immediately upon calling NetworkStream.Write.
 
                     //if (Players.Any(x => x.Value.tcpClient.RemoteEndPoint().Equals(_clientAccepted.RemoteEndPoint()))) _clientAccepted.Close();
@@ -51,8 +51,8 @@ namespace NeutronNetwork.Internal.Server
                         ThreadPool.QueueUserWorkItem((e) =>
                         {
                             ReadTCPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
-                        ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
-                    });
+                            ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
+                        });
                     }
                 }
                 catch (Exception ex)
@@ -79,7 +79,7 @@ namespace NeutronNetwork.Internal.Server
                         {
                             int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
 
-                            if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE_SERVER || fixedLength <= 0) { Utils.LoggerError("This message exceeds the maximum limit. increase the maximum limit."); HandleDisconnect(_client.tcpClient, _client._cts); return; };
+                            if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE || fixedLength <= 0) { Utils.LoggerError("This message exceeds the maximum limit. increase the maximum limit."); HandleDisconnect(_client.tcpClient, _client._cts); return; };
 
                             buffer = new byte[fixedLength + sizeof(int)];
                             if (await Communication.ReadAsyncBytes(netStream, buffer, sizeof(int), fixedLength))
@@ -113,7 +113,7 @@ namespace NeutronNetwork.Internal.Server
                     udpReceiveResult = await _owner.udpClient.ReceiveAsync(); // receive bytes
                     if (udpReceiveResult.Buffer.Length > 0)
                     {
-                        byte[] decompressedBuffer = udpReceiveResult.Buffer.Decompress(compressionMode, 0, udpReceiveResult.Buffer.Length);
+                        byte[] decompressedBuffer = udpReceiveResult.Buffer.Decompress(COMPRESSION_MODE, 0, udpReceiveResult.Buffer.Length);
                         _owner.rPEndPoint = udpReceiveResult.RemoteEndPoint; // remote endpoint to send data.
 
                         PacketProcessing(_owner.tcpClient, decompressedBuffer, true); // process packets.
@@ -142,18 +142,18 @@ namespace NeutronNetwork.Internal.Server
                             try
                             {
                                 for (int i = 0; i < queueData.Count; i++) // send current and failed packets.
-                            {
-                                    if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
                                 {
+                                    if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
+                                    {
                                         using (NeutronWriter writerOnly = new NeutronWriter())
                                         {
                                             writerOnly.WriteFixedLength(buffer.Length); // length of message.
-                                        writerOnly.Write(buffer); // message.
-                                        byte[] nBuffer = writerOnly.ToArray();
-                                        //Utils.LoggerError($"serverLenght: {buffer.Length} : " + nBuffer.Length);
-                                        if (player.tcpClient != null)
+                                            writerOnly.Write(buffer); // message.
+                                            byte[] nBuffer = writerOnly.ToArray();
+                                            //Utils.LoggerError($"serverLenght: {buffer.Length} : " + nBuffer.Length);
+                                            if (player.tcpClient != null)
                                                 await _stream?.WriteAsync(nBuffer, 0, nBuffer.Length); // send message.
-                                    }
+                                        }
                                     }
                                 }
                             }
@@ -180,9 +180,9 @@ namespace NeutronNetwork.Internal.Server
                                 if (Players.TryGetValue(player.tcpClient, out Player pEndPoint))
                                 {
                                     for (int i = 0; i < queueData.Count; i++) // send current and failed packets.
-                                {
-                                        if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
                                     {
+                                        if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
+                                        {
                                             if (pEndPoint.rPEndPoint != null && player.tcpClient != null)
                                                 await player.udpClient?.SendAsync(buffer, buffer.Length, pEndPoint.rPEndPoint);
                                         }

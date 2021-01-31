@@ -13,18 +13,20 @@ namespace NeutronNetwork.Internal.Server
     {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         public const string LOCAL_HOST = "http://127.0.0.1"; // local host.
-        public const float TELEPORT_DISTANCE_TOLERANCE = 5f; // maximum teleport distance.
-        public const float SPEEDHACK_TOLERANCE = 10f; // 0.1 = 0.1 x 1000 = 100 -> 1000/100 = 10 pckts per seconds.
-        public const int MAX_RECEIVE_MESSAGE_SIZE_SERVER = 512;
+        public static float TELEPORT_DISTANCE_TOLERANCE = 5f; // maximum teleport distance.
+        public static float SPEEDHACK_TOLERANCE = 10f; // 0.1 = 0.1 x 1000 = 100 -> 1000/100 = 10 pckts per seconds.
+        public static int MAX_RECEIVE_MESSAGE_SIZE = 512;
+        public static int MAX_SEND_MESSAGE_SIZE = 512;
+        public static int LIMIT_OF_CONNECTIONS_BY_IP = 2;
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        [NonSerialized] public Compression compressionMode = Compression.Deflate; // Level of compression of the bytes.
-        [NonSerialized] public ConcurrentQueue<Action> monoBehaviourActions = new ConcurrentQueue<Action>(); // Thread-Safe - All shares that inherit from 
-        [NonSerialized] public ConcurrentDictionary<TcpClient, Player> Players = new ConcurrentDictionary<TcpClient, Player>(); // Thread-Safe - List of players who are currently in play.
-                                                                                                                                ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        [NonSerialized] public Compression COMPRESSION_MODE = Compression.Deflate; // Level of compression of the bytes.
+        [NonSerialized] public ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>(); // Thread-Safe - All shares that inherit from 
+        [NonSerialized] public ConcurrentDictionary<TcpClient, Player> Players = new ConcurrentDictionary<TcpClient, Player>();
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         [SerializeField] private List<Channel> serializedChannels = new List<Channel>();
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        private int serverPort = 5055; // The port on which the server will listen for data.
-                                       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        private int serverPort = 5055;
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         protected int FPS = 60; // Frame rate of server. -1 for unlimited frame
         protected int DPF = 30; // Data processing rate per frame/tick
         protected int backLog = 10; // Maximum size of the acceptance queue for simultaneous clients
@@ -33,9 +35,9 @@ namespace NeutronNetwork.Internal.Server
         protected bool dontDestroyOnLoad = true; // dont destroy server.
         protected bool _ready = false;
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        protected ConcurrentDictionary<int, Channel> Channels = new ConcurrentDictionary<int, Channel>(); // Thread-Safe - Channels of server.
-                                                                                                          ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        protected static TcpListener _TCPSocket;
+        protected ConcurrentDictionary<int, Channel> Channels = new ConcurrentDictionary<int, Channel>();
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        protected static TcpListener _TCPListen;
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void SerializeInspector()
@@ -59,8 +61,8 @@ namespace NeutronNetwork.Internal.Server
             else
             {
                 SetSetting(IData);
-                _TCPSocket = new TcpListener(new IPEndPoint(IPAddress.Any, serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                _TCPSocket.Start(backLog);
+                _TCPListen = new TcpListener(new IPEndPoint(IPAddress.Any, serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                _TCPListen.Start(backLog);
                 _ready = true;
             }
 #endif
@@ -68,15 +70,21 @@ namespace NeutronNetwork.Internal.Server
 
         void SetSetting(IData Data)
         {
-            compressionMode = Data.compressionOptions;
-            serverPort = Data.serverPort;
-            backLog = Data.backLog;
-            FPS = Data.FPS;
-            DPF = Data.DPF;
-            noDelay = Data.noDelay;
-            enableAntiCheat = Data.antiCheat;
-            dontDestroyOnLoad = Data.dontDestroyOnLoad;
-            CheatsUtils.enabled = enableAntiCheat;
+            TELEPORT_DISTANCE_TOLERANCE = Data.teleportTolerance;
+            SPEEDHACK_TOLERANCE = Data.speedHackTolerance;
+            MAX_RECEIVE_MESSAGE_SIZE = Data.max_rec_msg;
+            MAX_SEND_MESSAGE_SIZE = Data.max_send_msg;
+            LIMIT_OF_CONNECTIONS_BY_IP = Data.limit_of_conn_by_ip;
+
+            //COMPRESSION_MODE = (Compression)Data.compressionOptions;
+            //serverPort = Data.serverPort;
+            //backLog = Data.backLog;
+            //FPS = Data.serverFPS;
+            //DPF = Data.serverDPF;
+            //noDelay = Data.serverNoDelay;
+            //enableAntiCheat = Data.antiCheat;
+            //dontDestroyOnLoad = Data.dontDestroyOnLoad;
+            //CheatsUtils.enabled = enableAntiCheat;
         }
     }
 }

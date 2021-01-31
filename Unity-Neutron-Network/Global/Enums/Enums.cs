@@ -82,7 +82,7 @@ public enum Compression : byte
     /// <summary>
     /// Compress data using GZip mode.
     /// </summary>
-    GZip,
+    Gzip,
     /// <summary>
     /// Disable data compression.
     /// </summary>

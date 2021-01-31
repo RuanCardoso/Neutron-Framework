@@ -135,7 +135,7 @@ namespace NeutronNetwork
         {
             if (!isConnected) return;
 
-            Utils.Dequeue(ref monoBehaviourActions, 10);
+            Utils.Dequeue(ref mainThreadActions, 10);
             Utils.Dequeue(ref monoBehaviourRPCActions, 10);
         }
 
@@ -227,9 +227,6 @@ namespace NeutronNetwork
                         if (await Communication.ReadAsyncBytes(netStream, messageLenBuffer, 0, sizeof(int)))
                         {
                             int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
-
-                            if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE_CLIENT) { Utils.LoggerError("This message exceeds the maximum limit. increase the maximum limit."); return; };
-
                             byte[] messageBuffer = new byte[fixedLength + sizeof(int)];
                             if (await Communication.ReadAsyncBytes(netStream, messageBuffer, sizeof(int), fixedLength))
                             {

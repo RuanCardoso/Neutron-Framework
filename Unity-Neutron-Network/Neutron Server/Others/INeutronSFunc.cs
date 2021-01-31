@@ -35,7 +35,7 @@ namespace NeutronNetwork.Internal.Server
 
         private void Update()
         {
-            Utils.Dequeue(ref monoBehaviourActions, DPF); // process de server data.
+            Utils.Dequeue(ref mainThreadActions, DPF); // process de server data.
         }
 
         // Server Functions
@@ -87,7 +87,7 @@ namespace NeutronNetwork.Internal.Server
 
         protected void Dispose()
         {
-            _TCPSocket.Server.Close();
+            _TCPListen.Server.Close();
         }
 
         private void Cache(int ID, Player owner, byte[] buffer, CachedPacket packet)

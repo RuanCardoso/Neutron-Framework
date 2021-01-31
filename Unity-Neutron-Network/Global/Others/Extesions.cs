@@ -49,7 +49,7 @@ namespace NeutronNetwork.Internal.Extesions
                     return output.ToArray();
                 }
             }
-            else if (compressionType == Compression.GZip)
+            else if (compressionType == Compression.Gzip)
             {
                 if (data == null)
                     throw new ArgumentNullException("inputData must be non-null");
@@ -83,7 +83,7 @@ namespace NeutronNetwork.Internal.Extesions
                     }
                 }
             }
-            else if (compressionType == Compression.GZip)
+            else if (compressionType == Compression.Gzip)
             {
                 if (data == null)
                     throw new ArgumentNullException("inputData must be non-null");
@@ -147,7 +147,7 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, IPEndPoint point, ProtocolType protocolType)
         {
-            buffer = buffer.Compress(Neutron.Server.compressionMode);
+            buffer = buffer.Compress(Neutron.Server.COMPRESSION_MODE);
             switch (protocolType)
             {
                 case ProtocolType.Tcp:
@@ -201,8 +201,12 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void ExecuteOnMainThread(this Action action, Neutron neutronInstance = null, bool executeOnServer = true)
         {
-            if (executeOnServer) Utils.Enqueue(action, ref Neutron.Server.monoBehaviourActions);
-            else Utils.Enqueue(action, ref neutronInstance.monoBehaviourActions);
+            try
+            {
+                if (executeOnServer) Utils.Enqueue(action, ref Neutron.Server.mainThreadActions);
+                else Utils.Enqueue(action, ref neutronInstance.mainThreadActions);
+            }
+            catch (Exception ex) { Utils.StackTrace(ex); }
         }
 
         public static T DeepClone<T>(this object list)

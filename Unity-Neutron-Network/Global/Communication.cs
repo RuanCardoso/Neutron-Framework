@@ -81,7 +81,8 @@ namespace NeutronNetwork.Internal.Comms
             }
             catch (Exception ex)
             {
-                Utils.LoggerError($"The scope of the RCC({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"");
+                // $"The scope of the RCC({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"
+                Utils.StackTrace(ex);
                 return false;
             }
         }
