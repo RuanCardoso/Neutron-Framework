@@ -6,19 +6,15 @@ using System.Net.Sockets;
 using System.Net;
 using System.Collections.Concurrent;
 using Newtonsoft.Json;
+using UnityEngine.SceneManagement;
 
 public class Utils
 {
-    public static bool IsServer(GameObject obj)
-    {
-        return obj.layer == LayerMask.NameToLayer("ServerObject");
-    }
-
-    public static int GetFreePort(ProtocolType type)
+    public static int GetFreePort(Protocol type)
     {
         switch (type)
         {
-            case ProtocolType.Udp:
+            case Protocol.Udp:
                 {
                     UdpClient freePort = new UdpClient(0);
                     IPEndPoint endPoint = (IPEndPoint)freePort.Client.LocalEndPoint;
@@ -26,7 +22,7 @@ public class Utils
                     freePort.Close();
                     return port;
                 }
-            case ProtocolType.Tcp:
+            case Protocol.Tcp:
                 {
                     TcpClient freePort = new TcpClient(new IPEndPoint(IPAddress.Any, 0));
                     IPEndPoint endPoint = (IPEndPoint)freePort.Client.LocalEndPoint;
@@ -91,7 +87,47 @@ public class Utils
         return clientLayer > -1 && serverLayer > -1;
     }
 
-    public static void Enqueue(Action action, ref ConcurrentQueue<Action> cQueue)
+    public static void CreateContainer(string name, bool enablePhysics = false, GameObject[] sharedObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
+    {
+        Scene scene = SceneManager.CreateScene(name, new CreateSceneParameters(localPhysicsMode));
+
+        if (sharedObjects != null)
+        {
+            foreach (GameObject @object in sharedObjects)
+            {
+                if (enablePhysics)
+                {
+                    GameObject gameObject = MonoBehaviour.Instantiate(@object);
+                    gameObject.hideFlags = HideFlags.HideInHierarchy;
+#if UNITY_EDITOR
+                    LinkObject linked = gameObject.AddComponent<LinkObject>();
+                    linked.@object = @object;
+#endif
+                    MoveToContainer(gameObject, scene.name);
+                    var renderer = gameObject.GetComponent<Renderer>();
+                    if (renderer != null)
+                        MonoBehaviour.Destroy(renderer);
+                }
+#if UNITY_SERVER
+                MonoBehaviour.Destroy(@object);
+#endif
+            }
+        }
+
+        if (!enablePhysics || localPhysicsMode == LocalPhysicsMode.None) return;
+        GameObject simulateObject = new GameObject("Simulate");
+        simulateObject.hideFlags = HideFlags.HideInHierarchy;
+        MoveToContainer(simulateObject, scene.name);
+        Simulate simulate = simulateObject.AddComponent<Simulate>();
+        simulate.physicsScene = scene.GetPhysicsScene();
+    }
+
+    public static void MoveToContainer(GameObject obj, string name)
+    {
+        SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
+    }
+
+    public static void Enqueue(Action action, ConcurrentQueue<Action> cQueue)
     {
         cQueue.Enqueue(action);
     }

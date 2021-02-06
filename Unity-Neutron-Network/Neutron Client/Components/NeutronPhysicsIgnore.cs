@@ -12,7 +12,6 @@ namespace NeutronNetwork.Components
             {
                 int layerMask = LayerMask.NameToLayer("ClientObject");
                 int layerMask2 = LayerMask.NameToLayer("ServerObject");
-                //======================================================//
                 Physics.IgnoreLayerCollision(layerMask, layerMask2, ignore);
             }
         }

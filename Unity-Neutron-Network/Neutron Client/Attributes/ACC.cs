@@ -1,11 +1,11 @@
 ﻿using System;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public class ACC : Attribute
+public class Response : Attribute
 {
     public int ID;
 
-    public ACC(int ID)
+    public Response(int ID)
     {
         this.ID = ID;
     }

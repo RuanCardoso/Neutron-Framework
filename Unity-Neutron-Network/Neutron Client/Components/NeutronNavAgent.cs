@@ -11,7 +11,7 @@ namespace NeutronNetwork.Components
     {
         [SerializeField] private bool avoidOnlyEditorMode = false;
 
-        [SerializeField] private ProtocolType protocolType = ProtocolType.Tcp;
+        [SerializeField] private Protocol protocolType = Protocol.Tcp;
 
         [SerializeField] private SendTo sendTo;
 
@@ -21,7 +21,7 @@ namespace NeutronNetwork.Components
 
         private void OnValidate()
         {
-            if (protocolType != ProtocolType.Tcp && protocolType != ProtocolType.Udp) protocolType = ProtocolType.Tcp;
+            if (protocolType != Protocol.Tcp && protocolType != Protocol.Udp) protocolType = Protocol.Tcp;
         }
 
         void Start()
@@ -45,7 +45,7 @@ namespace NeutronNetwork.Components
                         using (NeutronWriter streamParams = new NeutronWriter())
                         {
                             streamParams.Write(hit.point);
-                            ClientView._.RPC(this, 252, 0, streamParams, sendTo, false, broadcast, (ProtocolType)(int)protocolType);
+                            NeutronView._.RPC(252, 0, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
                         }
                     }
                 }
@@ -66,8 +66,8 @@ namespace NeutronNetwork.Components
                     using (NeutronWriter streamParams = new NeutronWriter())
                     {
                         streamParams.Write(point);
-                        streamParams.Write(ServerView.transform.position);
-                        ServerView.APC(252, streamParams, SendTo.All, Broadcast.Channel);
+                        streamParams.Write(NeutronView.transform.position);
+                        NeutronView.APC(252, streamParams, SendTo.All, Broadcast.Channel);
                     }
                 }
             }

@@ -3,27 +3,43 @@ using NeutronNetwork.Internal.Comms;
 using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server.InternalEvents;
 using System;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// Created by: Ruan Cardoso
+/// Email: cardoso.ruan050322@gmail.com
+/// License: GNU AFFERO GENERAL PUBLIC LICENSE
+/// Third-party libraries: no third-party library was used.
+/// </summary>
 
 namespace NeutronNetwork.Internal.Server
 {
     [RequireComponent(typeof(NeutronEvents))]
-    public class NeutronServer : NeutronSDatabase
+    public class NeutronServer : NeutronSFunc
     {
         public static bool Initialized = false; // Indicates whether the server is started.
-        [NonSerialized] public GameObject Container; // Isolates the client and the server. Client and Server have their own container to isolate their objects and functions.
         void Initilize()
         {
             ///////////////////////////////////////////////////////////////////////////////
             Utils.Logger("TCP and UDP have been initialized, the server is ready!\r\n");
             ///////////////////////////////////////////////////////////////////////////////
             ThreadPool.QueueUserWorkItem((e) => AcceptClient()); // Thread dedicated to client acceptance.
-                                                                 //ThreadPool.QueueUserWorkItem((e) => StartUDPVoice ());
-            Initialized = true; // defines true, server is initialized.
-            onServerStart?.Invoke(); // signals that the server has been started.
+            Initialized = true; // defines true, server is initialized. [THREAD-SAFE - only accessed by the main thread]
+            onServerStart?.Invoke(); // signals that the server has been started. [THREAD-SAFE - delegates are immutable]
+        }
+
+        public bool SynFloodProtection(IPAddress address) // check flood connection [THREAD-SAFE - only accessed by the parent thread]
+        {
+            if (!address.Equals(IPAddress.Loopback))
+                return Players.Count(x => x.Value.tcpClient.RemoteEndPoint().Address.Equals(address)) > LIMIT_OF_CONNECTIONS_BY_IP;
+            else return false;
         }
 
         async void AcceptClient()
@@ -33,28 +49,61 @@ namespace NeutronNetwork.Internal.Server
                 try
                 {
                     TcpClient _clientAccepted = await _TCPListen.AcceptTcpClientAsync();
-                    _clientAccepted.NoDelay = noDelay; // If true, sends data immediately upon calling NetworkStream.Write.
+                    _clientAccepted.NoDelay = noDelay; // If true, sends data immediately upon calling NetworkStream.Write. [THREAD-SAFE(NoDelay) - only assigned by the parent thread]
 
-                    //if (Players.Any(x => x.Value.tcpClient.RemoteEndPoint().Equals(_clientAccepted.RemoteEndPoint()))) _clientAccepted.Close();
+                    CancellationTokenSource _cts = new CancellationTokenSource(); // Signals to a CancellationToken that it should be canceled. to the thread after the client to closed. [THREAD-SAFE - accessed from other threads, microsoft claims to be safe.]
 
-                    CancellationTokenSource _cts = new CancellationTokenSource(); // Signals to a CancellationToken that it should be canceled. to the thread after the client to closed.
+                    IPAddress address = _clientAccepted.RemoteEndPoint().Address; // [THREAD-SAFE - only accessed by the parent thread]
 
-                    Player nPlayer = new Player(Utils.GetUniqueID(_clientAccepted.RemoteEndPoint()), _clientAccepted, _cts); // Create new player.
-                    if (AddPlayer(nPlayer)) // Add player to the server. Thread safe
+                    if (!blockedConnections.Contains(address)) // check ip its banned; [THREAD-SAFE - only accessed by the parent thread]
                     {
-                        IPEndPoint RemoteEndPoint = _clientAccepted.RemoteEndPoint(); // remote endpoint of client.
-
-                        ThreadPool.QueueUserWorkItem((e) => ProcessingStack(nPlayer, nPlayer._cts.Token)); // Starts processing client data.
-                                                                                                           /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        Utils.Logger($"Incoming client, IP: [{RemoteEndPoint.Address}] | TCP: [{RemoteEndPoint.Port}] | UDP: [{((IPEndPoint)nPlayer.udpClient.Client.LocalEndPoint).Port}]");
-                        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        ThreadPool.QueueUserWorkItem((e) =>
+                        if (SynFloodProtection(address)) // flood detected.
                         {
-                            ReadTCPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
-                            ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
-                        });
+                            _clientAccepted.Dispose(); // dispose attacker socket.
+                            _cts.Cancel(); // cancel while thread.
+                            _cts.Dispose(); // thread dispose.
+                            foreach (var attacker in Players.Where(x => x.Key.RemoteEndPoint().Address.Equals(address))) // get all sockets of attacker and close it. [THREAD-SAFE - is a ConcurrentCollection]
+                            {
+                                if (Players.TryRemove(attacker.Value.tcpClient, out Player player)) // remove all players of attacker from server. [THREAD-SAFE - is a ConcurrentCollection]
+                                {
+                                    attacker.Value.tcpClient?.Dispose(); // close socket.
+                                    attacker.Value._cts?.Cancel(); // close thread.
+                                    attacker.Value._cts?.Dispose();  // thread dispose.
+                                }
+                            }
+                            blockedConnections.Add(address); // add ip to the blacklist. [THREAD-SAFE - only accessed by the parent thread]
+                            Utils.LoggerError($"Possible flood attacker! IP Address -> {address}");
+                        }
+                        else
+                        {
+                            Player nPlayer = new Player(Utils.GetUniqueID(_clientAccepted.RemoteEndPoint()), _clientAccepted, _cts); // Create new player.
+                            if (AddPlayer(nPlayer)) // Add player to the server. [THREAD-SAFE - is a ConcurrentCollection]
+                            {
+                                IPEndPoint RemoteEndPoint = _clientAccepted.RemoteEndPoint(); // remote endpoint of client.
+
+                                ThreadPool.QueueUserWorkItem((e) => ProcessingStack(nPlayer, nPlayer._cts.Token)); // Starts processing client data. data write thread.
+                                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                Utils.Logger($"Incoming client, IP: [{RemoteEndPoint.Address}] | TCP: [{RemoteEndPoint.Port}] | UDP: [{((IPEndPoint)nPlayer.udpClient.Client.LocalEndPoint).Port}]");
+                                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                ThreadPool.QueueUserWorkItem((e) => // data reading thread.
+                                {
+                                    ReadTCPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
+                                    ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data. // exclusive UdpClient. each client has its own UDP client.
+                                }); // NOTE: only one thread writes and the other reads the data. [THREAD-SAFE]
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _clientAccepted.Dispose(); // close socket;
+                        _cts.Cancel(); // close thread.
+                        _cts.Dispose(); // thread dispose.
+                        Utils.LoggerError($"IP blocked! IP Address -> {address}");
                     }
                 }
+                catch (ThreadInterruptedException) { }
+                catch (ThreadAbortException) { }
+                catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
                     if (!Initialized) return;
@@ -64,221 +113,210 @@ namespace NeutronNetwork.Internal.Server
             } while (Initialized);
         }
 
-        async void ReadTCPData(Player _client, object obj)
+        async void ReadTCPData(Player _client, object obj) // server
         {
-            byte[] messageLenBuffer = new byte[sizeof(int)];
-            byte[] buffer;
+            byte[] messageLenBuffer = new byte[sizeof(int)]; // receive of packet length.
+            byte[] buffer; // message + sizeof(int) + old bytes.
+            byte[] releaseBuffer; // only new message.
             try
             {
-                CancellationToken token = (CancellationToken)obj;
+                CancellationToken token = (CancellationToken)obj; // token for stop thread.
 
-                using (var netStream = _client.tcpClient.GetStream())
+                using (var netStream = _client.tcpClient.GetStream()) // get stream [THREAD SAFE - because only this thread read]
+                using (var buffStream = new BufferedStream(netStream, Communication.BUFFER_SIZE))
+                {
                     do
                     {
-                        if (await Communication.ReadAsyncBytes(netStream, messageLenBuffer, 0, sizeof(int)))
+                        if (await Communication.ReadAsyncBytes(buffStream, messageLenBuffer, 0, sizeof(int)))
                         {
-                            int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
+                            int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0); // get message length
 
-                            if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE || fixedLength <= 0) { Utils.LoggerError("This message exceeds the maximum limit. increase the maximum limit."); HandleDisconnect(_client.tcpClient, _client._cts); return; };
-
-                            buffer = new byte[fixedLength + sizeof(int)];
-                            if (await Communication.ReadAsyncBytes(netStream, buffer, sizeof(int), fixedLength))
+                            if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE || fixedLength <= 0) // check length if =< 0 or message is overflow limit, if true, close socket.
                             {
-                                using (NeutronReader messageReader = new NeutronReader(buffer, sizeof(int), fixedLength))
+                                Utils.LoggerError("Operation not allowed, message size is invalid.");
+                                HandleDisconnect(_client, _client._cts); // disconnect player. [Thread-Safe]
+                            }
+                            else
+                            {
+                                buffer = new byte[fixedLength + sizeof(int)]; // set the buffer size, equal to the packet/message length.
+                                if (await Communication.ReadAsyncBytes(buffStream, buffer, sizeof(int), fixedLength)) // read message bytes.
                                 {
-                                    PacketProcessing(_client.tcpClient, messageReader.ToArray(), false);
+                                    releaseBuffer = new byte[buffer.Length];
+                                    Buffer.BlockCopy(buffer, sizeof(int), releaseBuffer, 0, fixedLength);
+                                    if (COMPRESSION_MODE == Compression.None) // server
+                                        PacketProcessing(_client, releaseBuffer, false); // process packet.
+                                    else // server
+                                    {
+                                        byte[] bBuffer = releaseBuffer.Decompress(COMPRESSION_MODE); // decompress packet.
+                                        PacketProcessing(_client, bBuffer, false); // process packet.
+                                    }
                                 }
                             }
                         }
-                        else { HandleDisconnect(_client.tcpClient, _client._cts); }
-                    } while (_client.tcpClient != null && Initialized && !token.IsCancellationRequested);
+                        else { HandleDisconnect(_client, _client._cts); } // detects disconnection and closes the socket. [Thread-Safe]
+                        await Task.Delay(recRateTCP); // await receive rate.
+                    } while (!token.IsCancellationRequested && Initialized);
+                }
             }
+            catch (ThreadInterruptedException) { }
+            catch (ThreadAbortException) { }
+            catch (ObjectDisposedException) { } // ignore disposed object log.
             catch (Exception ex)
             {
-                if (!Initialized) return;
-                Utils.StackTrace(ex);
-                HandleDisconnect(_client.tcpClient, _client._cts); // disconnect client from server. thread safe.
+                Utils.StackTrace(ex); // print stacktrace in console.
+                HandleDisconnect(_client, _client._cts); // disconnect client from server. thread safe.
             }
         }
 
-        async void ReadUDPData(Player _owner, object obj)
+        async void ReadUDPData(Player _owner, object obj) // this client is automatic disposed, based on tcp client.
         {
-            CancellationToken token = (CancellationToken)obj;
-
             try
             {
+                CancellationToken token = (CancellationToken)obj; // stop thread token.
                 UdpReceiveResult udpReceiveResult; // udp buffer
                 do
                 {
                     udpReceiveResult = await _owner.udpClient.ReceiveAsync(); // receive bytes
                     if (udpReceiveResult.Buffer.Length > 0)
                     {
-                        byte[] decompressedBuffer = udpReceiveResult.Buffer.Decompress(COMPRESSION_MODE, 0, udpReceiveResult.Buffer.Length);
-                        _owner.rPEndPoint = udpReceiveResult.RemoteEndPoint; // remote endpoint to send data.
+                        if (_owner.rPEndPoint == null) _owner.rPEndPoint = udpReceiveResult.RemoteEndPoint; // remote endpoint to send data. this variable is used in other segments but is only assigned here and only once, it is not necessary to synchronize it (thread-safe) ... I think kkkk
 
-                        PacketProcessing(_owner.tcpClient, decompressedBuffer, true); // process packets.
+                        if (COMPRESSION_MODE == Compression.None) // server
+                            PacketProcessing(_owner, udpReceiveResult.Buffer, true); // process packets.
+                        else
+                        {
+                            byte[] bBuffer = udpReceiveResult.Buffer.Decompress(COMPRESSION_MODE); // decompress packet.
+                            PacketProcessing(_owner, bBuffer, true); // process packets.
+                        }
                     }
-                } while (Initialized && udpReceiveResult.Buffer.Length > 0 && !token.IsCancellationRequested);
+                    await Task.Delay(recRateUDP); // await receive rate.
+                } while (Initialized && !token.IsCancellationRequested);
             }
-            catch (SocketException ex) { Utils.LoggerError(ex.Message); }
+            catch (ThreadInterruptedException) { } // ignore
+            catch (ThreadAbortException) { } // ignore
+            catch (ObjectDisposedException) { } // ignore disposed object log.
+            catch (SocketException ex) { Utils.StackTrace(ex); }
         }
 
         void ProcessingStack(Player player, object obj) // thread-safe
         {
             CancellationToken token = (CancellationToken)obj;
-
             void TCP()
             {
-                try
+                /*using (*/
+                var netStream = player.tcpClient.GetStream(); // using statement // stream [Thread-Safe - because only this thread write]
+                var buffStream = new BufferedStream(netStream, Communication.BUFFER_SIZE);
                 {
-                    NetworkStream _stream = player.tcpClient.GetStream(); // stream.
-                    var queueData = player.qDataTCP; // data queue for pending processing.
+                    var queueData = player.qDataTCP; // data queue for pending processing. [Thread-Safe is a concurrent collection]
                     if (queueData != null)
                     {
-                        queueData.onChanged += async () =>
+                        queueData.onChanged += async () => // event "OnChanged" to send data.
                         {
                             if (token.IsCancellationRequested) return;
-
                             try
                             {
-                                for (int i = 0; i < queueData.Count; i++) // send current and failed packets.
+                                for (int i = 0; i < queueData.Count; i++) // re-send failed packets on the next time.
                                 {
+                                    await Task.Delay(sendRateTCP);
                                     if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
                                     {
-                                        using (NeutronWriter writerOnly = new NeutronWriter())
+                                        using (NeutronWriter header = new NeutronWriter())
                                         {
-                                            writerOnly.WriteFixedLength(buffer.Length); // length of message.
-                                            writerOnly.Write(buffer); // message.
-                                            byte[] nBuffer = writerOnly.ToArray();
-                                            //Utils.LoggerError($"serverLenght: {buffer.Length} : " + nBuffer.Length);
+                                            header.WriteFixedLength(buffer.Length); // write length of message(header).
+                                            header.Write(buffer); // write message.
+                                            byte[] nBuffer = header.ToArray();
                                             if (player.tcpClient != null)
-                                                await _stream?.WriteAsync(nBuffer, 0, nBuffer.Length); // send message.
+                                                await netStream?.WriteAsync(nBuffer, 0, nBuffer.Length); // send message.
                                         }
                                     }
                                 }
                             }
-                            catch (Exception ex) { Utils.LoggerError("error code: 0x2013 " + ex.Message); }
+                            catch (Exception ex) { Utils.StackTrace(ex); }
                         };
                     }
                 }
-                catch (Exception ex) { Utils.LoggerError("error code: 0x2014 " + ex.Message); }
             }
 
             void UDP()
             {
-                try
+                var queueData = player.qDataUDP; // data queue for pending processing. [Thread-Safe is a concurrent collection]
+                if (queueData != null)
                 {
-                    var queueData = player.qDataUDP; // data queue for pending processing.
-                    if (queueData != null)
+                    queueData.onChanged += async () =>
                     {
-                        queueData.onChanged += async () =>
+                        if (token.IsCancellationRequested) return;
+                        try
                         {
-                            if (token.IsCancellationRequested) return;
-
-                            try
+                            for (int i = 0; i < queueData.Count; i++) // re-send failed packets on the next time.
                             {
-                                if (Players.TryGetValue(player.tcpClient, out Player pEndPoint))
+                                await Task.Delay(sendRateUDP);
+                                if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
                                 {
-                                    for (int i = 0; i < queueData.Count; i++) // send current and failed packets.
-                                    {
-                                        if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
-                                        {
-                                            if (pEndPoint.rPEndPoint != null && player.tcpClient != null)
-                                                await player.udpClient?.SendAsync(buffer, buffer.Length, pEndPoint.rPEndPoint);
-                                        }
-                                    }
+                                    if (player.rPEndPoint != null && player.tcpClient != null) // rPEndPointis not thread-safe....  but as it is assigned only once and only by a single thread, it doesn't matter.
+                                        await player.udpClient?.SendAsync(buffer, buffer.Length, player.rPEndPoint); // send message
                                 }
                             }
-                            catch (Exception ex) { Utils.LoggerError("error code: 0x4015 " + ex.Message); }
-                        };
-                    }
+                        }
+                        catch (Exception ex) { Utils.StackTrace(ex); }
+                    };
                 }
-                catch (Exception ex) { Utils.LoggerError("error code: 0x4014 " + ex.Message); }
             }
             TCP();
             UDP();
         }
 
-        void PacketProcessing(TcpClient mSocket, byte[] buffer, bool isUDP) // process packets received from clients.
+        void PacketProcessing(Player mSender, byte[] buffer, bool isUDP) // process packets received from clients.
         {
             int length = buffer.Length; // length of packet.
             try
             {
-                Player _sender = Players[mSocket]; // who sent...
                 using (NeutronReader mReader = new NeutronReader(buffer)) // read the buffer/message.
                 {
                     Packet mCommand = mReader.ReadPacket<Packet>(); // packet.
                     switch (mCommand)
                     {
                         case Packet.Connected:
-                            HandleConfirmation(_sender, mCommand, mReader.ReadBoolean(), _sender.lPEndPoint);
+                            HandleConfirmation(mSender, mReader.ReadBoolean()); // [Thread-Safe]
                             break;
                         case Packet.Nickname:
-                            HandleNickname(_sender, mReader.ReadString());
+                            HandleNickname(mSender, mReader.ReadString());
                             break;
                         case Packet.SendChat:
-                            HandleSendChat(_sender, mCommand, mReader.ReadPacket<Broadcast>(), mReader.ReadString());
-                            break;
-                        case Packet.SendInput:
-                            HandleSendInput(_sender, mCommand, mReader.ReadBytes(length));
+                            HandleSendChat(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadString());
                             break;
                         case Packet.RPC:
-                            HandleRPC(_sender, mCommand, mReader.ReadPacket<Broadcast>(), mReader.ReadInt32(), mReader.ReadPacket<SendTo>(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
+                            HandleRPC(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
                             break;
-                        case Packet.RCC:
-                            HandleRCC(_sender, mCommand, mReader.ReadPacket<Broadcast>(), mReader.ReadInt32(), mReader.ReadPacket<SendTo>(), mReader.ReadString(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
-                            break;
-                        case Packet.OnCustomPacket:
-                            HandleOnCustomPacket(_sender, mCommand, mReader.ReadPacket<Packet>(), mReader.ReadBytes(length));
-                            break;
-                        case Packet.Database:
-                            Packet dbPacket = mReader.ReadPacket<Packet>();
-                            switch (dbPacket)
-                            {
-                                case Packet.Login:
-                                    //if (!isLoggedin(mSocket))
-                                    {
-                                        string username = mReader.ReadString();
-                                        string passsword = mReader.ReadString();
-                                        new Action(() =>
-                                        {
-                                            StartCoroutine(Login(_sender, username, passsword));
-                                        }).ExecuteOnMainThread();
-                                    }
-                                    //else SendErrorMessage(_sender, mCommand, "You are already logged in.");
-                                    break;
-                            }
+                        case Packet.Static:
+                            HandleRCC(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
                             break;
                         case Packet.GetChannels:
-                            HandleGetChannels(_sender, mCommand);
+                            HandleGetChannels(mSender, mCommand);
                             break;
                         case Packet.JoinChannel:
                             Debug.Log("Joined a channel");
-                            HandleJoinChannel(_sender, mCommand, mReader.ReadInt32());
+                            HandleJoinChannel(mSender, mCommand, mReader.ReadInt32());
                             break;
                         case Packet.GetChached:
-                            HandleGetCached(_sender, mReader.ReadPacket<CachedPacket>(), mReader.ReadInt32());
+                            HandleGetCached(mSender, mReader.ReadPacket<CachedPacket>(), mReader.ReadInt32());
                             break;
                         case Packet.CreateRoom:
-                            HandleCreateRoom(_sender, mCommand, mReader.ReadString(), mReader.ReadInt32(), mReader.ReadString(), mReader.ReadBoolean(), mReader.ReadBoolean(), mReader.ReadString());
+                            HandleCreateRoom(mSender, mCommand, mReader.ReadString(), mReader.ReadInt32(), mReader.ReadString(), mReader.ReadBoolean(), mReader.ReadBoolean(), mReader.ReadString());
                             break;
                         case Packet.GetRooms:
-                            HandleGetRooms(_sender, mCommand);
+                            HandleGetRooms(mSender, mCommand);
                             break;
                         case Packet.JoinRoom:
-                            HandleJoinRoom(_sender, mCommand, mReader.ReadInt32());
+                            HandleJoinRoom(mSender, mCommand, mReader.ReadInt32());
                             break;
                         case Packet.LeaveRoom:
-                            HandleLeaveRoom(_sender, mCommand);
+                            HandleLeaveRoom(mSender, mCommand);
                             break;
                         case Packet.LeaveChannel:
-                            HandleLeaveChannel(_sender, mCommand);
+                            HandleLeaveChannel(mSender, mCommand);
                             break;
                         case Packet.DestroyPlayer:
-                            HandleDestroyPlayer(_sender, mCommand);
-                            break;
-                        case Packet.ServerObjectInstantiate:
-                            HandleServerObject(_sender, mReader.ReadPacket<Broadcast>(), mReader.ReadString(), mReader.ReadVector3(), mReader.ReadQuaternion(), mReader.ReadBoolean(), mReader.ReadBytes(length).DeserializeObject<Identity>());
+                            HandleDestroyPlayer(mSender, mCommand);
                             break;
                     }
                 }
@@ -290,7 +328,7 @@ namespace NeutronNetwork.Internal.Server
         }
 
 #if UNITY_SERVER || UNITY_EDITOR
-        void Start()
+        private void Start()
         {
 #if !NET_STANDARD_2_0
 #if !DEVELOPMENT_BUILD
@@ -299,7 +337,6 @@ namespace NeutronNetwork.Internal.Server
                 Utils.LoggerError("Failed to initialize server -> error code: 0x1003");
                 return;
             }
-            Container = new GameObject("[Container] -> SERVER");
             if (dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
             StartCoroutine(Utils.KeepFramerate(FPS));
             Initilize();
@@ -328,8 +365,8 @@ namespace NeutronNetwork.Internal.Server
         {
             Initialized = false; // Disable server(disable all loop and kill all threads).
             DisposeAllClients(); // Dispose all client sockets.
-            Dispose(); // Dispose server.
-                       //////////////////////////////////////////////////////
+            Dispose();
+            //////////////////////////////////////////////////////
             Utils.Logger("All resources have been released!!");
             //////////////////////////////////////////////////////
         }

@@ -19,26 +19,29 @@ namespace NeutronNetwork
         [SerializeField] [Range(0, 10000)] private int updateFrequency = 100;
 
         private HashSet<Type> supportedTypes = new HashSet<Type>()
-    {
-        typeof(int),
-        typeof(bool),
-        typeof(float),
-        typeof(string),
-        typeof(SerializableColor),
-        typeof(SerializableVector3),
-        typeof(SerializableQuaternion),
-        typeof(ObservableList<int>),
-        typeof(ObservableList<bool>),
-        typeof(ObservableList<float>),
-        typeof(ObservableList<string>),
-        typeof(ObservableList<SerializableColor>),
-        typeof(ObservableList<SerializableVector3>),
-        typeof(ObservableList<SerializableQuaternion>),
-    };
-
-        public void Init()
         {
-            ThreadPool.QueueUserWorkItem((e) => SyncVar());
+            typeof(int),
+            typeof(bool),
+            typeof(float),
+            typeof(string),
+            typeof(SerializableColor),
+            typeof(SerializableVector3),
+            typeof(SerializableQuaternion),
+            typeof(ObservableList<int>),
+            typeof(ObservableList<bool>),
+            typeof(ObservableList<float>),
+            typeof(ObservableList<string>),
+            typeof(ObservableList<SerializableColor>),
+            typeof(ObservableList<SerializableVector3>),
+            typeof(ObservableList<SerializableQuaternion>),
+        };
+
+        public void Start()
+        {
+#if UNITY_SERVER || UNITY_EDITOR
+            if (IsServer)
+                ThreadPool.QueueUserWorkItem((e) => SyncVar());
+#endif
         }
 
         private bool CheckKeyExists<T>(string key, out T value)
@@ -98,7 +101,7 @@ namespace NeutronNetwork
             Debug.LogError("criou ae dssdsd");
         }
 
-        private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
+        private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
             if (!string.IsNullOrEmpty(functionName))
             {
@@ -108,7 +111,7 @@ namespace NeutronNetwork
             Send(sendTo, broadcast, protocolType);
         }
 
-        private void Send(SendTo sendTo, Broadcast broadcast, ProtocolType protocolType)
+        private void Send(SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
             try
             {
@@ -116,9 +119,9 @@ namespace NeutronNetwork
                 using (NeutronWriter writer = new NeutronWriter())
                 {
                     writer.WritePacket(Packet.SyncBehaviour);
-                    writer.Write(ServerView.player.ID);
+                    writer.Write(NeutronView.owner.ID);
                     writer.Write(props);
-                    ServerView?.player.Send(sendTo, writer.ToArray(), broadcast, null, protocolType);
+                    NeutronView?.owner.Send(sendTo, writer.ToArray(), broadcast, protocolType);
                 }
             }
             catch (Exception ex) { Debug.LogError(ex.Message); }
@@ -146,7 +149,7 @@ namespace NeutronNetwork
                                         {
                                             if (ChangesObserver(Field.Name, value))
                                             {
-                                                InvokeOptions(fieldAttribute.function, fieldAttribute.sendTo, fieldAttribute.broadcast, fieldAttribute.protocolType);
+                                                InvokeOptions(fieldAttribute.onChanged, fieldAttribute.sendTo, fieldAttribute.broadcast, fieldAttribute.protocolType);
                                             }
                                         }
                                         break;
@@ -162,7 +165,7 @@ namespace NeutronNetwork
 
         protected void OnNotifyChange(NeutronSyncBehaviour syncBehaviour, string propertiesName, Broadcast broadcast)
         {
-            if (ServerView != null) NeutronSFunc.onChanged(ServerView.player, syncBehaviour, propertiesName, broadcast);
+            if (NeutronView != null) NeutronSFunc.onChanged(NeutronView.owner, syncBehaviour, propertiesName, broadcast);
         }
     }
 }

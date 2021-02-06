@@ -8,7 +8,7 @@ namespace NeutronNetwork.Components
     [AddComponentMenu("Neutron/Neutron Animator")]
     public class NeutronAnimator : NeutronBehaviour
     {
-        [SerializeField] private ProtocolType protocolType = ProtocolType.Tcp;
+        [SerializeField] private Protocol protocolType = Protocol.Tcp;
 
         [Range(0, 1)]
         [SerializeField] private float syncTime = 0.3f;
@@ -21,7 +21,7 @@ namespace NeutronNetwork.Components
 
         private void OnValidate()
         {
-            if (protocolType != ProtocolType.Tcp && protocolType != ProtocolType.Udp) protocolType = ProtocolType.Tcp;
+            if (protocolType != Protocol.Tcp && protocolType != Protocol.Udp) protocolType = Protocol.Tcp;
         }
 
         bool GetParameters(out object[] mParams)
@@ -60,12 +60,12 @@ namespace NeutronNetwork.Components
                     {
                         streamParams.Write(parameters.Serialize());
                         //-----------------------------------------------------------------------------------------------------------------------------
-                        if (ClientView._.ClientView == null)
+                        if (NeutronView._.NeutronView == null)
                         {
-                            Utils.LoggerError("ClientView is null");
+                            Utils.LoggerError("NeutronView is null");
                             return;
                         }
-                        ClientView._.RPC(this, 254, syncTime, streamParams, sendTo, false, broadcast, (ProtocolType)(int)protocolType);
+                        NeutronView._.RPC(254, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
                     }
                 }
             }

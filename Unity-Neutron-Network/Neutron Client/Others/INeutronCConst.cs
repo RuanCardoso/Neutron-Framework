@@ -9,10 +9,9 @@ namespace NeutronNetwork.Internal.Client
 {
     public class NeutronCConst : MonoBehaviour
     {   // It inherits from MonoBehaviour because it is an instance of GameObject.
-        protected const Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
+        protected Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
         //------------------------------------------------------------------------------------------------------------
         protected IPEndPoint _IEPRef;
-        protected string ipAddress;
         //-------------------------------------------------------------------------------------------------------------
         public ConcurrentQueue<Action> mainThreadActions;
         public ConcurrentQueue<Action> monoBehaviourRPCActions;
@@ -31,10 +30,12 @@ namespace NeutronNetwork.Internal.Client
         //-------------------------------------------------------------------------------------------------------------
         protected Dictionary<int, float> timeRPC;
         //-------------------------------------------------------------------------------------------------------------
-        public ConcurrentDictionary<int, ClientView> neutronObjects;
+        public ConcurrentDictionary<int, NeutronView> playersObjects;
         public ConcurrentDictionary<int, object[]> properties;
         //-------------------------------------------------------------------------------------------------------------
-        protected IPEndPoint UDPEndpoint;
+        protected IPEndPoint endPointUDP;
+
+        protected IData IData;
 
         public void Internal()
         {
@@ -43,12 +44,12 @@ namespace NeutronNetwork.Internal.Client
             mainThreadActions = new ConcurrentQueue<Action>();
             monoBehaviourRPCActions = new ConcurrentQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------
-            _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(ProtocolType.Tcp)));
-            _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(ProtocolType.Udp)));
+            _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Tcp)));
+            _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             //-------------------------------------------------------------------------------------------------------------
             timeRPC = new Dictionary<int, float>();
             //-------------------------------------------------------------------------------------------------------------
-            neutronObjects = new ConcurrentDictionary<int, ClientView>();
+            playersObjects = new ConcurrentDictionary<int, NeutronView>();
             properties = new ConcurrentDictionary<int, object[]>();
         }
 

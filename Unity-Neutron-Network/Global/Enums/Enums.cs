@@ -23,15 +23,14 @@ public enum Packet : byte
     Login,
     RPC,
     APC,
-    RCC,
-    ACC,
+    Static,
+    Response,
     JoinChannel,
     JoinRoom,
     LeaveRoom,
     LeaveChannel,
     CreateRoom,
     SendChat,
-    SendInput,
     GetChannels,
     GetChached,
     GetRooms,
@@ -40,11 +39,7 @@ public enum Packet : byte
     VoiceChat,
     Disconnected,
     SyncBehaviour,
-    Database,
     Nickname,
-    OnCustomPacket,
-    ServerObjectInstantiate,
-    StressTest,
     SetPlayerProperties,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
@@ -56,10 +51,10 @@ public enum CachedPacket : byte
     /// <summary>
     /// Used to instantiate other players on this client.
     /// </summary>
-    RCC = 121,
+    Static = 121,
     RPC = 122,
     APC = 123,
-    ACC = 124,
+    Response = 124,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
     //======================================================
@@ -123,4 +118,10 @@ public enum ClientType : byte
     MainPlayer,
     Bot,
     VirtualPlayer,
+}
+
+public enum Protocol : byte
+{
+    Tcp = 6,
+    Udp = 17,
 }

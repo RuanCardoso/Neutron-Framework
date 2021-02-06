@@ -16,15 +16,22 @@ namespace NeutronNetwork.Internal.Extesions
 {
     public static class Extesions
     {
-        public static string Deserialize(this byte[] buffer)
-        {
-            return Encoding.UTF8.GetString(buffer);
-        }
+        /// <summary>
+        /// queue data in server.
+        /// </summary>
+        /// <param name="action"></param>
+        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.mainThreadActions);
+        /// <summary>
+        /// queue data in client.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="_"></param>
+        public static void ExecuteOnMainThread(this Action action, Neutron _) => Utils.Enqueue(action, _.mainThreadActions);
 
-        public static byte[] Serialize(this string message)
-        {
-            return Encoding.UTF8.GetBytes(message);
-        }
+        public static byte[] Serialize(this string message) => Encoding.UTF8.GetBytes(message);
+        public static string Deserialize(this byte[] buffer) => Encoding.UTF8.GetString(buffer);
+
+        public static int GetUniqueID(this GameObject obj) =>  obj.GetInstanceID() ^ new System.Random().Next(0, 1000) ^ DateTime.Now.Millisecond ^ DateTime.Now.Second;
 
         public static byte[] Serialize(this object message)
         {
@@ -67,11 +74,11 @@ namespace NeutronNetwork.Internal.Extesions
             else return data;
         }
 
-        public static byte[] Decompress(this byte[] data, Compression compressionType, int offset, int length)
+        public static byte[] Decompress(this byte[] data, Compression compressionType)
         {
             if (compressionType == Compression.Deflate)
             {
-                using (MemoryStream input = new MemoryStream(data, offset, length))
+                using (MemoryStream input = new MemoryStream(data))
                 {
                     using (MemoryStream output = new MemoryStream())
                     {
@@ -88,7 +95,7 @@ namespace NeutronNetwork.Internal.Extesions
                 if (data == null)
                     throw new ArgumentNullException("inputData must be non-null");
 
-                using (var compressedMs = new MemoryStream(data, offset, length))
+                using (var compressedMs = new MemoryStream(data))
                 {
                     using (var decompressedMs = new MemoryStream())
                     {
@@ -101,12 +108,7 @@ namespace NeutronNetwork.Internal.Extesions
                     }
                 }
             }
-            else
-            {
-                byte[] nData = new byte[length];
-                Buffer.BlockCopy(data, 0, nData, 0, length);
-                return nData;
-            }
+            else return data;
         }
 
         public static T DeserializeObject<T>(this byte[] message)
@@ -145,18 +147,24 @@ namespace NeutronNetwork.Internal.Extesions
             catch (SocketException) { return false; }
         }
 
-        public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, IPEndPoint point, ProtocolType protocolType)
+        public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, Protocol protocolType)
         {
             buffer = buffer.Compress(Neutron.Server.COMPRESSION_MODE);
             switch (protocolType)
             {
-                case ProtocolType.Tcp:
+                case Protocol.Tcp:
                     NeutronSFunc.TCP(mSender.tcpClient, sendTo, buffer, mSender.SendBroadcast(broadcast));
                     break;
-                case ProtocolType.Udp:
+                case Protocol.Udp:
                     NeutronSFunc.UDP(mSender.tcpClient, sendTo, buffer, mSender.SendBroadcast(broadcast));
                     break;
             }
+        }
+
+        public static void Send(this Player mSender, byte[] buffer)
+        {
+            buffer = buffer.Compress(Neutron.Server.COMPRESSION_MODE);
+            NeutronSFunc.TCP(mSender.tcpClient, SendTo.Only, buffer, mSender.SendBroadcast(Broadcast.None));
         }
 
         public static bool IsInChannel(this Player _player)
@@ -169,9 +177,9 @@ namespace NeutronNetwork.Internal.Extesions
             return _player.currentRoom > -1;
         }
 
-        public static ServerView GetSViewer(this Player _player)
+        public static NeutronView GetSViewer(this Player _player)
         {
-            return Neutron.Server.Players[_player.tcpClient].serverView;
+            return Neutron.Server.Players[_player.tcpClient].neutronView;
         }
 
         public static IPEndPoint RemoteEndPoint(this TcpClient socket)
@@ -197,16 +205,6 @@ namespace NeutronNetwork.Internal.Extesions
         private static Player[] SendToServer()
         {
             return Neutron.Server.Players.Values.ToArray();
-        }
-
-        public static void ExecuteOnMainThread(this Action action, Neutron neutronInstance = null, bool executeOnServer = true)
-        {
-            try
-            {
-                if (executeOnServer) Utils.Enqueue(action, ref Neutron.Server.mainThreadActions);
-                else Utils.Enqueue(action, ref neutronInstance.mainThreadActions);
-            }
-            catch (Exception ex) { Utils.StackTrace(ex); }
         }
 
         public static T DeepClone<T>(this object list)
@@ -331,11 +329,6 @@ namespace NeutronNetwork.Internal.Extesions
                 default:
                     return null;
             }
-        }
-
-        public static int GetUniqueID(this GameObject obj)
-        {
-            return obj.GetInstanceID() ^ new System.Random().Next(0, 1000) ^ DateTime.Now.Millisecond ^ DateTime.Now.Second;
         }
     }
 }

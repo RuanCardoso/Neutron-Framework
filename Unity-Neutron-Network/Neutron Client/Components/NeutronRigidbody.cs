@@ -11,7 +11,7 @@ namespace NeutronNetwork.Components
     {
         public WhenChanging whenChanging;
 
-        [SerializeField] private ProtocolType protocolType = ProtocolType.Tcp;
+        [SerializeField] private Protocol protocolType = Protocol.Tcp;
 
         [Range(0, 1)]
         [SerializeField] private float syncTime = 0.1f;
@@ -35,7 +35,7 @@ namespace NeutronNetwork.Components
 
         private void OnValidate()
         {
-            if (protocolType != ProtocolType.Tcp && protocolType != ProtocolType.Udp) protocolType = ProtocolType.Tcp;
+            if (protocolType != Protocol.Tcp && protocolType != Protocol.Udp) protocolType = Protocol.Tcp;
         }
 
         void Update()
@@ -111,12 +111,12 @@ namespace NeutronNetwork.Components
 
         void AntiSpeedhack()
         {
-            if (!Utils.IsServer(gameObject)) return;
+            if (!IsServer) return;
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------
             frequencyTime += Time.deltaTime;
             if (frequencyTime >= 1f)
             {
-                CheatsUtils.AntiSpeedHack(currentFrequency, NeutronSConst.SPEEDHACK_TOLERANCE, ServerView.player);
+                CheatsUtils.AntiSpeedHack(currentFrequency, NeutronSConst.SPEEDHACK_TOLERANCE, NeutronView.owner);
                 //--------------------------------------------------------------------------------------------------------------------------------------------------
                 currentFrequency = 0;
                 frequencyTime = 0;
@@ -142,8 +142,7 @@ namespace NeutronNetwork.Components
                 streamParams.Write(transform.rotation);
                 streamParams.Write(GetRigidbody.velocity);
                 streamParams.Write(GetRigidbody.angularVelocity);
-                //-----------------------------------------------------------------------------------------------------------------------------------------------------
-                ClientView._.RPC(this, 255, syncTime, streamParams, sendTo, false, broadcast, (ProtocolType)(int)protocolType);
+                NeutronView._.RPC(255, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
             }
         }
 
@@ -164,7 +163,7 @@ namespace NeutronNetwork.Components
                 {
                     currentFrequency++;
                     //------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                    CheatsUtils.AntiTeleport(transform.position, newPosition, NeutronSConst.TELEPORT_DISTANCE_TOLERANCE, ServerView.player);
+                    CheatsUtils.AntiTeleport(transform.position, newPosition, NeutronSConst.TELEPORT_DISTANCE_TOLERANCE, NeutronView.owner);
                 }
             }
         }

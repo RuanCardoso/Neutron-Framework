@@ -10,11 +10,10 @@ namespace NeutronNetwork.Internal.Comms
 {
     public class Communication
     {
-        public const int BYTES_READ = 4096;
+        public const int BUFFER_SIZE = 1024;
         public const string PATH_SETTINGS = "\\Unity-Neutron-Network\\Resources\\neutronsettings.txt";
-        public static bool InitRPC(int executeID, object[] parameters, MonoBehaviour behaviour)
+        public static bool InitRPC(int executeID, object[] parameters, bool isServer, MonoBehaviour behaviour)
         {
-            bool isServer = Utils.IsServer(behaviour.gameObject);
             //-----------------------------------------------------------------------------------------------------------//
             NeutronBehaviour[] scriptComponents = behaviour.GetComponentsInChildren<NeutronBehaviour>();
             //-----------------------------------------------------------------------------------------------------------//
@@ -24,7 +23,13 @@ namespace NeutronNetwork.Internal.Comms
                 MethodInfo Invoker = mInstance.HasRPC(executeID, out string message);
                 if (Invoker != null)
                 {
-                    Invoker.Invoke(mInstance, new object[] { new NeutronReader((byte[])parameters[0]), isServer });
+                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader((byte[])parameters[0]), isServer });
+                    if (obj != null)
+                    {
+                        Type objType = obj.GetType();
+                        if (objType == typeof(bool))
+                            return (bool)obj;
+                    }
                     return true;
                 }
                 else { if (message != string.Empty) Utils.LoggerError(message); continue; }
@@ -49,31 +54,54 @@ namespace NeutronNetwork.Internal.Comms
             }
         }
 
-        public static bool InitRCC(string monoBehaviour, int executeID, Player sender, byte[] parameters, bool isServer, Neutron localInstance)
+        public static bool InitRCC(int executeID, Player sender, byte[] parameters, bool isServer, Neutron localInstance)
         {
             try
             {
-                var activator = GameObject.FindObjectOfType<NeutronStatic>();
-                //--------------------------------------------------------------------------------------------------------------
-                MethodInfo[] methods = activator.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                //--------------------------------------------------------------------------------------------------------------
-                if (activator == null)
+                NeutronStatic[] activator = NeutronStatic.neutronStatics;
+                for (int z = 0; z < activator.Length; z++)
                 {
-                    Utils.LoggerError($"Unable to find {activator.name} object, use DontDestroyOnLoad");
-                    return false;
-                }
-                //--------------------------------------------------------------------------------------------------------------
-                for (int i = 0; i < methods.Length; i++)
-                {
-                    RCC rcc = methods[i].GetCustomAttribute<RCC>();
-                    if (rcc != null)
+                    MethodInfo[] methods = activator[z].methodInfos;
+                    if (activator[z] != null)
                     {
-                        if (rcc.ID == executeID)
+                        for (int i = 0; i < methods.Length; i++)
                         {
-                            methods[i].Invoke(activator, new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
-                            return true;
+                            Static _static = methods[i].GetCustomAttribute<Static>();
+                            if (_static != null)
+                            {
+                                if (_static.ID == executeID)
+                                {
+                                    object obj = methods[i].Invoke(activator[z], new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
+                                    if (obj != null)
+                                    {
+                                        Type objType = obj.GetType();
+                                        if (objType == typeof(GameObject))
+                                        {
+                                            GameObject objectToInst = (GameObject)obj;
+                                            NeutronRegister.RegisterPlayer(localInstance, objectToInst, sender, isServer);
+                                            if (!sender.isBot)
+                                            {
+                                                if (!isServer)
+                                                {
+                                                    Utils.MoveToContainer(objectToInst, "[Container] -> Player[Main]");
+                                                }
+                                                else
+                                                {
+                                                    if (!sender.IsInRoom())
+                                                        Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.currentChannel}]");
+                                                    else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.currentRoom}]");
+                                                }
+                                            }
+                                        }
+                                        else if (objType == typeof(bool))
+                                            return (bool)obj;
+                                    }
+                                    return true;
+                                }
+                                else continue;
+                            }
+                            else continue;
                         }
-                        else continue;
                     }
                     else continue;
                 }
@@ -81,13 +109,13 @@ namespace NeutronNetwork.Internal.Comms
             }
             catch (Exception ex)
             {
-                // $"The scope of the RCC({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"
+                // $"The scope of the Static({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"
                 Utils.StackTrace(ex);
                 return false;
             }
         }
 
-        public static void InitACC(string monoBehaviour, int executeID, byte[] parameters)
+        public static void InitACC(int executeID, byte[] parameters)
         {
             try
             {
@@ -103,10 +131,10 @@ namespace NeutronNetwork.Internal.Comms
                 //--------------------------------------------------------------------------------------------------------------
                 for (int i = 0; i < methods.Length; i++)
                 {
-                    ACC acc = methods[i].GetCustomAttribute<ACC>();
-                    if (acc != null)
+                    Response _Response = methods[i].GetCustomAttribute<Response>();
+                    if (_Response != null)
                     {
-                        if (acc.ID == executeID)
+                        if (_Response.ID == executeID)
                         {
                             methods[i].Invoke(activator, new object[] { new NeutronReader(parameters) });
                             break;

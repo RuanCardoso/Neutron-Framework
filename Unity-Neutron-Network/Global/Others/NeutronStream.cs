@@ -73,8 +73,7 @@ namespace NeutronNetwork
 
         public new void Dispose()
         {
-            base.Close();
-            base.BaseStream.Close();
+            base.Dispose();
         }
     }
 
@@ -156,8 +155,7 @@ namespace NeutronNetwork
 
         public new void Dispose()
         {
-            base.Close();
-            base.BaseStream.Close();
+            base.Dispose();
         }
     }
 }

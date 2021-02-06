@@ -28,7 +28,7 @@ namespace NeutronNetwork.Components
                     {
                         options.Write(transform.position);
                         options.Write(transform.rotation);
-                        ClientView._.RPC(this, 1005, 0.5f, options, SendTo.Others, false, Broadcast.Channel, System.Net.Sockets.ProtocolType.Udp);
+                        NeutronView._.RPC(1005, 0.5f, options, SendTo.Others, false, Broadcast.Channel, Protocol.Udp);
                     }
                 }
             }

@@ -35,14 +35,14 @@ public class NeutronEditor : EditorWindow
         var inspWndType = editorAsm.GetType("UnityEditor.InspectorWindow");
         var editor = GetWindow<NeutronEditor>("Neutron Overview", true, inspWndType);
 
-        //editor.maxSize = new Vector2(10, 10);
-        editor.minSize = new Vector2(300, 300);
+        editor.minSize = new Vector2(320, 300);
     }
 
     private void OnGUI()
     {
-        //maxSize = new Vector2(10, 10);
-        minSize = new Vector2(300, 300);
+        minSize = new Vector2(320, 300);
+
+        EditorGUILayout.HelpBox("This window consumes a lot of performance from the Editor, close it after finishing its use.", MessageType.Info);
 
         GUIStyle styleText = new GUIStyle(GUI.skin.textArea);
         styleText.fontStyle = FontStyle.Bold;
@@ -101,24 +101,29 @@ public class NeutronEditor : EditorWindow
 
     void OnOverview()
     {
+        GUI.skin.GetStyle("HelpBox").fontSize = 13;
+
         GUIStyle intFieldStyle = new GUIStyle(GUI.skin.label);
         intFieldStyle.fontStyle = FontStyle.BoldAndItalic;
         intFieldStyle.fontSize = 10;
 
         scrollEditor = EditorGUILayout.BeginScrollView(scrollEditor);
-        EditorGUI.BeginChangeCheck();
         fodoultServerAndClientSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultServerAndClientSettings, "[Server & Client Settings]");
         if (fodoultServerAndClientSettings)
         {
+            EditorGUI.BeginChangeCheck();
             compressionOptions = (Compression)EditorGUILayout.EnumPopup("Compression Mode", compressionOptions);
             ipAddress = EditorGUILayout.TextField("Address", ipAddress);
             serverPort = EditorGUILayout.IntField("Port", serverPort);
+            if (EditorGUI.EndChangeCheck()) SaveSettings();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         fodoultServerSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultServerSettings, "[Server Settings]");
         if (fodoultServerSettings)
         {
+            EditorGUILayout.HelpBox("Some values ​​may directly affect the\r\nperformance of the server(PC & Server).\r\n\r\nThere may also be lag and bottlenecks\r\n in the network.", MessageType.Warning);
+            EditorGUI.BeginChangeCheck();
             backLog = EditorGUILayout.IntField("Backlog", backLog);
             serverFPS = EditorGUILayout.IntField("FPS", serverFPS);
             serverDPF = EditorGUILayout.IntField("DPF", serverDPF);
@@ -128,36 +133,49 @@ public class NeutronEditor : EditorWindow
             serverReceiveRateUDP = EditorGUILayout.IntField("Receive Rate(UDP)", serverReceiveRateUDP);
             serverNoDelay = EditorGUILayout.Toggle("No Delay", serverNoDelay);
             dontDestroyOnLoad = EditorGUILayout.Toggle("Dont Destroy On Load", dontDestroyOnLoad);
+            if (EditorGUI.EndChangeCheck()) SaveSettings();
 
             fodoultServerConstants = EditorGUILayout.Foldout(fodoultServerConstants, "Server Constants");
             if (fodoultServerConstants)
             {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.FlexibleSpace();
+                EditorGUI.BeginChangeCheck();
                 antiCheat = EditorGUILayout.ToggleLeft("Anti-Cheat", antiCheat);
+                if (EditorGUI.EndChangeCheck()) SaveSettings();
                 EditorGUILayout.EndHorizontal();
                 if (antiCheat)
                 {
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.PrefixLabel("SPEED_TOLERANCE", intFieldStyle, intFieldStyle);
+                    EditorGUI.BeginChangeCheck();
                     speedHackTolerance = EditorGUILayout.IntField(string.Empty, speedHackTolerance);
+                    if (EditorGUI.EndChangeCheck()) SaveSettings();
                     EditorGUILayout.EndHorizontal();
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.PrefixLabel("TELE_DIS_TOLERANCE", intFieldStyle, intFieldStyle);
+                    EditorGUI.BeginChangeCheck();
                     teleportTolerance = EditorGUILayout.IntField(string.Empty, teleportTolerance);
+                    if (EditorGUI.EndChangeCheck()) SaveSettings();
                     EditorGUILayout.EndHorizontal();
                 }
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.PrefixLabel("MAX_REC_MSG_SIZE", intFieldStyle, intFieldStyle);
+                EditorGUI.BeginChangeCheck();
                 max_rec_msg = EditorGUILayout.IntField(string.Empty, max_rec_msg);
+                if (EditorGUI.EndChangeCheck()) SaveSettings();
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.PrefixLabel("MAX_SEND_MSG_SIZE", intFieldStyle, intFieldStyle);
+                EditorGUI.BeginChangeCheck();
                 max_send_msg = EditorGUILayout.IntField(string.Empty, max_send_msg);
+                if (EditorGUI.EndChangeCheck()) SaveSettings();
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.PrefixLabel("LIMIT_OF_CONN_BY_IP", intFieldStyle, intFieldStyle);
+                EditorGUI.BeginChangeCheck();
                 limit_of_conn_by_ip = EditorGUILayout.IntField(string.Empty, limit_of_conn_by_ip);
+                if (EditorGUI.EndChangeCheck()) SaveSettings();
                 EditorGUILayout.EndHorizontal();
             }
         }
@@ -166,6 +184,8 @@ public class NeutronEditor : EditorWindow
         fodoultClientSettings = EditorGUILayout.BeginFoldoutHeaderGroup(fodoultClientSettings, "[Client Settings]");
         if (fodoultClientSettings)
         {
+            EditorGUILayout.HelpBox("Some values ​​may directly affect the\r\nperformance of the client(PC & Game).\r\n\r\nThere may also be lag and bottlenecks\r\n in the network.", MessageType.Warning);
+            EditorGUI.BeginChangeCheck();
             clientFPS = EditorGUILayout.IntField("FPS", clientFPS);
             clientDPF = EditorGUILayout.IntField("DPF", clientDPF);
             clientSendRate = EditorGUILayout.IntField("Send Rate(TCP)", clientSendRate);
@@ -173,9 +193,9 @@ public class NeutronEditor : EditorWindow
             clientSendRateUDP = EditorGUILayout.IntField("Send Rate(UDP)", clientSendRateUDP);
             clientReceiveRateUDP = EditorGUILayout.IntField("Receive Rate(UDP)", clientReceiveRateUDP);
             clientNoDelay = EditorGUILayout.Toggle("No Delay", clientNoDelay);
+            if (EditorGUI.EndChangeCheck()) SaveSettings();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
-        if (EditorGUI.EndChangeCheck()) SaveSettings();
         EditorGUILayout.EndScrollView();
     }
 
@@ -215,7 +235,7 @@ public class NeutronEditor : EditorWindow
                     {
                         if (asmType.IsSubclassOf(typeof(NeutronBehaviour)) || asmType.IsSubclassOf(typeof(NeutronStatic)))
                         {
-                            var mIs = asmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(x => x.GetCustomAttribute<RPC>() != null || x.GetCustomAttribute<APC>() != null || x.GetCustomAttribute<RCC>() != null || x.GetCustomAttribute<ACC>() != null).ToArray();
+                            var mIs = asmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(x => x.GetCustomAttribute<RPC>() != null || x.GetCustomAttribute<APC>() != null || x.GetCustomAttribute<Static>() != null || x.GetCustomAttribute<Response>() != null).ToArray();
                             if (!viewers.Contains(mIs)) viewers.Add(mIs);
                         }
                     }

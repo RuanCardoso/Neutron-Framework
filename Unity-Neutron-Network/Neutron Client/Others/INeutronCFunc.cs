@@ -12,7 +12,18 @@ namespace NeutronNetwork.Internal.Client
 {
     public class NeutronCFunc : NeutronCConst
     {
-        protected Neutron _;
+        /// <summary>
+        /// Get instance of derived class.
+        /// </summary>
+        private Neutron _;
+        /// <summary>
+        /// defines is a bot or not.
+        /// </summary>
+        protected bool _isBot;
+        /// <summary>
+        /// Returns to the local player's instance.
+        /// </summary>
+        protected Player _myPlayer;
         /// <summary>
         /// Initializes the client and activates the response events.
         /// </summary>
@@ -20,28 +31,28 @@ namespace NeutronNetwork.Internal.Client
         protected void InitializeClient(ClientType type)
         {
             _ = (Neutron)this;
-            _.isBot = (type == ClientType.Bot);
+            _isBot = (type == ClientType.Bot);
             //--------------------------------------------------------------
-            _.onNeutronConnected += OnConnected;
-            _.onPlayerJoinedChannel += OnPlayerJoinedChannel;
-            _.onPlayerJoinedChannel += OnPlayerJoinedChannel;
-            _.onPlayerJoinedRoom += OnPlayerJoinedRoom;
-            _.onPlayerLeftChannel += OnPlayerLeftChannel;
-            _.onPlayerLeftRoom += OnPlayerLeftRoom;
-            _.onFailed += OnFailed;
-            _.onNeutronDisconnected += OnDisconnected;
-            _.onCreatedRoom += OnCreatedRoom;
+            _.OnNeutronConnected += OnConnected;
+            _.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
+            _.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
+            _.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
+            _.OnPlayerLeftChannel += OnPlayerLeftChannel;
+            _.OnPlayerLeftRoom += OnPlayerLeftRoom;
+            _.OnFailed += OnFailed;
+            _.OnNeutronDisconnected += OnDisconnected;
+            _.OnCreatedRoom += OnCreatedRoom;
         }
 
-        protected void Send(byte[] buffer, ProtocolType protocolType = ProtocolType.Tcp)
+        protected void Send(byte[] buffer, Protocol protocolType = Protocol.Tcp)
         {
             buffer = buffer.Compress(COMPRESSION_MODE);
             switch (protocolType)
             {
-                case ProtocolType.Tcp:
+                case Protocol.Tcp:
                     SendTCP(buffer);
                     break;
-                case ProtocolType.Udp:
+                case Protocol.Udp:
                     SendUDP(buffer);
                     break;
             }
@@ -49,10 +60,10 @@ namespace NeutronNetwork.Internal.Client
 
         protected async void SendTCP(byte[] buffer)
         {
-            if (_TCPSocket == null) return;
-            NetworkStream networkStream = _TCPSocket.GetStream();
             try
             {
+                NetworkStream networkStream = _TCPSocket.GetStream();
+
                 using (NeutronWriter writerOnly = new NeutronWriter())
                 {
                     writerOnly.WriteFixedLength(buffer.Length);
@@ -63,15 +74,16 @@ namespace NeutronNetwork.Internal.Client
                     //else await networkStream.WriteAsync(buffer, 0, buffer.Length);
                 }
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (ObjectDisposedException) { Utils.Logger("Allocated memory released."); }
+            catch (Exception ex) { Utils.StackTrace(ex); }
         }
 
         protected void SendUDP(byte[] message)
         {
-            if (_UDPSocket == null || UDPEndpoint == null) return;
+            if (_UDPSocket == null || endPointUDP == null) return;
             try
             {
-                _UDPSocket.BeginSend(message, message.Length, UDPEndpoint, (e) =>
+                _UDPSocket.BeginSend(message, message.Length, endPointUDP, (e) =>
                 {
                     int data = ((UdpClient)(e.AsyncState)).EndSend(e);
                     if (data > 0) { }
@@ -86,21 +98,21 @@ namespace NeutronNetwork.Internal.Client
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.WritePacket(Packet.Connected);
-                writer.Write(_.isBot);
+                writer.Write(_.IsBot);
                 Send(writer.ToArray());
             }
             return true;
         }
-        protected void InternalRPC(NeutronBehaviour mThis, int RPCID, object[] parameters, SendTo sendTo, bool cached, ProtocolType protocolType, Broadcast broadcast)
+        protected void InternalRPC(int RPCID, object[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                object[] bArray = { mThis.ClientView.neutronProperty.ownerID, parameters };
+                object[] bArray = { _.MyPlayer.ID, parameters };
                 //---------------------------------------------------------------------------------------------------------------------
                 writer.WritePacket(Packet.RPC);
                 writer.WritePacket(broadcast);
-                writer.Write(RPCID);
                 writer.WritePacket(sendTo);
+                writer.Write(RPCID);
                 writer.Write(cached);
                 writer.Write(bArray.Serialize());
                 //---------------------------------------------------------------------------------------------------------------------
@@ -108,57 +120,28 @@ namespace NeutronNetwork.Internal.Client
             }
         }
 
-        protected void InternalRCC(MonoBehaviour mThis, int RCCID, byte[] parameters, bool enableCache, SendTo sendTo, ProtocolType protocolType, Broadcast broadcast)
+        protected void InternalRCC(MonoBehaviour mThis, int RCCID, byte[] parameters, bool enableCache, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                writer.WritePacket(Packet.RCC);
+                writer.WritePacket(Packet.Static);
                 writer.WritePacket(broadcast);
-                writer.Write(RCCID);
                 writer.WritePacket(sendTo);
-                writer.Write(mThis.GetType().Name);
+                writer.Write(RCCID);
                 writer.Write(enableCache);
                 writer.Write(parameters);
                 //---------------------------------------------------------------------------------------------------------------------
                 Send(writer.ToArray(), protocolType);
             }
         }
-        //---------------------------------------------------------------------------------------------------------------------
-        protected void HandleConnected(string status, int uniqueID, bool isBot)
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //Handles
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        protected void HandleConnected(byte[] array)
         {
-            Utils.Logger(status);
-            //-------------------------------------------------------
-            _.myPlayer = new Player(uniqueID, null, null);
-            _.myPlayer.isBot = isBot;
-            //-------------------------------------------------------
-            if (_.onNeutronConnected != null)
-            {
-                new Action(() =>
-                {
-                    _.onNeutronConnected(true, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onNeutronConnected event not registered.");
+            _myPlayer = array.DeserializeObject<Player>();
         }
-        protected void HandleDisconnect(string reason)
-        {
-            if (_.onNeutronDisconnected != null)
-            {
-                _.onNeutronDisconnected(reason, _);
-            }
-            else Utils.LoggerError("onNeutronDisconnected event not registered.");
-        }
-        protected void HandleSendChat(string message, byte[] sender)
-        {
-            if (_.onMessageReceived != null)
-            {
-                new Action(() =>
-                {
-                    _.onMessageReceived(message, sender.DeserializeObject<Player>(), _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onMessageReceived event not registered.");
-        }
+
         //protected void HandleInstantiate (Vector3 pos, Quaternion rot, string playerPrefab, byte[] mPlayer) {
         //    //---------------------------------------------------------------------------------------------------------------------//
         //    Player playerInstantiated = mPlayer.DeserializeObject<Player> ();
@@ -185,218 +168,101 @@ namespace NeutronNetwork.Internal.Client
         protected void HandleRPC(int id, byte[] parameters)
         {
             object[] _array = parameters.DeserializeObject<object[]>();
-            //-----------------------------------------------------------------------------
             int senderID = (int)_array[0];
             object[] objectParams = (object[])_array[1];
-            //-----------------------------------------------------------------------------
-            if (_.isBot) return;
-            //-----------------------------------------------------------------------------
-            Action RPCAction = null;
-            RPCAction = new Action(() =>
-            {
-                if (neutronObjects.TryGetValue(senderID, out ClientView neutronObject))
-                {
-                    Communication.InitRPC(id, objectParams, neutronObject);
-                }
-                else
-                {
-                    if (id == 1005)
-                    {
-                        Utils.Enqueue(RPCAction, ref monoBehaviourRPCActions);
-                    }
-                //else Utils.LoggerError($"RPC[{id}]: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
-            }
-            });
-            //-------------------------------------------------------------
-            Utils.Enqueue(RPCAction, ref monoBehaviourRPCActions);
-        }
-
-        protected void HandleRCC(string monoBehaviour, int executeID, object[] objs, bool isServer)
-        {
-            Player sender = (Player)objs[0];
-            byte[] pParams = (byte[])objs[1];
+            if (_.IsBot) return;
             new Action(() =>
             {
-                Communication.InitRCC(monoBehaviour, executeID, sender, pParams, isServer, _);
-            }).ExecuteOnMainThread(_, false);
+                if (playersObjects.TryGetValue(senderID, out NeutronView neutronObject))
+                    Communication.InitRPC(id, objectParams, false, neutronObject);
+            }).ExecuteOnMainThread(_);
         }
 
-        protected void HandleACC(string monoBehaviour, int executeID, byte[] pParams)
+        protected void HandleRCC(int executeID, Player sender, byte[] parameters, bool isServer)
         {
             new Action(() =>
             {
-                Communication.InitACC(monoBehaviour, executeID, pParams);
-            }).ExecuteOnMainThread(_, false);
+                Communication.InitRCC(executeID, sender, parameters, isServer, _);
+            }).ExecuteOnMainThread(_);
+        }
+
+        protected void HandleACC(int executeID, byte[] pParams)
+        {
+            new Action(() =>
+            {
+                Communication.InitACC(executeID, pParams);
+            }).ExecuteOnMainThread(_);
         }
 
         protected void HandleAPC(int executeid, byte[] parameters, int playerID)
         {
             //-----------------------------------------------------------------------------
-            if (_.isBot) return;
+            if (_.IsBot) return;
             //-----------------------------------------------------------------------------
-            Action action = new Action(() =>
+            new Action(() =>
             {
-                if (neutronObjects.TryGetValue(playerID, out ClientView neutronObject))
+                if (playersObjects.TryGetValue(playerID, out NeutronView neutronObject))
                 {
                     Communication.InitAPC(executeid, parameters, neutronObject);
                 }
-            //else Utils.LoggerError("APC: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
-        });
-            //-----------------------------------------------------------------------------
-            Utils.Enqueue(action, ref monoBehaviourRPCActions);
+                //else Utils.LoggerError("APC: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
+            }).ExecuteOnMainThread(_);
         }
 
-        protected void HandleDatabase(Packet packet, object[] response)
+        //protected void HandleDatabase(Packet packet, object[] response)
+        //{
+        //    if (_.onDatabasePacket != null)
+        //    {
+        //        new Action(() =>
+        //        {
+        //            _.onDatabasePacket(packet, response, _);
+        //        }).ExecuteOnMainThread(_, false);
+        //    }
+        //    else Utils.LoggerError("onDatabasePacket event not registered.");
+        //}
+
+        protected void HandlePlayerDisconnected(Player player)
         {
-            if (_.onDatabasePacket != null)
-            {
-                new Action(() =>
-                {
-                    _.onDatabasePacket(packet, response, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onDatabasePacket event not registered.");
-        }
-        protected void HandleGetChannels(byte[] mChannels)
-        {
-            if (_.onChannelsReceived != null)
-            {
-                new Action(() =>
-                {
-                    _.onChannelsReceived(mChannels.DeserializeObject<Channel[]>(), _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onChannelsReceived event not registered.");
-        }
-        protected void HandleJoinChannel(byte[] Player)
-        {
-            Player playerJoined = Player.DeserializeObject<Player>();
-            if (_.onPlayerJoinedChannel != null)
-            {
-                new Action(() =>
-                {
-                    _.onPlayerJoinedChannel(playerJoined, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onPlayerJoinedChannel event not registered.");
-        }
-        protected void HandleCreateRoom(Room room)
-        {
-            if (_.onCreatedRoom != null)
-            {
-                new Action(() =>
-                {
-                    _.onCreatedRoom(room, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onCreatedRoom event not registered.");
-        }
-        protected void HandleGetRooms(Room[] room)
-        {
-            if (_.onRoomsReceived != null)
-            {
-                new Action(() =>
-                {
-                    _.onRoomsReceived(room, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onRoomsReceived event not registered.");
-        }
-        protected void HandleFail(Packet packet, string error)
-        {
-            if (_.onFailed != null)
-            {
-                _.onFailed(packet, error, _);
-            }
-            else Utils.LoggerError("onFailed event not registered.");
-        }
-        protected void HandleJoinRoom(byte[] player)
-        {
-            Player playerJoined = player.DeserializeObject<Player>();
-            if (_.onPlayerJoinedRoom != null)
-            {
-                new Action(() =>
-                {
-                    _.onPlayerJoinedRoom(playerJoined, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onPlayerJoinedRoom event not registered.");
-        }
-        protected void HandleLeaveRoom(byte[] player)
-        {
-            Player playerLeft = player.DeserializeObject<Player>();
-            if (_.onPlayerLeftRoom != null)
-            {
-                new Action(() =>
-                {
-                    _.onPlayerLeftRoom(playerLeft, _);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onPlayerLeftRoom event not registered.");
-        }
-        protected void HandleLeaveChannel(byte[] player)
-        {
-            Player playerLeft = player.DeserializeObject<Player>();
-            if (_.onPlayerLeftChannel != null)
-            {
-                new Action(() =>
-                {
-                    _.onPlayerLeftChannel(playerLeft);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onPlayerLeftChannel event not registered.");
-        }
-        protected void HandleDestroyPlayer()
-        {
-            if (_.onDestroyed != null)
-            {
-                new Action(() =>
-                {
-                    _.onDestroyed(_);
-                }).ExecuteOnMainThread(_, false);
-            }
-            else Utils.LoggerError("onDestroyed event not registered.");
-        }
-        protected void HandlePlayerDisconnected(byte[] player)
-        {
-            Player playerDisconnected = player.DeserializeObject<Player>();
             //-----------------------------------------------------------------------------------------
-            if (_.isBot) return;
+            if (_.IsBot) return;
             //-----------------------------------------------------------------------------------------
-            if (neutronObjects.TryGetValue(playerDisconnected.ID, out ClientView neutronObject))
+            if (playersObjects.TryGetValue(player.ID, out NeutronView neutronObject))
             {
-                ClientView obj = neutronObject;
+                NeutronView obj = neutronObject;
                 //-----------------------------------------------------------------------------------
                 new Action(() =>
                 {
                     MonoBehaviour.Destroy(obj.gameObject);
-                }).ExecuteOnMainThread(_, false);
+                }).ExecuteOnMainThread(_);
                 //------------------------------------------------------------------------------------
-                neutronObjects.TryRemove(obj.neutronProperty.ownerID, out ClientView objRemoved);
+                playersObjects.TryRemove(player.ID, out NeutronView objRemoved);
             }
             //else Utils.LoggerError("HPD: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
         }
         protected void HandleJsonProperties(int ownerID, string properties)
         {
             //----------------------------------------------------------------------------------
-            if (_.isBot) return;
+            if (_.IsBot) return;
             //----------------------------------------------------------------------------------
-            if (neutronObjects.TryGetValue(ownerID, out ClientView neutronObject))
+            if (playersObjects.TryGetValue(ownerID, out NeutronView neutronObject))
             {
-                ClientView obj = neutronObject;
+                NeutronView obj = neutronObject;
                 //-----------------------------------------------------------------------------------------------------------\\
-                if (obj.neutronProperty != null) JsonUtility.FromJsonOverwrite(properties, obj.neutronSyncBehaviour);
-                else Utils.LoggerError("It was not possible to find a class that inherits from NeutronSync Behavior.");
+                if (obj.neutronSyncBehaviour != null) JsonUtility.FromJsonOverwrite(properties, obj.neutronSyncBehaviour);
+                else Utils.LoggerError("It was not possible to find a class that inherits from Neutron Sync Behavior.");
             }
             //else Utils.LoggerError("HJP: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
         }
 
         private void InitializeContainer()
         {
-            GameObject container = new GameObject((!_.myPlayer.isBot) ? $"[Container] -> {_.myPlayer.ID}" : "[BOT Container]");
-            //-------------------------------------------------------------------------------------------------------------------
-            _.Container = container;
+            if (!_isBot)
+                Utils.CreateContainer("[Container] -> Player[Main]");
         }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //Events
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void OnFailed(Packet packet, string errorMessage, Neutron localinstance)
         {
@@ -415,7 +281,7 @@ namespace NeutronNetwork.Internal.Client
 
         private void OnCreatedRoom(Room room, Neutron localinstance)
         {
-            _.myPlayer.currentRoom = room.ID;
+            _.MyPlayer.currentRoom = room.ID;
         }
 
         private void OnDisconnected(string reason, Neutron localinstance)
@@ -429,7 +295,7 @@ namespace NeutronNetwork.Internal.Client
         {
             if (_.isLocalPlayer(player))
             {
-                _.myPlayer = player;
+                _myPlayer = player;
             }
         }
 

@@ -6,15 +6,15 @@ namespace NeutronNetwork
     [AttributeUsage(AttributeTargets.Field)]
     public class SyncVarAttribute : Attribute
     {
-        public string function;
+        public string onChanged;
         public bool serverOnly;
         public SendTo sendTo;
         public Broadcast broadcast;
-        public ProtocolType protocolType;
+        public Protocol protocolType;
 
-        public SyncVarAttribute(Broadcast broadcast, bool serverOnly = true, SendTo sendTo = SendTo.All, ProtocolType protocolType = ProtocolType.Tcp, string function = null)
+        public SyncVarAttribute(Broadcast broadcast, bool serverOnly = true, SendTo sendTo = SendTo.All, Protocol protocolType = Protocol.Tcp, string onChanged = null)
         {
-            this.function = function;
+            this.onChanged = onChanged;
             this.serverOnly = serverOnly;
             this.broadcast = broadcast;
             this.protocolType = protocolType;

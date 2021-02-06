@@ -15,7 +15,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Player : IEquatable<Player>, INotify, ISerializable, IEqualityComparer<Player>
+    public class Player : IEquatable<Player>, INotify, ISerializable, IEqualityComparer<Player>, IDisposable
     {
         public int ID { get; set; }
         /// <summary>
@@ -35,9 +35,9 @@ namespace NeutronNetwork
         /// </summary>
         [ReadOnly] public bool isBot;
         /// <summary>
-        /// state of player;
+        /// state of player.
         /// </summary>
-        [NonSerialized] public ServerView serverView;
+        [NonSerialized] public NeutronView neutronView;
         /// <summary>
         /// Properties of channel.
         /// </summary>
@@ -98,7 +98,7 @@ namespace NeutronNetwork
             this.ID = ID;
             this.Nickname = "Unknown";
             this.tcpClient = tcpClient;
-            this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(ProtocolType.Udp)));
+            this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
             this._cts = _cts;
         }
@@ -162,8 +162,8 @@ namespace NeutronNetwork
 
         public void Dispose()
         {
-            tcpClient.Close();
-            udpClient.Close();
+            udpClient?.Dispose();
+            tcpClient?.Dispose();
         }
     }
 }
