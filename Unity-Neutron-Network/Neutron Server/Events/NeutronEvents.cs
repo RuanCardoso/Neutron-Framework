@@ -68,7 +68,7 @@ namespace NeutronNetwork.Internal.Server.InternalEvents
 
         private void OnPlayerPropertiesChanged(Player mPlayer, NeutronSyncBehaviour properties, System.String propertieName, Broadcast broadcast)
         {
-            NeutronSFunc.SendProperties(mPlayer, properties, SendTo.All, Broadcast.Channel);
+            //NeutronSFunc.SendProperties(mPlayer, properties, SendTo.All, Broadcast.Channel);
         }
 
         private void OnPlayerLeaveRoom(Player playerLeave)

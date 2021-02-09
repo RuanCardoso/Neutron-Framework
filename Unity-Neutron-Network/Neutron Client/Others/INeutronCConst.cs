@@ -10,8 +10,6 @@ namespace NeutronNetwork.Internal.Client
     public class NeutronCConst : MonoBehaviour
     {   // It inherits from MonoBehaviour because it is an instance of GameObject.
         protected Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
-        //------------------------------------------------------------------------------------------------------------
-        protected IPEndPoint _IEPRef;
         //-------------------------------------------------------------------------------------------------------------
         public ConcurrentQueue<Action> mainThreadActions;
         public ConcurrentQueue<Action> monoBehaviourRPCActions;
@@ -39,8 +37,6 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
-            _IEPRef = new IPEndPoint(IPAddress.Any, 0);
-            //-------------------------------------------------------------------------------------------------------------
             mainThreadActions = new ConcurrentQueue<Action>();
             monoBehaviourRPCActions = new ConcurrentQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------

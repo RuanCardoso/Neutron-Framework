@@ -17,7 +17,7 @@ using System.IO;
 
 namespace NeutronNetwork
 {
-    public class Neutron : UDPManager
+    public class Neutron : NeutronCFunc
     {
         /// <summary>
         /// Returns instance of server
@@ -61,11 +61,12 @@ namespace NeutronNetwork
         public string Nickname {
             get => _nickname;
             set {
-                if (string.IsNullOrEmpty(value) || value.Length < 4) Utils.LoggerError("Nick not allowed");
+                if (string.IsNullOrEmpty(value)) Utils.LoggerError("Nick not allowed");
                 else
                     SetNickname(value);
             }
         }
+
         /// <summary>
         /// This event is called when your connection to the server is established or fails.
         /// </summary>
@@ -127,7 +128,15 @@ namespace NeutronNetwork
         /// </summary>
         public event Events.OnNicknameChanged OnNicknameChanged;
         /// <summary>
-        /// Cancellation toke.
+        /// This event is triggered when your or other players change their properties.
+        /// </summary>
+        public event Events.OnPlayerPropertiesChanged OnPlayerPropertiesChanged;
+        /// <summary>
+        /// This event is triggered when room properties changed.
+        /// </summary>
+        public event Events.OnRoomPropertiesChanged OnRoomPropertiesChanged;
+        /// <summary>
+        /// Cancellation token.
         /// </summary>
         private CancellationTokenSource _cts = new CancellationTokenSource();
 
@@ -150,70 +159,85 @@ namespace NeutronNetwork
         /// <param name="ipAddress">The ip of server to connect</param>
         public async void Connect()
         {
-            if (!IsBot)
+            try
             {
+                if (!IsBot)
+                {
 #if UNITY_SERVER
             Utils.LoggerError($"MainClient disabled in server!\r\n");
             return;
 #endif
-            }
-            else if (IsBot)
-            {
+                }
+                else if (IsBot)
+                {
 #if !UNITY_SERVER && !UNITY_EDITOR
             Utils.LoggerError($"Bots disabled in client!");
             return;
 #endif
-            }
+                }
 
-            IData = Data.LoadSettings(); // load settings
-            if (!Utils.LoggerError("Failed to load settings.", IData)) return;
-            if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase)) IData.ipAddress = "127.0.0.1";
-            COMPRESSION_MODE = (Compression)IData.compressionOptions;
-            Internal(); // initialize cliente.
-            if (!IsConnected)
-            {
-                try
+                IData = Data.LoadSettings(); // load settings
+                if (!Utils.LoggerError("Failed to load settings.", IData)) return;
+                if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase)) IData.ipAddress = "127.0.0.1";
+                COMPRESSION_MODE = (Compression)IData.compressionOptions;
+                Internal(); // initialize cliente.
+                if (!IsConnected)
                 {
                     //////////////////////////////////////////////////////////////////////////////////
+#if !UNITY_SERVER
                     Utils.Logger("Wait, connecting to the server.");
+#endif
                     //////////////////////////////////////////////////////////////////////////////////
                     await _TCPSocket.ConnectAsync(IData.ipAddress, IData.serverPort); // await connection.
                     if (_TCPSocket.Connected)
                     {
-                        if (InitConnect()) ThreadPool.QueueUserWorkItem((e) =>
+                        IsConnected = true;
+                        InitConnect();
+                        ThreadPool.QueueUserWorkItem((e) =>
                         {
                             ReadTCPData(e);
-                            ReadUDPData();
+                            ReadUDPData(e);
                         }, _cts.Token);
-                        IsConnected = true;
                     }
                     else if (!_TCPSocket.Connected)
                     {
-                        Utils.LoggerError("Enable to connect to the server");
+                        IsConnected = false;
+                        Utils.LoggerError("Unable to connect to the server");
                         new Action(() => OnNeutronConnected?.Invoke(false, this)).ExecuteOnMainThread(this);
                     }
                 }
-                catch (SocketException ex)
+                else
                 {
-                    Utils.LoggerError($"The connection to the server failed {ex.ErrorCode}");
-                    new Action(() => OnNeutronConnected?.Invoke(false, this)).ExecuteOnMainThread(this);
+                    IsConnected = false;
+                    Utils.LoggerError("Connection Refused!");
                 }
             }
-            else Utils.LoggerError("Connection Refused!");
+            catch (Exception ex)
+            {
+                IsConnected = false;
+                Utils.StackTrace(ex);
+                new Action(() => OnNeutronConnected?.Invoke(false, this)).ExecuteOnMainThread(this);
+            }
         }
 
-        private void ReadUDPData()
+        private async void ReadUDPData(object obj)
         {
-            Thread _thread = new Thread(new ThreadStart(() =>
+            CancellationToken token = (CancellationToken)obj;
+            do
             {
-                try
+                UdpReceiveResult udpReceiveResult = await _UDPSocket.ReceiveAsync();
+                if (udpReceiveResult.Buffer.Length > 0)
                 {
-                    _UDPSocket.BeginReceive(OnUDPReceive, null);
+                    if (COMPRESSION_MODE == Compression.None) // client
+                        ProcessClientData(udpReceiveResult.Buffer); // client
+                    else // client
+                    {
+                        byte[] bBuffer = udpReceiveResult.Buffer.Decompress(COMPRESSION_MODE);
+                        ProcessClientData(bBuffer);
+                    }
                 }
-                catch (Exception ex) { Utils.LoggerError(ex.Message); }
-            }));
-            _thread.IsBackground = true;
-            _thread.Start();
+
+            } while (!token.IsCancellationRequested);
         }
 
         private async void ReadTCPData(object obj) // client
@@ -283,7 +307,7 @@ namespace NeutronNetwork
         {
             return mPlayer.Equals(MyPlayer);
         }
-        static int stressPackets = 0;
+
         private void ProcessClientData(byte[] buffer)
         {
             try
@@ -296,9 +320,10 @@ namespace NeutronNetwork
                         case Packet.Connected:
                             {
                                 int port = mReader.ReadInt32();
-                                int length = mReader.ReadInt32();
-                                byte[] array = mReader.ReadBytes(length);
+                                byte[] array = mReader.ReadExactly();
+                                ///////////////////////////////////////////////////////////////////////
                                 endPointUDP = new IPEndPoint(IPAddress.Parse(IData.ipAddress), port);
+                                ///////////////////////////////////////////////////////////////////////
                                 HandleConnected(array);
                                 new Action(() => OnNeutronConnected?.Invoke(true, this)).ExecuteOnMainThread(this);
                             }
@@ -312,8 +337,7 @@ namespace NeutronNetwork
                         case Packet.SendChat:
                             {
                                 string message = mReader.ReadString();
-                                int length = mReader.ReadInt32();
-                                byte[] array = mReader.ReadBytes(length);
+                                byte[] array = mReader.ReadExactly();
                                 Player mSender = array.DeserializeObject<Player>();
                                 new Action(() => OnMessageReceived?.Invoke(message, mSender, this)).ExecuteOnMainThread(this);
                             }
@@ -321,8 +345,7 @@ namespace NeutronNetwork
                         case Packet.RPC:
                             {
                                 int ID = mReader.ReadInt32();
-                                int length = mReader.ReadInt32();
-                                byte[] array = mReader.ReadBytes(length);
+                                byte[] array = mReader.ReadExactly();
                                 HandleRPC(ID, array);
                             }
                             break;
@@ -330,18 +353,15 @@ namespace NeutronNetwork
                             {
                                 int ID = mReader.ReadInt32();
                                 int playerID = mReader.ReadInt32();
-                                int length = mReader.ReadInt32();
-                                byte[] Parameters = mReader.ReadBytes(length);
+                                byte[] Parameters = mReader.ReadExactly();
                                 HandleAPC(ID, Parameters, playerID);
                             }
                             break;
                         case Packet.Static:
                             {
                                 int ID = mReader.ReadInt32();
-                                int _lenght = mReader.ReadInt32();
-                                byte[] _array = mReader.ReadBytes(_lenght);
-                                int lenght_ = mReader.ReadInt32();
-                                byte[] array_ = mReader.ReadBytes(lenght_);
+                                byte[] _array = mReader.ReadExactly();
+                                byte[] array_ = mReader.ReadExactly();
                                 Player mSender = _array.DeserializeObject<Player>();
                                 HandleRCC(ID, mSender, array_, false);
                             }
@@ -349,57 +369,54 @@ namespace NeutronNetwork
                         case Packet.Response:
                             {
                                 int ID = mReader.ReadInt32();
-                                int lenght = mReader.ReadInt32();
-                                byte[] parameters = mReader.ReadBytes(lenght);
+                                byte[] parameters = mReader.ReadExactly();
                                 HandleACC(ID, parameters);
                             }
                             break;
                         case Packet.GetChannels:
                             {
-                                int length = mReader.ReadInt32();
-                                Channel[] channels = mReader.ReadBytes(length).DeserializeObject<Channel[]>();
+                                Channel[] channels = mReader.ReadExactly().DeserializeObject<Channel[]>();
                                 new Action(() => OnChannelsReceived?.Invoke(channels, this)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.JoinChannel:
                             {
-                                int length = mReader.ReadInt32();
-                                Player mSender = mReader.ReadBytes(length).DeserializeObject<Player>();
+                                Player mSender = mReader.ReadExactly().DeserializeObject<Player>();
                                 new Action(() => OnPlayerJoinedChannel?.Invoke(mSender, this)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.LeaveChannel:
                             {
-                                int length = mReader.ReadInt32();
-                                Player mSender = mReader.ReadBytes(length).DeserializeObject<Player>();
+                                Player mSender = mReader.ReadExactly().DeserializeObject<Player>();
                                 new Action(() => OnPlayerLeftChannel?.Invoke(mSender)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.Fail:
-                            new Action(() => OnFailed?.Invoke(mReader.ReadPacket<Packet>(), mReader.ReadString(), this)).ExecuteOnMainThread(this);
+                            {
+                                Packet failedPacket = mReader.ReadPacket<Packet>();
+                                string failMessage = mReader.ReadString();
+                                new Action(() => OnFailed?.Invoke(failedPacket, failMessage, this)).ExecuteOnMainThread(this);
+                            }
                             break;
                         case Packet.CreateRoom:
-                            //Room room = mReader.ReadBytes(dataLength).DeserializeObject<Room>();
-                            //HandleCreateRoom(room);
+                            Room room = mReader.ReadExactly().DeserializeObject<Room>();
+                            new Action(() => OnCreatedRoom?.Invoke(room, this)).ExecuteOnMainThread(this);
                             break;
                         case Packet.GetRooms:
                             {
-                                int length = mReader.ReadInt32();
-                                Room[] rooms = mReader.ReadBytes(length).DeserializeObject<Room[]>();
+                                Room[] rooms = mReader.ReadExactly().DeserializeObject<Room[]>();
                                 new Action(() => OnRoomsReceived?.Invoke(rooms, this)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.JoinRoom:
                             {
-                                int length = mReader.ReadInt32();
-                                Player player = mReader.ReadBytes(length).DeserializeObject<Player>();
+                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
                                 new Action(() => OnPlayerJoinedRoom?.Invoke(player, this)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.LeaveRoom:
                             {
-                                int length = mReader.ReadInt32();
-                                Player player = mReader.ReadBytes(length).DeserializeObject<Player>();
+                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
                                 new Action(() => OnPlayerLeftRoom?.Invoke(player, this)).ExecuteOnMainThread(this);
                             }
                             break;
@@ -408,30 +425,30 @@ namespace NeutronNetwork
                             break;
                         case Packet.Disconnected:
                             {
-                                int length = mReader.ReadInt32();
-                                Player player = mReader.ReadBytes(length).DeserializeObject<Player>();
+                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
                                 HandlePlayerDisconnected(player);
                             }
                             break;
                         case Packet.SyncBehaviour:
-                            HandleJsonProperties(mReader.ReadInt32(), mReader.ReadString());
+                            {
+                                int ID = mReader.ReadInt32();
+                                string props = mReader.ReadString();
+                                HandleJsonProperties(ID, props);
+                            }
                             break;
                         case Packet.Nickname:
                             new Action(() => OnNicknameChanged?.Invoke(this)).ExecuteOnMainThread(this);
                             break;
-                        case Packet.GetChached:
+                        case Packet.SetPlayerProperties:
                             {
-                                //int ownerID = mReader.ReadInt32();
-                                //Vector3 lastPos = mReader.ReadVector3();
-                                //Vector3 lastRot = mReader.ReadVector3();
-                                //byte[] cachedFunc = mReader.ReadBytes(dataLength);
-                                //object[] newValue = new object[] { lastPos, lastRot };
-                                //try
-                                //{
-                                //    properties.AddOrUpdate(ownerID, newValue, (x, y) => newValue);
-                                //    ProcessClientData(cachedFunc, cachedFunc.Length);
-                                //}
-                                //catch (Exception ex) { Utils.LoggerError(ex.Message); }
+                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
+                                new Action(() => OnPlayerPropertiesChanged?.Invoke(player, this)).ExecuteOnMainThread(this);
+                            }
+                            break;
+                        case Packet.SetRoomProperties:
+                            {
+                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
+                                new Action(() => OnRoomPropertiesChanged?.Invoke(player, this)).ExecuteOnMainThread(this);
                             }
                             break;
                     }
@@ -560,6 +577,18 @@ namespace NeutronNetwork
             {
                 writer.WritePacket(Packet.SetPlayerProperties);
                 writer.Write(_properties);
+                Send(writer.ToArray());
+            }
+        }
+
+        public void SetRoomProperties(Dictionary<string, object> properties)
+        {
+            string _properties = JsonConvert.SerializeObject(properties);
+            using (NeutronWriter writer = new NeutronWriter())
+            {
+                writer.WritePacket(Packet.SetRoomProperties);
+                writer.Write(_properties);
+                Send(writer.ToArray());
             }
         }
 
@@ -609,7 +638,15 @@ namespace NeutronNetwork
         {
             if (RPCTimer(RPCID, secondsDelay))
             {
-                InternalRPC(RPCID, new object[] { parametersStream.ToArray() }, sendTo, enableCache, protocolType, broadcast);
+                InternalRPC(MyPlayer.ID, RPCID, new object[] { parametersStream.ToArray() }, sendTo, enableCache, protocolType, broadcast);
+            }
+        }
+
+        public void RPC(Player playerToSend, int RPCID, float secondsDelay, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
+        {
+            if (RPCTimer(RPCID, secondsDelay))
+            {
+                InternalRPC(playerToSend.ID, RPCID, new object[] { parametersStream.ToArray() }, sendTo, enableCache, protocolType, broadcast);
             }
         }
 

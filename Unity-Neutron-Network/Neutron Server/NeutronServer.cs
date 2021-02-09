@@ -27,6 +27,7 @@ namespace NeutronNetwork.Internal.Server
         public static bool Initialized = false; // Indicates whether the server is started.
         void Initilize()
         {
+            //ThreadPool.SetMaxThreads(1000, 1000);
             ///////////////////////////////////////////////////////////////////////////////
             Utils.Logger("TCP and UDP have been initialized, the server is ready!\r\n");
             ///////////////////////////////////////////////////////////////////////////////
@@ -49,6 +50,7 @@ namespace NeutronNetwork.Internal.Server
                 try
                 {
                     TcpClient _clientAccepted = await _TCPListen.AcceptTcpClientAsync();
+                    Utils.Logger("Accepted :B");
                     _clientAccepted.NoDelay = noDelay; // If true, sends data immediately upon calling NetworkStream.Write. [THREAD-SAFE(NoDelay) - only assigned by the parent thread]
 
                     CancellationTokenSource _cts = new CancellationTokenSource(); // Signals to a CancellationToken that it should be canceled. to the thread after the client to closed. [THREAD-SAFE - accessed from other threads, microsoft claims to be safe.]
@@ -91,6 +93,7 @@ namespace NeutronNetwork.Internal.Server
                                     ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data. // exclusive UdpClient. each client has its own UDP client.
                                 }); // NOTE: only one thread writes and the other reads the data. [THREAD-SAFE]
                             }
+                            else Debug.LogError("failed to add");
                         }
                     }
                     else
@@ -101,9 +104,9 @@ namespace NeutronNetwork.Internal.Server
                         Utils.LoggerError($"IP blocked! IP Address -> {address}");
                     }
                 }
-                catch (ThreadInterruptedException) { }
-                catch (ThreadAbortException) { }
-                catch (ObjectDisposedException) { }
+                catch (ThreadInterruptedException ex) { Utils.StackTrace(ex); }
+                catch (ThreadAbortException ex) { Utils.StackTrace(ex); }
+                catch (ObjectDisposedException ex) { Utils.StackTrace(ex); }
                 catch (Exception ex)
                 {
                     if (!Initialized) return;
@@ -231,6 +234,9 @@ namespace NeutronNetwork.Internal.Server
                                     }
                                 }
                             }
+                            catch (ThreadInterruptedException) { } // ignore
+                            catch (ThreadAbortException) { } // ignore
+                            catch (ObjectDisposedException) { } // ignore disposed object log.
                             catch (Exception ex) { Utils.StackTrace(ex); }
                         };
                     }
@@ -257,6 +263,9 @@ namespace NeutronNetwork.Internal.Server
                                 }
                             }
                         }
+                        catch (ThreadInterruptedException) { } // ignore
+                        catch (ThreadAbortException) { } // ignore
+                        catch (ObjectDisposedException) { } // ignore disposed object log.
                         catch (Exception ex) { Utils.StackTrace(ex); }
                     };
                 }
@@ -294,7 +303,6 @@ namespace NeutronNetwork.Internal.Server
                             HandleGetChannels(mSender, mCommand);
                             break;
                         case Packet.JoinChannel:
-                            Debug.Log("Joined a channel");
                             HandleJoinChannel(mSender, mCommand, mReader.ReadInt32());
                             break;
                         case Packet.GetChached:
@@ -318,12 +326,18 @@ namespace NeutronNetwork.Internal.Server
                         case Packet.DestroyPlayer:
                             HandleDestroyPlayer(mSender, mCommand);
                             break;
+                        case Packet.SetPlayerProperties:
+                            HandleSetPlayerProperties(mSender, mReader.ReadString());
+                            break;
+                        case Packet.SetRoomProperties:
+                            HandleSetRoomProperties(mSender, mReader.ReadString());
+                            break;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Utils.LoggerError($"Failed to Response localClient {ex.Message}");
+                Utils.StackTrace(ex);
             }
         }
 

@@ -15,6 +15,8 @@ namespace NeutronNetwork
 {
     public class NeutronSyncBehaviour : NeutronBehaviour
     {
+        private bool _goto = false;
+
         private Dictionary<string, object> observerDict = new Dictionary<string, object>(); // thread safe.
         [SerializeField] [Range(0, 10000)] private int updateFrequency = 100;
 
@@ -91,14 +93,10 @@ namespace NeutronNetwork
                         }
                         observerDict.Add(Fields[i].Name, value);
                     }
+                    else { Utils.LoggerError($"[SyncVar] unsupported type -> [{value.GetType().Name}], Use the serializable class -> [Serializable{value.GetType().Name}]"); return false; }
                 }
             }
             return true;
-        }
-
-        public virtual void OnObservableListChanged()
-        {
-            Debug.LogError("criou ae dssdsd");
         }
 
         private void InvokeOptions(string functionName, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
@@ -147,25 +145,33 @@ namespace NeutronNetwork
                                 {
                                     case var value:
                                         {
-                                            if (ChangesObserver(Field.Name, value))
+                                            if (ChangesObserver(Field.Name, value) || _goto)
                                             {
+                                                _goto = false;
                                                 InvokeOptions(fieldAttribute.onChanged, fieldAttribute.sendTo, fieldAttribute.broadcast, fieldAttribute.protocolType);
                                             }
                                         }
                                         break;
                                 }
                             }
-                            else { Utils.LoggerError($"[SyncVar] unsupported type -> [{type.GetType().Name}], Use the serializable class -> [Serializable{type.GetType().Name}]"); }
+                            else { Utils.LoggerError($"[SyncVar] unsupported type -> [{type.GetType().Name}], Use the serializable class -> [Serializable{type.GetType().Name}]"); break; }
                         }
+                        else continue;
                     }
                     await Task.Delay(updateFrequency);
                 }
             }
         }
 
-        protected void OnNotifyChange(NeutronSyncBehaviour syncBehaviour, string propertiesName, Broadcast broadcast)
+#if UNITY_EDITOR
+        private void OnValidate()
         {
-            if (NeutronView != null) NeutronSFunc.onChanged(NeutronView.owner, syncBehaviour, propertiesName, broadcast);
+            _goto = true;
+        }
+#endif
+        public virtual void OnObservableListChanged()
+        {
+            _goto = true;
         }
     }
 }

@@ -89,7 +89,7 @@ namespace NeutronNetwork
         /// <summary>
         /// cts.
         /// </summary>
-        public CancellationTokenSource _cts;
+        [NonSerialized] public CancellationTokenSource _cts;
 
         public Player() { }// the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
@@ -148,6 +148,11 @@ namespace NeutronNetwork
         public Int32 GetHashCode(Player obj)
         {
             return obj.ID.GetHashCode();
+        }
+
+        public void SetProperties(string props) // [THREAD-SAFE - player is individual]
+        {
+            properties = props;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)

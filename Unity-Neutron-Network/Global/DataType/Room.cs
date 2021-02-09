@@ -46,6 +46,10 @@ namespace NeutronNetwork
         /// </summary>
         public bool isVisible;
         /// <summary>
+        /// owner of room.
+        /// </summary>
+        [NonSerialized] public Player Owner;
+        /// <summary>
         /// Properties of channel.
         /// </summary>
         [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
@@ -118,6 +122,14 @@ namespace NeutronNetwork
             }
         }
 
+        public Player[] GetPlayers()
+        {
+            lock (SyncPlayers)
+            {
+                return Players.ToArray();
+            }
+        }
+
         public Boolean Equals(Room other)
         {
             return this.ID == other.ID;
@@ -135,6 +147,11 @@ namespace NeutronNetwork
                 return false;
             }
             return x.ID == y.ID;
+        }
+
+        public void SetProperties(string props) // [THREAD-SAFE - player is individual]
+        {
+            properties = props;
         }
 
         public Int32 GetHashCode(Room obj)

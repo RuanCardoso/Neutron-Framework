@@ -34,10 +34,12 @@ public class Utils
                 return 0;
         }
     }
-
+    static int sup = 0;
     public static int GetUniqueID(IPEndPoint endPoint)
     {
-        return Math.Abs(endPoint.GetHashCode() ^ endPoint.Port ^ new System.Random().Next(1, 999));
+        sup++;
+        Utils.Logger("Clientes conectados: " + sup);
+        return Math.Abs(endPoint.GetHashCode() ^ endPoint.Port ^ new System.Random().Next(1, 999) ^ sup);
     }
 
     public static int ValidateAndDeserializeJson<T>(string json, out T obj)
@@ -67,7 +69,7 @@ public class Utils
                 }
             }
         }
-        catch (Exception ex) { Utils.Logger(ex.Message); }
+        catch (Exception ex) { Utils.StackTrace(ex); }
     }
 
     public static IEnumerator KeepFramerate(int framerate)
@@ -87,36 +89,44 @@ public class Utils
         return clientLayer > -1 && serverLayer > -1;
     }
 
-    public static void CreateContainer(string name, bool enablePhysics = false, GameObject[] sharedObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
+    public static void CreateContainer(string name, bool enablePhysics = false, bool sharingObjects = false, GameObject[] sharedObjects = null, GameObject[] unsharedObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
     {
         Scene scene = SceneManager.CreateScene(name, new CreateSceneParameters(localPhysicsMode));
 
-        if (sharedObjects != null)
+        if (sharedObjects != null && sharingObjects)
         {
             foreach (GameObject @object in sharedObjects)
             {
-                if (enablePhysics)
-                {
-                    GameObject gameObject = MonoBehaviour.Instantiate(@object);
-                    gameObject.hideFlags = HideFlags.HideInHierarchy;
+                GameObject gameObject = MonoBehaviour.Instantiate(@object);
 #if UNITY_EDITOR
-                    LinkObject linked = gameObject.AddComponent<LinkObject>();
-                    linked.@object = @object;
+                gameObject.hideFlags = HideFlags.HideInHierarchy;
+                LinkObject linked = gameObject.AddComponent<LinkObject>();
+                linked.@object = @object;
 #endif
-                    MoveToContainer(gameObject, scene.name);
-                    var renderer = gameObject.GetComponent<Renderer>();
-                    if (renderer != null)
-                        MonoBehaviour.Destroy(renderer);
-                }
+                MoveToContainer(gameObject, scene.name);
+                var renderer = gameObject.GetComponent<Renderer>();
+                if (renderer != null)
+                    MonoBehaviour.Destroy(renderer);
 #if UNITY_SERVER
                 MonoBehaviour.Destroy(@object);
 #endif
             }
         }
+#if UNITY_SERVER
+        if(unsharedObjects != null)
+        {
+            foreach (GameObject @object in unsharedObjects)
+            {
+                MonoBehaviour.Destroy(@object);
+            }
+        }
+#endif
 
         if (!enablePhysics || localPhysicsMode == LocalPhysicsMode.None) return;
         GameObject simulateObject = new GameObject("Simulate");
+#if UNITY_EDITOR
         simulateObject.hideFlags = HideFlags.HideInHierarchy;
+#endif
         MoveToContainer(simulateObject, scene.name);
         Simulate simulate = simulateObject.AddComponent<Simulate>();
         simulate.physicsScene = scene.GetPhysicsScene();

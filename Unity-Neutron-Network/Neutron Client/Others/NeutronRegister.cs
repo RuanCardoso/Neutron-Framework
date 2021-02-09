@@ -34,7 +34,7 @@ namespace NeutronNetwork
 
                     Renderer renderer = view.GetComponentInChildren<Renderer>();
                     if (renderer != null)
-                        renderer.material.color = Color.black;
+                        renderer.material.color = Color.red;
 
                     prefabPlayer.name = (!mPlayer.isBot) ? mPlayer.Nickname + " -> [Server]" : mPlayer.Nickname + " -> [Bot]";
                     NeutronSFunc.onPlayerInstantiated?.Invoke(mPlayer);

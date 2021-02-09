@@ -67,5 +67,7 @@ namespace NeutronNetwork.Internal.Client.InternalEvents
         /// <summary>
         public delegate void OnDestroyed(Neutron localInstance);
         public delegate void OnPlayerInstantiated(Player player, GameObject obj, Neutron localInstance);
+        public delegate void OnPlayerPropertiesChanged(Player player, Neutron localInstance);
+        public delegate void OnRoomPropertiesChanged(Player player, Neutron localInstance);
     }
 }

@@ -12,16 +12,19 @@ namespace NeutronNetwork.Wrappers
         public event OnChanged onChanged;
         public new void Add(T item)
         {
+            base.Add(item);
             onChanged?.Invoke();
         }
 
         public new void Remove(T item)
         {
-            onChanged?.Invoke();
+            if (base.Remove(item))
+                onChanged?.Invoke();
         }
 
         public new void RemoveAt(int index)
         {
+            base.RemoveAt(index);
             onChanged?.Invoke();
         }
 

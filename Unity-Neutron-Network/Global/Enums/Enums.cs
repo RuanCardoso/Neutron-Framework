@@ -41,6 +41,7 @@ public enum Packet : byte
     SyncBehaviour,
     Nickname,
     SetPlayerProperties,
+    SetRoomProperties,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
     //======================================================
@@ -60,16 +61,12 @@ public enum CachedPacket : byte
     //======================================================
 }
 
-[Flags]
-public enum WhenChanging : byte
-{
-    Position = 1,
-    Rotation = 2,
-    Velocity = 4,
-}
-
 public enum Compression : byte
 {
+    /// <summary>
+    /// Disable data compression.
+    /// </summary>
+    None,
     /// <summary>
     /// Compress data using deflate mode.
     /// </summary>
@@ -78,14 +75,14 @@ public enum Compression : byte
     /// Compress data using GZip mode.
     /// </summary>
     Gzip,
-    /// <summary>
-    /// Disable data compression.
-    /// </summary>
-    None,
 }
 
 public enum Broadcast : byte
 {
+    /// <summary>
+    /// None broadcast. Used to SendTo.Only.
+    /// </summary>
+    None,
     /// <summary>
     /// Broadcast data on the server.
     /// </summary>
@@ -100,17 +97,13 @@ public enum Broadcast : byte
     Room,
     /// <summary>
     /// Broadcast data on the room, except for those in the lobby/waiting room.
-    /// that is only for players who are instantiated and in the same room.
+    /// that is only for players who are instantiated and in the same room/channel.
     /// </summary>
     Instantiated,
     /// <summary>
     /// Broadcast data on the same group.
     /// </summary>
-    Group,
-    /// <summary>
-    /// None broadcast. Used to SendTo.Only.
-    /// </summary>
-    None,
+    Group
 }
 
 public enum ClientType : byte

@@ -14,6 +14,12 @@ namespace NeutronNetwork.Internal.Server
     public class NeutronSConst : MonoBehaviour // It inherits from MonoBehaviour because it is an instance of GameObject.
     {
         [SerializeField] private GameObject[] sharedObjects;
+        [SerializeField] private GameObject[] unsharedObjects;
+        [SerializeField] private bool ChannelsPhysics;
+        [SerializeField] private bool RoomsPhysics;
+        [SerializeField] private bool SharingOnChannels;
+        [SerializeField] private bool SharingOnRooms;
+        [SerializeField] private LocalPhysicsMode PhysicsMode = LocalPhysicsMode.None;
 
         public const string LOCAL_HOST = "http://127.0.0.1"; // local host.
         public static float TELEPORT_DISTANCE_TOLERANCE; // maximum teleport distance.
@@ -27,7 +33,7 @@ namespace NeutronNetwork.Internal.Server
         public ConcurrentDictionary<TcpClient, Player> Players = new ConcurrentDictionary<TcpClient, Player>(); // thread safe - players of server.
         public ConcurrentDictionary<int, Channel> Channels = new ConcurrentDictionary<int, Channel>(); // thread safe - channels of server.
         protected List<IPAddress> blockedConnections = new List<IPAddress>();
-        [SerializeField, Space(10)] private List<Channel> serializedChannels = new List<Channel>();
+        [SerializeField] private List<Channel> serializedChannels = new List<Channel>();
 
         private int serverPort; // port of server
 
@@ -51,10 +57,10 @@ namespace NeutronNetwork.Internal.Server
             {
                 Channel channel = serializedChannels[i];
                 Channels.TryAdd(channel.ID, channel);
-                Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", false, sharedObjects, LocalPhysicsMode.Physics3D);
+                Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", ChannelsPhysics, SharingOnChannels, sharedObjects, unsharedObjects, PhysicsMode);
                 foreach (Room room in channel.GetRooms())
                 {
-                    Utils.CreateContainer($"[Container] -> Room[{room.ID}]", true, sharedObjects, LocalPhysicsMode.Physics3D);
+                    Utils.CreateContainer($"[Container] -> Room[{room.ID}]", RoomsPhysics, SharingOnRooms, sharedObjects, unsharedObjects, PhysicsMode);
                 }
             }
         }

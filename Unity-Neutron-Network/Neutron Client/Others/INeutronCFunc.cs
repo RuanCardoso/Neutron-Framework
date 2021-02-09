@@ -46,6 +46,8 @@ namespace NeutronNetwork.Internal.Client
 
         protected void Send(byte[] buffer, Protocol protocolType = Protocol.Tcp)
         {
+            if (!_.IsConnected) return;
+
             buffer = buffer.Compress(COMPRESSION_MODE);
             switch (protocolType)
             {
@@ -63,37 +65,29 @@ namespace NeutronNetwork.Internal.Client
             try
             {
                 NetworkStream networkStream = _TCPSocket.GetStream();
-
                 using (NeutronWriter writerOnly = new NeutronWriter())
                 {
                     writerOnly.WriteFixedLength(buffer.Length);
                     writerOnly.Write(buffer);
                     byte[] nBuffer = writerOnly.ToArray();
-                    //----------------------------------------------------------------------------
                     await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
-                    //else await networkStream.WriteAsync(buffer, 0, buffer.Length);
                 }
             }
             catch (ObjectDisposedException) { Utils.Logger("Allocated memory released."); }
             catch (Exception ex) { Utils.StackTrace(ex); }
         }
 
-        protected void SendUDP(byte[] message)
+        protected async void SendUDP(byte[] message)
         {
-            if (_UDPSocket == null || endPointUDP == null) return;
             try
             {
-                _UDPSocket.BeginSend(message, message.Length, endPointUDP, (e) =>
-                {
-                    int data = ((UdpClient)(e.AsyncState)).EndSend(e);
-                    if (data > 0) { }
-                }, _UDPSocket);
+                await _UDPSocket.SendAsync(message, message.Length, endPointUDP);
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (ObjectDisposedException) { Utils.Logger("Allocated memory released."); }
+            catch (Exception ex) { Utils.StackTrace(ex); }
         }
 
-        //============================================================================================================//
-        protected bool InitConnect()
+        protected void InitConnect()
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
@@ -101,13 +95,12 @@ namespace NeutronNetwork.Internal.Client
                 writer.Write(_.IsBot);
                 Send(writer.ToArray());
             }
-            return true;
         }
-        protected void InternalRPC(int RPCID, object[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRPC(int playerID, int RPCID, object[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                object[] bArray = { _.MyPlayer.ID, parameters };
+                object[] bArray = { playerID, parameters };
                 //---------------------------------------------------------------------------------------------------------------------
                 writer.WritePacket(Packet.RPC);
                 writer.WritePacket(broadcast);
@@ -142,29 +135,6 @@ namespace NeutronNetwork.Internal.Client
             _myPlayer = array.DeserializeObject<Player>();
         }
 
-        //protected void HandleInstantiate (Vector3 pos, Quaternion rot, string playerPrefab, byte[] mPlayer) {
-        //    //---------------------------------------------------------------------------------------------------------------------//
-        //    Player playerInstantiated = mPlayer.DeserializeObject<Player> ();
-        //    //---------------------------------------------------------------------------------------------------------------------//
-        //    new Action (() => {
-        //        GameObject playerPref = Resources.Load (playerPrefab, typeof (GameObject)) as GameObject;
-        //        if (playerPref != null) {
-        //            Neutron.onPlayerInstantiated (playerInstantiated, pos, rot, playerPref);
-        //        } else Utils.LoggerError ($"CLIENT: -> Unable to load prefab {playerPrefab}", true);
-        //    }).ExecuteOnMainThread (_, false);
-        //}
-
-        protected void HandleSendInput(byte[] mInput)
-        {
-            //    SerializableInput nInput = mInput.DeserializeObject<SerializableInput> ();
-            //    //===================================================================
-            //    SerializableVector3 nVelocity = nInput.Vector;
-            //    //===================================================================
-            //    Vector3 velocity = new Vector3 (nVelocity.x, nVelocity.y, nVelocity.z);
-            //    //===================================================================
-            //    //Neutron.Enqueue(() => playerRB.velocity = velocity);
-        }
-
         protected void HandleRPC(int id, byte[] parameters)
         {
             object[] _array = parameters.DeserializeObject<object[]>();
@@ -174,7 +144,7 @@ namespace NeutronNetwork.Internal.Client
             new Action(() =>
             {
                 if (playersObjects.TryGetValue(senderID, out NeutronView neutronObject))
-                    Communication.InitRPC(id, objectParams, false, neutronObject);
+                    Communication.InitRPC(id, objectParams, neutronObject);
             }).ExecuteOnMainThread(_);
         }
 
@@ -190,7 +160,7 @@ namespace NeutronNetwork.Internal.Client
         {
             new Action(() =>
             {
-                Communication.InitACC(executeID, pParams);
+                Communication.InitResponse(executeID, pParams);
             }).ExecuteOnMainThread(_);
         }
 
@@ -260,6 +230,14 @@ namespace NeutronNetwork.Internal.Client
                 Utils.CreateContainer("[Container] -> Player[Main]");
         }
 
+        private void UpdateLocalPlayer(Player player)
+        {
+            if (_.isLocalPlayer(player))
+            {
+                _myPlayer = player;
+            }
+        }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Events
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,14 +267,6 @@ namespace NeutronNetwork.Internal.Client
             _.Dispose();
             //-------------------------------------------------------------------
             Utils.Logger("You Have Disconnected from server -> [" + reason + "]");
-        }
-
-        private void UpdateLocalPlayer(Player player)
-        {
-            if (_.isLocalPlayer(player))
-            {
-                _myPlayer = player;
-            }
         }
 
         private void OnConnected(bool success, Neutron localinstance)

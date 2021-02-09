@@ -7,6 +7,6 @@ public class CachedBuffer
 {
     [ReadOnly] public int ID;
     [NonSerialized] public byte[] buffer;
-    public Player owner;
+    [NonSerialized] public Player owner;
     [ReadOnly] public CachedPacket cachedPacket;
 }

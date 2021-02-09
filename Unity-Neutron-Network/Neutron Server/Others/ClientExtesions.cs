@@ -1,5 +1,4 @@
 ﻿using NeutronNetwork.Internal.Extesions;
-using System.Net.Sockets;
 using UnityEngine;
 
 namespace NeutronNetwork.Extesions
@@ -21,7 +20,7 @@ namespace NeutronNetwork.Extesions
             }
         }
 
-        public static void Response(this NeutronView statePlayer, MonoBehaviour mThis, int ResponseID, NeutronWriter parameters, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
+        public static void Response(this Player playerToSend, int ResponseID, NeutronWriter parameters, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
@@ -31,7 +30,7 @@ namespace NeutronNetwork.Extesions
                 writer.Write(ResponseID);
                 writer.Write(param.Length);
                 writer.Write(param);
-                statePlayer.owner.Send(sendTo, writer.ToArray(), broadcast, protocolType);
+                playerToSend.Send(sendTo, writer.ToArray(), broadcast, protocolType);
             }
         }
     }

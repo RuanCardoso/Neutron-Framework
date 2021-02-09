@@ -61,9 +61,20 @@ namespace NeutronNetwork
             Write(length);
         }
 
+        public void WriteExactly(byte[] bytes)
+        {
+            WriteFixedLength(bytes.Length);
+            Write(bytes);
+        }
+
         public MemoryStream GetStream()
         {
             return (MemoryStream)base.BaseStream;
+        }
+
+        public void SetPosition(int pos)
+        {
+            GetStream().Position = pos;
         }
 
         public byte[] ToArray()
@@ -143,9 +154,20 @@ namespace NeutronNetwork
             return ReadInt32() + sizeof(int);
         }
 
+        public byte[] ReadExactly()
+        {
+            int len = ReadInt32();
+            return ReadBytes(len);
+        }
+
         public MemoryStream GetStream()
         {
             return (MemoryStream)base.BaseStream;
+        }
+
+        public void SetPosition(int pos)
+        {
+            GetStream().Position = pos;
         }
 
         public byte[] ToArray()

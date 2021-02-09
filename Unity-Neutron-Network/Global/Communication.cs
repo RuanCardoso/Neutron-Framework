@@ -12,7 +12,7 @@ namespace NeutronNetwork.Internal.Comms
     {
         public const int BUFFER_SIZE = 1024;
         public const string PATH_SETTINGS = "\\Unity-Neutron-Network\\Resources\\neutronsettings.txt";
-        public static bool InitRPC(int executeID, object[] parameters, bool isServer, MonoBehaviour behaviour)
+        public static bool InitRPC(int executeID, object[] parameters, MonoBehaviour behaviour)
         {
             //-----------------------------------------------------------------------------------------------------------//
             NeutronBehaviour[] scriptComponents = behaviour.GetComponentsInChildren<NeutronBehaviour>();
@@ -23,7 +23,7 @@ namespace NeutronNetwork.Internal.Comms
                 MethodInfo Invoker = mInstance.HasRPC(executeID, out string message);
                 if (Invoker != null)
                 {
-                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader((byte[])parameters[0]), isServer });
+                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader((byte[])parameters[0]) });
                     if (obj != null)
                     {
                         Type objType = obj.GetType();
@@ -62,48 +62,41 @@ namespace NeutronNetwork.Internal.Comms
                 for (int z = 0; z < activator.Length; z++)
                 {
                     MethodInfo[] methods = activator[z].methodInfos;
-                    if (activator[z] != null)
+                    for (int i = 0; i < methods.Length; i++)
                     {
-                        for (int i = 0; i < methods.Length; i++)
+                        Static _static = methods[i].GetCustomAttribute<Static>();
+                        if (_static != null)
                         {
-                            Static _static = methods[i].GetCustomAttribute<Static>();
-                            if (_static != null)
+                            if (_static.ID == executeID)
                             {
-                                if (_static.ID == executeID)
+                                object obj = methods[i].Invoke(activator[z], new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
+                                if (obj != null)
                                 {
-                                    object obj = methods[i].Invoke(activator[z], new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
-                                    if (obj != null)
+                                    Type objType = obj.GetType();
+                                    if (objType == typeof(GameObject))
                                     {
-                                        Type objType = obj.GetType();
-                                        if (objType == typeof(GameObject))
+                                        GameObject objectToInst = (GameObject)obj;
+                                        NeutronRegister.RegisterPlayer(localInstance, objectToInst, sender, isServer);
+                                        if (!isServer)
                                         {
-                                            GameObject objectToInst = (GameObject)obj;
-                                            NeutronRegister.RegisterPlayer(localInstance, objectToInst, sender, isServer);
-                                            if (!sender.isBot)
-                                            {
-                                                if (!isServer)
-                                                {
-                                                    Utils.MoveToContainer(objectToInst, "[Container] -> Player[Main]");
-                                                }
-                                                else
-                                                {
-                                                    if (!sender.IsInRoom())
-                                                        Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.currentChannel}]");
-                                                    else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.currentRoom}]");
-                                                }
-                                            }
+                                            Utils.MoveToContainer(objectToInst, "[Container] -> Player[Main]");
                                         }
-                                        else if (objType == typeof(bool))
-                                            return (bool)obj;
+                                        else
+                                        {
+                                            if (!sender.IsInRoom())
+                                                Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.currentChannel}]");
+                                            else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.currentRoom}]");
+                                        }
                                     }
-                                    return true;
+                                    else if (objType == typeof(bool))
+                                        return (bool)obj;
                                 }
-                                else continue;
+                                return true;
                             }
                             else continue;
                         }
+                        else continue;
                     }
-                    else continue;
                 }
                 return false;
             }
@@ -115,33 +108,28 @@ namespace NeutronNetwork.Internal.Comms
             }
         }
 
-        public static void InitACC(int executeID, byte[] parameters)
+        public static void InitResponse(int executeID, byte[] parameters)
         {
             try
             {
-                var activator = GameObject.FindObjectOfType<NeutronStatic>();
-                //--------------------------------------------------------------------------------------------------------------
-                MethodInfo[] methods = activator.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                //--------------------------------------------------------------------------------------------------------------
-                if (activator == null)
+                NeutronStatic[] activator = NeutronStatic.neutronStatics;
+                for (int z = 0; z < activator.Length; z++)
                 {
-                    Utils.LoggerError($"Unable to find {activator.name} object, use DontDestroyOnLoad");
-                    return;
-                }
-                //--------------------------------------------------------------------------------------------------------------
-                for (int i = 0; i < methods.Length; i++)
-                {
-                    Response _Response = methods[i].GetCustomAttribute<Response>();
-                    if (_Response != null)
+                    MethodInfo[] methods = activator[z].methodInfos;
+                    for (int i = 0; i < methods.Length; i++)
                     {
-                        if (_Response.ID == executeID)
+                        Response _Response = methods[i].GetCustomAttribute<Response>();
+                        if (_Response != null)
                         {
-                            methods[i].Invoke(activator, new object[] { new NeutronReader(parameters) });
-                            break;
+                            if (_Response.ID == executeID)
+                            {
+                                methods[i].Invoke(activator[z], new object[] { new NeutronReader(parameters) });
+                                break;
+                            }
+                            else continue;
                         }
                         else continue;
                     }
-                    else continue;
                 }
             }
             catch (Exception ex)
