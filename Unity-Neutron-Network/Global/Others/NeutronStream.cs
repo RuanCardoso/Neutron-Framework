@@ -45,12 +45,6 @@ namespace NeutronNetwork
             Write(writable.w);
         }
 
-        public void Write(Key writable)
-        {
-            Write(writable.key.ToString());
-            Write(writable.value.ToString());
-        }
-
         public void WritePacket<T>(T packet)
         {
             Write((byte)(object)packet);
@@ -134,13 +128,6 @@ namespace NeutronNetwork
             float z = ReadSingle();
             float w = ReadSingle();
             return new Quaternion(x, y, z, w);
-        }
-
-        public Key ReadKey()
-        {
-            string key = ReadString();
-            string value = ReadString();
-            return new Key(key, value);
         }
 
         public T ReadPacket<T>()
