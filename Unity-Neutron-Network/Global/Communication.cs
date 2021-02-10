@@ -3,6 +3,7 @@ using NeutronNetwork.Internal.Extesions;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -138,18 +139,20 @@ namespace NeutronNetwork.Internal.Comms
             }
         }
 
-        public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int count)
+        public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int count, CancellationToken token)
         {
             int bytesRead = 0;
             try
             {
-                do
+                while (count > 0)
                 {
-                    offset += bytesRead;
-                    count -= bytesRead;
+                    if ((bytesRead = await stream.ReadAsync(buffer, offset, count, token)) > 0)
+                    {
+                        offset += bytesRead;
+                        count -= bytesRead;
+                    }
+                    else return false;
                 }
-                while (count > 0 && (bytesRead = await stream.ReadAsync(buffer, offset, count)) > 0);
-                ///////////////////////////////////////////////////////////////////////////////////////
                 return count == 0;
             }
             catch { return false; }

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
@@ -35,6 +36,11 @@ namespace NeutronNetwork.Internal.Client
 
         protected IData IData;
 
+        /// <summary>
+        /// Cancellation token.
+        /// </summary>
+        protected CancellationTokenSource _cts = new CancellationTokenSource();
+
         public void Internal()
         {
             mainThreadActions = new ConcurrentQueue<Action>();
@@ -51,6 +57,8 @@ namespace NeutronNetwork.Internal.Client
 
         public void Dispose()
         {
+            _cts.Cancel();
+            _cts.Dispose();
             _TCPSocket.Close();
             _UDPSocket.Close();
         }

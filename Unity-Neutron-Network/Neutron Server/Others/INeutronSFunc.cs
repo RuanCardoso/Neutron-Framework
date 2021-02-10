@@ -146,21 +146,19 @@ namespace NeutronNetwork.Internal.Server
         public static void SocketProtocol(Player mPlayer, SendTo sendTo, byte[] buffer, Player[] ToSend, bool isUDP) // [Thread-Safe]
         {
             if (ToSend == null) sendTo = SendTo.Only;
+            Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
+            DataBuffer dataBuffer = new DataBuffer(protocol, buffer);
             switch (sendTo)
             {
                 case SendTo.Only:
-                    if (!isUDP)
-                        mPlayer.qDataTCP.Enqueue(buffer);
-                    else mPlayer.qDataUDP.Enqueue(buffer);
+                    mPlayer.qData.Enqueue(dataBuffer);
                     break;
                 case SendTo.All:
                     for (int i = 0; i < ToSend.Length; i++)
                     {
                         if (mPlayer.isBot)
                             if (!ToSend[i].Equals(mPlayer) && ToSend[i].isBot) continue;
-                        if (!isUDP)
-                            ToSend[i].qDataTCP.Enqueue(buffer);
-                        else ToSend[i].qDataUDP.Enqueue(buffer);
+                        ToSend[i].qData.Enqueue(dataBuffer);
                     }
                     break;
                 case SendTo.Others:
@@ -168,9 +166,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         if (ToSend[i].Equals(mPlayer)) continue;
                         else if (mPlayer.isBot && ToSend[i].isBot) continue;
-                        if (!isUDP)
-                            ToSend[i].qDataTCP.Enqueue(buffer);
-                        else ToSend[i].qDataUDP.Enqueue(buffer);
+                        ToSend[i].qData.Enqueue(dataBuffer);
                     }
                     break;
             }

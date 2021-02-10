@@ -31,7 +31,10 @@ namespace NeutronNetwork.Internal.Server
             ///////////////////////////////////////////////////////////////////////////////
             Utils.Logger("TCP and UDP have been initialized, the server is ready!\r\n");
             ///////////////////////////////////////////////////////////////////////////////
-            ThreadPool.QueueUserWorkItem((e) => AcceptClient()); // Thread dedicated to client acceptance.
+            Thread acptTh = new Thread((e) => AcceptClient()); // Thread dedicated to client acceptance.
+            acptTh.Priority = System.Threading.ThreadPriority.Highest;
+            acptTh.IsBackground = true;
+            acptTh.Start();
             Initialized = true; // defines true, server is initialized. [THREAD-SAFE - only accessed by the main thread]
             onServerStart?.Invoke(); // signals that the server has been started. [THREAD-SAFE - delegates are immutable]
         }
@@ -43,14 +46,13 @@ namespace NeutronNetwork.Internal.Server
             else return false;
         }
 
-        async void AcceptClient()
+        void AcceptClient()
         {
             do
             {
                 try
                 {
-                    TcpClient _clientAccepted = await _TCPListen.AcceptTcpClientAsync();
-                    Utils.Logger("Accepted :B");
+                    TcpClient _clientAccepted = _TCPListen.AcceptTcpClient();
                     _clientAccepted.NoDelay = noDelay; // If true, sends data immediately upon calling NetworkStream.Write. [THREAD-SAFE(NoDelay) - only assigned by the parent thread]
 
                     CancellationTokenSource _cts = new CancellationTokenSource(); // Signals to a CancellationToken that it should be canceled. to the thread after the client to closed. [THREAD-SAFE - accessed from other threads, microsoft claims to be safe.]
@@ -83,15 +85,23 @@ namespace NeutronNetwork.Internal.Server
                             {
                                 IPEndPoint RemoteEndPoint = _clientAccepted.RemoteEndPoint(); // remote endpoint of client.
 
-                                ThreadPool.QueueUserWorkItem((e) => ProcessingStack(nPlayer, nPlayer._cts.Token)); // Starts processing client data. data write thread.
+                                Thread processingStackTh = new Thread(() => ProcessingStack(nPlayer, nPlayer._cts.Token)); // Starts processing client data. data write thread.
+                                processingStackTh.Priority = System.Threading.ThreadPriority.BelowNormal;
+                                processingStackTh.IsBackground = true;
+                                processingStackTh.Start();
+                                Thread TcpDataTh = new Thread(() => ReadTCPData(nPlayer, nPlayer._cts.Token)); // Starts processing client data. data write thread.
+                                TcpDataTh.Priority = System.Threading.ThreadPriority.BelowNormal;
+                                TcpDataTh.IsBackground = true;
+                                TcpDataTh.Start();
+
+
                                 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                 Utils.Logger($"Incoming client, IP: [{RemoteEndPoint.Address}] | TCP: [{RemoteEndPoint.Port}] | UDP: [{((IPEndPoint)nPlayer.udpClient.Client.LocalEndPoint).Port}]");
                                 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                ThreadPool.QueueUserWorkItem((e) => // data reading thread.
-                                {
-                                    ReadTCPData(nPlayer, nPlayer._cts.Token); // starts read tcp data.
-                                    ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data. // exclusive UdpClient. each client has its own UDP client.
-                                }); // NOTE: only one thread writes and the other reads the data. [THREAD-SAFE]
+                                //ThreadPool.QueueUserWorkItem((e) =>
+                                //{
+                                //    ReadUDPData(nPlayer, nPlayer._cts.Token); // starts read tcp data. // exclusive UdpClient. each client has its own UDP client.
+                                //}); // NOTE: only one thread writes and the other reads the data. [THREAD-SAFE]
                             }
                             else Debug.LogError("failed to add");
                         }
@@ -130,10 +140,10 @@ namespace NeutronNetwork.Internal.Server
                 {
                     do
                     {
-                        if (await Communication.ReadAsyncBytes(buffStream, messageLenBuffer, 0, sizeof(int)))
+                        if (await Communication.ReadAsyncBytes(buffStream, messageLenBuffer, 0, sizeof(int), token))
                         {
                             int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0); // get message length
-
+                            Utils.LoggerError(fixedLength);
                             if (fixedLength > MAX_RECEIVE_MESSAGE_SIZE || fixedLength <= 0) // check length if =< 0 or message is overflow limit, if true, close socket.
                             {
                                 Utils.LoggerError("Operation not allowed, message size is invalid.");
@@ -142,7 +152,7 @@ namespace NeutronNetwork.Internal.Server
                             else
                             {
                                 buffer = new byte[fixedLength + sizeof(int)]; // set the buffer size, equal to the packet/message length.
-                                if (await Communication.ReadAsyncBytes(buffStream, buffer, sizeof(int), fixedLength)) // read message bytes.
+                                if (await Communication.ReadAsyncBytes(buffStream, buffer, sizeof(int), fixedLength, token)) // read message bytes.
                                 {
                                     releaseBuffer = new byte[buffer.Length];
                                     Buffer.BlockCopy(buffer, sizeof(int), releaseBuffer, 0, fixedLength);
@@ -201,77 +211,53 @@ namespace NeutronNetwork.Internal.Server
             catch (SocketException ex) { Utils.StackTrace(ex); }
         }
 
-        void ProcessingStack(Player player, object obj) // thread-safe
+        async void ProcessingStack(Player player, object obj) // thread-safe
         {
             CancellationToken token = (CancellationToken)obj;
-            void TCP()
+            var netStream = player.tcpClient.GetStream(); // using statement // stream [Thread-Safe - because only this thread write]
+            var buffStream = new BufferedStream(netStream, Communication.BUFFER_SIZE);
             {
-                /*using (*/
-                var netStream = player.tcpClient.GetStream(); // using statement // stream [Thread-Safe - because only this thread write]
-                var buffStream = new BufferedStream(netStream, Communication.BUFFER_SIZE);
+                var queueData = player.qData; // data queue for pending processing. [Thread-Safe is a concurrent collection]
+                ManualResetEvent manualResetEvent = queueData.manualResetEvent;
+                if (queueData != null)
                 {
-                    var queueData = player.qDataTCP; // data queue for pending processing. [Thread-Safe is a concurrent collection]
-                    if (queueData != null)
+                    try
                     {
-                        queueData.onChanged += async () => // event "OnChanged" to send data.
+                        while (!token.IsCancellationRequested)
                         {
-                            if (token.IsCancellationRequested) return;
-                            try
+                            manualResetEvent.Reset(); // reset
+                            if (queueData.Count > 0)
                             {
-                                for (int i = 0; i < queueData.Count; i++) // re-send failed packets on the next time.
+                                if (queueData.TryDequeue(out DataBuffer buffer)) // dequeue data.
                                 {
-                                    await Task.Delay(sendRateTCP);
-                                    if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
+                                    using (NeutronWriter header = new NeutronWriter())
                                     {
-                                        using (NeutronWriter header = new NeutronWriter())
+                                        header.WriteFixedLength(buffer.buffer.Length); // write length of message(header).
+                                        header.Write(buffer.buffer); // write message.
+                                        byte[] nBuffer = header.ToArray();
+                                        switch (buffer.protocol)
                                         {
-                                            header.WriteFixedLength(buffer.Length); // write length of message(header).
-                                            header.Write(buffer); // write message.
-                                            byte[] nBuffer = header.ToArray();
-                                            if (player.tcpClient != null)
-                                                await netStream?.WriteAsync(nBuffer, 0, nBuffer.Length); // send message.
+                                            case Protocol.Tcp:
+                                                if (player.tcpClient != null)
+                                                    await netStream.WriteAsync(nBuffer, 0, nBuffer.Length, token); // send message.
+                                                break;
+                                            case Protocol.Udp:
+                                                if (player.rPEndPoint != null && player.tcpClient != null) // rPEndPointis not thread-safe....  but as it is assigned only once and only by a single thread, it doesn't matter.
+                                                    await player.udpClient.SendAsync(buffer.buffer, buffer.buffer.Length, player.rPEndPoint); // send message
+                                                break;
                                         }
                                     }
                                 }
                             }
-                            catch (ThreadInterruptedException) { } // ignore
-                            catch (ThreadAbortException) { } // ignore
-                            catch (ObjectDisposedException) { } // ignore disposed object log.
-                            catch (Exception ex) { Utils.StackTrace(ex); }
-                        };
-                    }
-                }
-            }
-
-            void UDP()
-            {
-                var queueData = player.qDataUDP; // data queue for pending processing. [Thread-Safe is a concurrent collection]
-                if (queueData != null)
-                {
-                    queueData.onChanged += async () =>
-                    {
-                        if (token.IsCancellationRequested) return;
-                        try
-                        {
-                            for (int i = 0; i < queueData.Count; i++) // re-send failed packets on the next time.
-                            {
-                                await Task.Delay(sendRateUDP);
-                                if (queueData.TryDequeue(out byte[] buffer)) // dequeue data.
-                                {
-                                    if (player.rPEndPoint != null && player.tcpClient != null) // rPEndPointis not thread-safe....  but as it is assigned only once and only by a single thread, it doesn't matter.
-                                        await player.udpClient?.SendAsync(buffer, buffer.Length, player.rPEndPoint); // send message
-                                }
-                            }
+                            manualResetEvent.WaitOne(); // wait for data queued
                         }
-                        catch (ThreadInterruptedException) { } // ignore
-                        catch (ThreadAbortException) { } // ignore
-                        catch (ObjectDisposedException) { } // ignore disposed object log.
-                        catch (Exception ex) { Utils.StackTrace(ex); }
-                    };
-                }
+                    }
+                    catch (ThreadInterruptedException) { } // ignore
+                    catch (ThreadAbortException) { } // ignore
+                    catch (ObjectDisposedException) { } // ignore disposed object log.
+                    catch (Exception ex) { Utils.StackTrace(ex); }
+                };
             }
-            TCP();
-            UDP();
         }
 
         void PacketProcessing(Player mSender, byte[] buffer, bool isUDP) // process packets received from clients.

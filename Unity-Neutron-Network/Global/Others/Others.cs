@@ -10,3 +10,16 @@ public class CachedBuffer
     [NonSerialized] public Player owner;
     [ReadOnly] public CachedPacket cachedPacket;
 }
+
+[Serializable]
+public class DataBuffer
+{
+    public Protocol protocol;
+    public byte[] buffer;
+
+    public DataBuffer(Protocol protocol, Byte[] buffer)
+    {
+        this.protocol = protocol;
+        this.buffer = buffer;
+    }
+}

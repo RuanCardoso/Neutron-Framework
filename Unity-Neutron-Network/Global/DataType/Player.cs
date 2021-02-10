@@ -51,13 +51,7 @@ namespace NeutronNetwork
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public NeutronQueueData qDataTCP = new NeutronQueueData();
-        /// <summary>
-        /// queue of data UDP.
-        /// returns null on the client.
-        /// not serialized over the network.
-        /// </summary>
-        [NonSerialized] public NeutronQueueData qDataUDP = new NeutronQueueData();
+        [NonSerialized] public NeutronQueueData qData = new NeutronQueueData();
         /// <summary>
         /// id of database.
         /// </summary>
@@ -167,6 +161,8 @@ namespace NeutronNetwork
 
         public void Dispose()
         {
+            _cts.Cancel();
+            _cts.Dispose();
             udpClient?.Dispose();
             tcpClient?.Dispose();
         }

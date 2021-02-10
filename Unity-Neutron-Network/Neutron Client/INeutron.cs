@@ -135,10 +135,6 @@ namespace NeutronNetwork
         /// This event is triggered when room properties changed.
         /// </summary>
         public event Events.OnRoomPropertiesChanged OnRoomPropertiesChanged;
-        /// <summary>
-        /// Cancellation token.
-        /// </summary>
-        private CancellationTokenSource _cts = new CancellationTokenSource();
 
         private void Update()
         {
@@ -193,11 +189,14 @@ namespace NeutronNetwork
                     {
                         IsConnected = true;
                         InitConnect();
-                        ThreadPool.QueueUserWorkItem((e) =>
+                        Thread _client = new Thread(() =>
                         {
-                            ReadTCPData(e);
-                            ReadUDPData(e);
-                        }, _cts.Token);
+                            ReadTCPData(_cts.Token);
+                            //ReadUDPData(_cts.Token);
+                        });
+                        _client.Priority = System.Threading.ThreadPriority.BelowNormal;
+                        _client.IsBackground = true;
+                        _client.Start();
                     }
                     else if (!_TCPSocket.Connected)
                     {
@@ -251,11 +250,11 @@ namespace NeutronNetwork
                 using (var buffStream = new BufferedStream(netStream, Communication.BUFFER_SIZE))
                     do
                     {
-                        if (await Communication.ReadAsyncBytes(buffStream, messageLenBuffer, 0, sizeof(int)))
+                        if (await Communication.ReadAsyncBytes(buffStream, messageLenBuffer, 0, sizeof(int), token))
                         {
                             int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
                             byte[] messageBuffer = new byte[fixedLength + sizeof(int)];
-                            if (await Communication.ReadAsyncBytes(buffStream, messageBuffer, sizeof(int), fixedLength))
+                            if (await Communication.ReadAsyncBytes(buffStream, messageBuffer, sizeof(int), fixedLength, token))
                             {
                                 using (NeutronReader messageReader = new NeutronReader(messageBuffer, sizeof(int), fixedLength))
                                 {
