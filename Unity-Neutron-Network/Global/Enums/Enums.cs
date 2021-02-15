@@ -42,6 +42,7 @@ public enum Packet : byte
     Nickname,
     SetPlayerProperties,
     SetRoomProperties,
+    Test,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
     //======================================================

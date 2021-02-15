@@ -20,7 +20,7 @@ namespace NeutronNetwork.Internal.Extesions
         /// queue data in server.
         /// </summary>
         /// <param name="action"></param>
-        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.mainThreadActions);
+        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.monoActions);
         /// <summary>
         /// queue data in client.
         /// </summary>
@@ -149,22 +149,22 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, Protocol protocolType)
         {
-            buffer = buffer.Compress(Neutron.Server.COMPRESSION_MODE);
+            buffer = buffer.Compress((Compression)NeutronServer.IData.compressionOptions);
             switch (protocolType)
             {
                 case Protocol.Tcp:
-                    NeutronSFunc.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), false);
+                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), false);
                     break;
                 case Protocol.Udp:
-                    NeutronSFunc.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), true);
+                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), true);
                     break;
             }
         }
 
         public static void Send(this Player mSender, byte[] buffer)
         {
-            buffer = buffer.Compress(Neutron.Server.COMPRESSION_MODE);
-            NeutronSFunc.SocketProtocol(mSender, SendTo.Only, buffer, SendBroadcast(mSender, Broadcast.None), false);
+            buffer = buffer.Compress((Compression)NeutronServer.IData.compressionOptions);
+            NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, SendBroadcast(mSender, Broadcast.None), false);
         }
 
         public static bool IsInChannel(this Player _player)

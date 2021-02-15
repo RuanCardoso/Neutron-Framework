@@ -17,7 +17,9 @@ public class IData
     public int voicePort { get; set; }
     public int backLog { get; set; }
     public int serverFPS { get; set; }
-    public int serverDPF { get; set; }
+    public int serverMonoChunkSize { get; set; }
+    public int serverPacketChunkSize { get; set; }
+    public int serverProcessChunkSize { get; set; }
     public int serverSendRate { get; set; }
     public int serverSendRateUDP { get; set; }
     public int serverReceiveRate { get; set; }
@@ -25,7 +27,7 @@ public class IData
     public int clientReceiveRate { get; set; }
     public int clientReceiveRateUDP { get; set; }
     public int clientFPS { get; set; }
-    public int clientDPF { get; set; }
+    public int clientMonoChunkSize { get; set; }
     public int clientSendRate { get; set; }
     public int clientSendRateUDP { get; set; }
     public bool serverNoDelay { get; set; }

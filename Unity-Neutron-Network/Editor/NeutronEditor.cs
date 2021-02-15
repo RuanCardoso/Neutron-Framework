@@ -13,15 +13,11 @@ public class NeutronEditor : EditorWindow
 {
     bool onRPCViewerLoaded = false;
     int windowSelected = 0;
-    //------------------------------------------------------------------------------------------------------------
     List<MethodInfo[]> viewers = new List<MethodInfo[]>();
-    //------------------------------------------------------------------------------------------------------------
     Dictionary<string, object> duplicateEntrys = new Dictionary<string, object>();
-    //------------------------------------------------------------------------------------------------------------
     [SerializeField] Compression compressionOptions;
-    //------------------------------------------------------------------------------------------------------------
-    [SerializeField] int serverPort = 5055, voicePort = 5056, backLog = 10, serverFPS = 45, serverDPF = 30, serverSendRate = 3, serverSendRateUDP = 3;
-    [SerializeField] int serverReceiveRate = 3, serverReceiveRateUDP = 3, clientReceiveRate = 3, clientReceiveRateUDP = 3, clientFPS = 45, clientDPF = 30, clientSendRate = 3, clientSendRateUDP = 3;
+    [SerializeField] int serverPort = 5055, voicePort = 5056, backLog = 10, serverFPS = 45, serverMonoChunkSize = 30, serverPacketChunkSize = 30, serverProcessChunkSize = 30, serverSendRate = 3, serverSendRateUDP = 3;
+    [SerializeField] int serverReceiveRate = 3, serverReceiveRateUDP = 3, clientReceiveRate = 3, clientReceiveRateUDP = 3, clientFPS = 45, clientMonoChunkSize = 30, clientSendRate = 3, clientSendRateUDP = 3;
     [SerializeField] bool serverNoDelay, clientNoDelay, antiCheat = true, dontDestroyOnLoad = true, UDPDontFragment = true;
     [SerializeField] int speedHackTolerance = 10, teleportTolerance = 15, max_rec_msg, max_send_msg, limit_of_conn_by_ip;
     [SerializeField] string ipAddress = "localhost";
@@ -126,7 +122,9 @@ public class NeutronEditor : EditorWindow
             EditorGUI.BeginChangeCheck();
             backLog = EditorGUILayout.IntField("Backlog", backLog);
             serverFPS = EditorGUILayout.IntField("FPS", serverFPS);
-            serverDPF = EditorGUILayout.IntField("DPF", serverDPF);
+            serverMonoChunkSize = EditorGUILayout.IntField("Mono Chunk Size", serverMonoChunkSize);
+            serverPacketChunkSize = EditorGUILayout.IntField("Packet Chunk Size", serverPacketChunkSize);
+            serverProcessChunkSize = EditorGUILayout.IntField("Client Data Chunk Size", serverProcessChunkSize);
             serverSendRate = EditorGUILayout.IntField("Send Rate(TCP)", serverSendRate);
             serverReceiveRate = EditorGUILayout.IntField("Receive Rate(TCP)", serverReceiveRate);
             serverSendRateUDP = EditorGUILayout.IntField("Send Rate(UDP)", serverSendRateUDP);
@@ -187,7 +185,7 @@ public class NeutronEditor : EditorWindow
             EditorGUILayout.HelpBox("Some values ​​may directly affect the\r\nperformance of the client(PC & Game).\r\n\r\nThere may also be lag and bottlenecks\r\n in the network.", MessageType.Warning);
             EditorGUI.BeginChangeCheck();
             clientFPS = EditorGUILayout.IntField("FPS", clientFPS);
-            clientDPF = EditorGUILayout.IntField("DPF", clientDPF);
+            clientMonoChunkSize = EditorGUILayout.IntField("Mono Chunk Size", clientMonoChunkSize);
             clientSendRate = EditorGUILayout.IntField("Send Rate(TCP)", clientSendRate);
             clientReceiveRate = EditorGUILayout.IntField("Receive Rate(TCP)", clientReceiveRate);
             clientSendRateUDP = EditorGUILayout.IntField("Send Rate(UDP)", clientSendRateUDP);

@@ -7,6 +7,7 @@ using System.Net;
 using System.Collections.Concurrent;
 using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
+using NeutronNetwork.Internal.Wrappers;
 
 public class Utils
 {
@@ -34,12 +35,10 @@ public class Utils
                 return 0;
         }
     }
-    static int sup = 0;
+    static int uniqueID = 3005975;
     public static int GetUniqueID(IPEndPoint endPoint)
     {
-        sup++;
-        Utils.Logger("Clientes conectados: " + sup);
-        return Math.Abs(endPoint.GetHashCode() ^ endPoint.Port ^ new System.Random().Next(1, 999) ^ sup);
+        return uniqueID++;
     }
 
     public static int ValidateAndDeserializeJson<T>(string json, out T obj)
@@ -57,16 +56,13 @@ public class Utils
         else return 2;
     }
 
-    public static void Dequeue(ref ConcurrentQueue<Action> cQueue, int count)
+    public static void Dequeue(NeutronQueue<Action> cQueue, int count)
     {
         try
         {
             for (int i = 0; i < count && cQueue.Count > 0; i++)
             {
-                if (cQueue.TryDequeue(out Action action))
-                {
-                    action.Invoke();
-                }
+                cQueue.SafeDequeue().Invoke();
             }
         }
         catch (Exception ex) { Utils.StackTrace(ex); }
@@ -137,9 +133,9 @@ public class Utils
         SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
     }
 
-    public static void Enqueue(Action action, ConcurrentQueue<Action> cQueue)
+    public static void Enqueue(Action action, NeutronQueue<Action> cQueue)
     {
-        cQueue.Enqueue(action);
+        cQueue.SafeEnqueue(action);
     }
 
     public static void Logger(object message)

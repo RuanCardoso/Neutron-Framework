@@ -27,8 +27,8 @@ namespace NeutronNetwork.Components
         [SerializeField] private Broadcast broadcast;
         [SerializeField] private Protocol protocol = Protocol.Tcp;
 
-        [SerializeField] [Range(0, 10)] private float syncTime = 0.1f;
-        [SerializeField] [Range(0, 10)] private float smoothSync = 5f;
+        [SerializeField] [Range(0, 30)] private float syncTime = 0.1f;
+        [SerializeField] [Range(0, 30)] private float smoothSync = 5f;
         [SerializeField] private bool isCached;
 
         private Vector3 velocity;

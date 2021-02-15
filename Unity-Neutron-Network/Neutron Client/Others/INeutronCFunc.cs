@@ -1,6 +1,7 @@
 ﻿using NeutronNetwork;
 using NeutronNetwork.Internal.Comms;
 using NeutronNetwork.Internal.Extesions;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using System.Net;
@@ -73,8 +74,9 @@ namespace NeutronNetwork.Internal.Client
                     await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
                 }
             }
-            catch (ObjectDisposedException) { Utils.Logger("Allocated memory released."); }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (ObjectDisposedException) { }
+            catch (SocketException) { }
+            catch (Exception ex) { }
         }
 
         protected async void SendUDP(byte[] message)
@@ -83,8 +85,9 @@ namespace NeutronNetwork.Internal.Client
             {
                 await _UDPSocket.SendAsync(message, message.Length, endPointUDP);
             }
-            catch (ObjectDisposedException) { Utils.Logger("Allocated memory released."); }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (ObjectDisposedException) { }
+            catch (SocketException) { }
+            catch (Exception ex) { }
         }
 
         protected void InitConnect()
@@ -218,7 +221,15 @@ namespace NeutronNetwork.Internal.Client
             {
                 NeutronView obj = neutronObject;
                 //-----------------------------------------------------------------------------------------------------------\\
-                if (obj.neutronSyncBehaviour != null) JsonUtility.FromJsonOverwrite(properties, obj.neutronSyncBehaviour);
+                if (obj.neutronSyncBehaviour != null)
+                {
+                    var sync = obj.neutronSyncBehaviour;
+                    JsonConvert.PopulateObject(properties, sync, new JsonSerializerSettings()
+                    {
+                        ObjectCreationHandling = ObjectCreationHandling.Replace
+                    });
+                    JsonUtility.FromJsonOverwrite(properties, sync);
+                }
                 else Utils.LoggerError("It was not possible to find a class that inherits from Neutron Sync Behavior.");
             }
             //else Utils.LoggerError("HJP: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");

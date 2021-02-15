@@ -12,34 +12,32 @@ using System.IO;
 
 namespace NeutronNetwork.Internal.Server
 {
-    public class NeutronSFunc : NeutronSConst
+    public class NeutronServerFunctions : NeutronServerConstants
     {
-        public static NeutronSFunc _;
-
+        public static NeutronServerFunctions _;
         public static event SEvents.OnPlayerDisconnected onPlayerDisconnected;
         public static event SEvents.OnPlayerDestroyed onPlayerDestroyed;
         public static event SEvents.OnPlayerJoinedChannel onPlayerJoinedChannel;
         public static event SEvents.OnPlayerLeaveChannel onPlayerLeaveChannel;
         public static event SEvents.OnPlayerJoinedRoom onPlayerJoinedRoom;
         public static event SEvents.OnPlayerLeaveRoom onPlayerLeaveRoom;
-        public static SEvents.OnPlayerInstantiated onPlayerInstantiated;
-        public static SEvents.OnPlayerPropertiesChanged onChanged;
-        public static SEvents.OnCheatDetected onCheatDetected;
-        public static SEvents.OnServerStart onServerStart;
+        public static event SEvents.OnPlayerPropertiesChanged onPlayerPropertiesChanged;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //MonoBehaviour
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        public void Awake()
+        public new void Awake()
         {
+            base.Awake();
             _ = this; // set this instance.
         }
-
+#if UNITY_SERVER || UNITY_EDITOR
         private void Update()
         {
-            Utils.Dequeue(ref mainThreadActions, DPF); // process de server data. // [Thread-Safe]
+            Utils.Dequeue(monoActions, IData.serverMonoChunkSize); // process de server data. // [Thread-Safe]
         }
+#endif
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Server Functions
@@ -70,8 +68,18 @@ namespace NeutronNetwork.Internal.Server
 
         protected bool RemovePlayer(Player mPlayer) // [Thread-Safe]
         {
+            void SYNUnset()
+            {
+                string addr = mPlayer.tcpClient.RemoteEndPoint().Address.ToString();
+                if (SYN.TryGetValue(addr, out int value))
+                {
+                    SYN[addr] = value - 1;
+                }
+            }
+
             if (Players.TryRemove(mPlayer.tcpClient, out Player removedPlayer))
             {
+                SYNUnset();
                 if (removedPlayer.neutronView != null)
                 {
                     new Action(() =>
@@ -91,7 +99,7 @@ namespace NeutronNetwork.Internal.Server
 
         protected void Dispose() // [Thread-Safe]
         {
-            _TCPListen.Server.Close();
+            ServerSocket.Stop();
         }
 
         private void Cache(int ID, Player owner, byte[] buffer, CachedPacket packet) // [Thread-Safe]
@@ -151,14 +159,14 @@ namespace NeutronNetwork.Internal.Server
             switch (sendTo)
             {
                 case SendTo.Only:
-                    mPlayer.qData.Enqueue(dataBuffer);
+                    mPlayer.qData.SafeEnqueue(dataBuffer);
                     break;
                 case SendTo.All:
                     for (int i = 0; i < ToSend.Length; i++)
                     {
                         if (mPlayer.isBot)
                             if (!ToSend[i].Equals(mPlayer) && ToSend[i].isBot) continue;
-                        ToSend[i].qData.Enqueue(dataBuffer);
+                        ToSend[i].qData.SafeEnqueue(dataBuffer);
                     }
                     break;
                 case SendTo.Others:
@@ -166,7 +174,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         if (ToSend[i].Equals(mPlayer)) continue;
                         else if (mPlayer.isBot && ToSend[i].isBot) continue;
-                        ToSend[i].qData.Enqueue(dataBuffer);
+                        ToSend[i].qData.SafeEnqueue(dataBuffer);
                     }
                     break;
             }

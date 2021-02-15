@@ -141,21 +141,24 @@ namespace NeutronNetwork.Internal.Comms
 
         public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int count, CancellationToken token)
         {
-            int bytesRead = 0;
-            try
+            return await Task.Run(async () =>
             {
-                while (count > 0)
+                int bytesRead = 0;
+                try
                 {
-                    if ((bytesRead = await stream.ReadAsync(buffer, offset, count, token)) > 0)
+                    while (count > 0)
                     {
-                        offset += bytesRead;
-                        count -= bytesRead;
+                        if ((bytesRead = await stream.ReadAsync(buffer, offset, count, token)) > 0)
+                        {
+                            offset += bytesRead;
+                            count -= bytesRead;
+                        }
+                        else return false;
                     }
-                    else return false;
+                    return count <= 0;
                 }
-                return count == 0;
-            }
-            catch { return false; }
+                catch { return false; }
+            });
         }
     }
 }

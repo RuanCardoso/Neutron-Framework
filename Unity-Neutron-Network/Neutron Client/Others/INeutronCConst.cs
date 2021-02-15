@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using NeutronNetwork.Internal.Wrappers;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
@@ -12,8 +13,8 @@ namespace NeutronNetwork.Internal.Client
     {   // It inherits from MonoBehaviour because it is an instance of GameObject.
         protected Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
         //-------------------------------------------------------------------------------------------------------------
-        public ConcurrentQueue<Action> mainThreadActions;
-        public ConcurrentQueue<Action> monoBehaviourRPCActions;
+        public NeutronQueue<Action> mainThreadActions;
+        public NeutronQueue<Action> monoBehaviourRPCActions;
         //-------------------------------------------------------------------------------------------------------------
         protected TcpClient _TCPSocket;
         protected UdpClient _UDPSocket;
@@ -43,8 +44,8 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
-            mainThreadActions = new ConcurrentQueue<Action>();
-            monoBehaviourRPCActions = new ConcurrentQueue<Action>();
+            mainThreadActions = new NeutronQueue<Action>();
+            monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------
             _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Tcp)));
             _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
@@ -57,10 +58,14 @@ namespace NeutronNetwork.Internal.Client
 
         public void Dispose()
         {
-            _cts.Cancel();
-            _cts.Dispose();
-            _TCPSocket.Close();
-            _UDPSocket.Close();
+            try
+            {
+                _cts.Cancel();
+                _cts.Dispose();
+                _TCPSocket.Close();
+                _UDPSocket.Close();
+            }
+            catch { }
         }
 
         private void OnApplicationQuit()

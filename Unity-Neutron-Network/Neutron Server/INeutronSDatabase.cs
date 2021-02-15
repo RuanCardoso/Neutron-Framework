@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace NeutronNetwork.Internal.Server
 {
-    public class NeutronSDatabase : NeutronSFunc
+    public class NeutronSDatabase : NeutronServerFunctions
     {
         
     }

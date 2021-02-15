@@ -51,7 +51,7 @@ namespace NeutronNetwork
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public NeutronQueueData qData = new NeutronQueueData();
+        [NonSerialized] public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
         /// <summary>
         /// id of database.
         /// </summary>

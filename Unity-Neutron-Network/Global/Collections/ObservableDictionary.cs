@@ -6,34 +6,28 @@ using UnityEngine;
 namespace NeutronNetwork.Wrappers
 {
     [Serializable]
-    public class ObservableList<T> : List<T>
+    public class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>
     {
         public delegate void OnChanged();
         public event OnChanged onChanged;
-        public new void Add(T item)
+        public new void Add(TKey key, TValue item)
         {
-            base.Add(item);
+            base.Add(key, item);
             onChanged?.Invoke();
         }
 
-        public new void Remove(T item)
+        public new void Remove(TKey key)
         {
-            if (base.Remove(item))
+            if (base.Remove(key))
                 onChanged?.Invoke();
         }
 
-        public new void RemoveAt(int index)
+        public new TValue this[TKey key]
         {
-            base.RemoveAt(index);
-            onChanged?.Invoke();
-        }
-
-        public new T this[int index]
-        {
-            get => base[index];
+            get => base[key];
             set
             {
-                base[index] = value;
+                base[key] = value;
                 onChanged?.Invoke();
             }
         }
