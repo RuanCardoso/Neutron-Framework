@@ -7,6 +7,7 @@ using System.Threading;
 using UnityEngine;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
+using NeutronNetwork.Internal;
 
 namespace NeutronNetwork
 {
@@ -110,10 +111,10 @@ namespace NeutronNetwork
                     Properties = _properties;
                     break;
                 case 2:
-                    Utils.LoggerError($"Properties is empty -> Channel: [{ID}]");
+                    Utilities.LoggerError($"Properties is empty -> Channel: [{ID}]");
                     break;
                 case 0:
-                    Utils.LoggerError($"Invalid JSON error -> Channel: [{ID}]");
+                    Utilities.LoggerError($"Invalid JSON error -> Channel: [{ID}]");
                     break;
             }
         }
@@ -137,6 +138,15 @@ namespace NeutronNetwork
                 }
                 errorMessage = "It was not possible to enter this channel.";
                 return false;
+            }
+        }
+
+        public bool RemovePlayer(Player player)
+        {
+            lock (SyncPlayers) // Thread safe.
+            {
+                countOfPlayers--;
+                return Players.Remove(player);
             }
         }
 

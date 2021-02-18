@@ -14,6 +14,7 @@ using NeutronNetwork.Internal.Server;
 using NeutronNetwork.Internal.Client.InternalEvents;
 using NeutronNetwork.Internal.Attributes;
 using System.IO;
+using NeutronNetwork.Internal;
 
 namespace NeutronNetwork
 {
@@ -26,7 +27,7 @@ namespace NeutronNetwork
             get {
                 if (NeutronServerFunctions._ != null) return (NeutronServer)NeutronServerFunctions._;
 #if !UNITY_EDITOR && !UNITY_SERVER
-                Utils.LoggerError("You cannot access server functions on the client outside of Unity Editor.");
+                Utilities.LoggerError("You cannot access server functions on the client outside of Unity Editor.");
 #endif
                 return null;
             }
@@ -61,7 +62,7 @@ namespace NeutronNetwork
         public string Nickname {
             get => _nickname;
             set {
-                if (string.IsNullOrEmpty(value)) Utils.LoggerError("Nick not allowed");
+                if (string.IsNullOrEmpty(value)) Utilities.LoggerError("Nick not allowed");
                 else
                     SetNickname(value);
             }
@@ -180,20 +181,20 @@ namespace NeutronNetwork
                 if (!IsBot)
                 {
 #if UNITY_SERVER
-            Utils.LoggerError($"MainClient disabled in server!\r\n");
+            Utilities.LoggerError($"MainClient disabled in server!\r\n");
             return;
 #endif
                 }
                 else if (IsBot)
                 {
 #if !UNITY_SERVER && !UNITY_EDITOR
-            Utils.LoggerError($"Bots disabled in client!");
+            Utilities.LoggerError($"Bots disabled in client!");
             return;
 #endif
                 }
 
                 IData = Data.LoadSettings(); // load settings
-                if (!Utils.LoggerError("Failed to load settings.", IData)) return;
+                if (!Utilities.LoggerError("Failed to load settings.", IData)) return;
                 if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase) || IsBot) IData.ipAddress = "127.0.0.1";
                 COMPRESSION_MODE = (Compression)IData.compressionOptions;
                 Internal(); // initialize cliente.
@@ -201,7 +202,7 @@ namespace NeutronNetwork
                 {
                     //////////////////////////////////////////////////////////////////////////////////
 #if !UNITY_SERVER
-                    Utils.Logger("Wait, connecting to the server.");
+                    Utilities.Logger("Wait, connecting to the server.");
 #endif
                     //////////////////////////////////////////////////////////////////////////////////
                     await _TCPSocket.ConnectAsync(IData.ipAddress, IData.serverPort); // await connection.
@@ -232,7 +233,7 @@ namespace NeutronNetwork
                     else if (!_TCPSocket.Connected)
                     {
                         IsConnected = false;
-                        Utils.LoggerError("Unable to connect to the server");
+                        Utilities.LoggerError("Unable to connect to the server");
                         Dispose();
                         Destroy(this);
                         new Action(() => OnNeutronConnected?.Invoke(false, this)).ExecuteOnMainThread(this);
@@ -241,7 +242,7 @@ namespace NeutronNetwork
                 else
                 {
                     IsConnected = false;
-                    Utils.LoggerError("Connection Refused!");
+                    Utilities.LoggerError("Connection Refused!");
                     Dispose();
                     Destroy(this);
                 }
@@ -249,7 +250,7 @@ namespace NeutronNetwork
             catch
             {
                 IsConnected = false;
-                Utils.LoggerError("NOP");
+                Utilities.LoggerError("NOP");
                 Dispose();
                 Destroy(this);
                 new Action(() => OnNeutronConnected?.Invoke(false, this)).ExecuteOnMainThread(this);
@@ -313,7 +314,7 @@ namespace NeutronNetwork
                     } while (!token.IsCancellationRequested);
             }
             catch (ObjectDisposedException) { }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (Exception ex) { Utilities.StackTrace(ex); }
         }
 
         public void GetNetworkStats(out long Ping, out double PcktLoss, float delay)
@@ -355,7 +356,7 @@ namespace NeutronNetwork
                     switch (mCommand)
                     {
                         case Packet.Test:
-                            Utils.LoggerError("Teste do servidor...... recebido");
+                            Utilities.LoggerError("Teste do servidor...... recebido");
                             break;
                         case Packet.Connected:
                             {
@@ -494,7 +495,7 @@ namespace NeutronNetwork
                     }
                 }
             }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (Exception ex) { Utilities.StackTrace(ex); }
         }
 
         //public static void SendVoice (byte[] buffer, int lastPos) {

@@ -66,13 +66,15 @@ namespace NeutronNetwork
                 StartCoroutine(InitFieldsSync());
 #endif
         }
-#if UNITY_SERVER || UNITY_EDITOR
+
         protected void Update()
         {
+#if UNITY_SERVER || UNITY_EDITOR
             if (IsServer && syncQueue.Count > 0)
                 syncQueue.Dequeue().Invoke();
-        }
 #endif
+        }
+
         protected void Set()
         {
 #if UNITY_SERVER || UNITY_EDITOR
@@ -127,9 +129,9 @@ namespace NeutronNetwork
                                 value = Cloneable(value);
                                 observerDict.Add(fields[i].Name, value);
                             }
-                            else { Utils.LoggerError($"[{fields[i].Name}] Is not serializable!"); return false; }
+                            else { Utilities.LoggerError($"[{fields[i].Name}] Is not serializable!"); return false; }
                         }
-                        else { Utils.LoggerError($"[SyncVar] unsupported type -> [{valueType.Name}]"); return false; }
+                        else { Utilities.LoggerError($"[SyncVar] unsupported type -> [{valueType.Name}]"); return false; }
                     }
                     else continue;
                 }
@@ -177,9 +179,9 @@ namespace NeutronNetwork
                 SyncVarAttribute syncAttribute = fieldInfo.GetCustomAttribute<SyncVarAttribute>();
                 if (fieldInfo.FieldType.IsGenericType)
                     Synchronize(fieldInfo, syncAttribute);
-                else Utils.LoggerError($"this method can only be used in observable collections. [{fieldInfo.Name}] use \"Set()\" instead of \"Set(string fieldName)\"");
+                else Utilities.LoggerError($"this method can only be used in observable collections. [{fieldInfo.Name}] use \"Set()\" instead of \"Set(string fieldName)\"");
             }
-            else Utils.LoggerError("Invalid fieldName on Observable Collection");
+            else Utilities.LoggerError("Invalid fieldName on Observable Collection");
         }
 
         private void SetOptions(string functionName, SendTo sendTo, Broadcast broadcast, Protocol protocolType, string field)
@@ -213,7 +215,7 @@ namespace NeutronNetwork
                     INeutronCloneable sync = (INeutronCloneable)newValue;
                     return sync.Clone();
                 }
-                else Utils.LoggerError($"only classes can implement INeutronCloneable");
+                else Utilities.LoggerError($"only classes can implement INeutronCloneable");
             }
             return newValue;
         }
@@ -222,7 +224,7 @@ namespace NeutronNetwork
         {
             if (item.IsSerializable)
                 supportedTypes.Add(item);
-            else Utils.LoggerError($"[{item.Name}] Is not serializable!");
+            else Utilities.LoggerError($"[{item.Name}] Is not serializable!");
         }
 
         private bool CheckKeyExists<T>(string key, out T value)

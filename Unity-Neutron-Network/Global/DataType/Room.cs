@@ -1,6 +1,6 @@
-﻿using NeutronNetwork.Internal.Attributes;
+﻿using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -28,8 +28,10 @@ namespace NeutronNetwork
         /// Current amount of players
         /// </summary>
         [SerializeField, ReadOnly] private int countOfPlayers;
-        public int CountOfPlayers {
-            get {
+        public int CountOfPlayers
+        {
+            get
+            {
                 return countOfPlayers;
             }
         }
@@ -92,10 +94,10 @@ namespace NeutronNetwork
                     Properties = _properties;
                     break;
                 case 2:
-                    Utils.LoggerError($"Properties is empty -> Room: [{ID}]");
+                    Utilities.LoggerError($"Properties is empty -> Room: [{ID}]");
                     break;
                 case 0:
-                    Utils.LoggerError($"Invalid JSON error -> Room: [{ID}]");
+                    Utilities.LoggerError($"Invalid JSON error -> Room: [{ID}]");
                     break;
             }
         }
@@ -119,6 +121,15 @@ namespace NeutronNetwork
                 }
                 errorMessage = "It was not possible to enter this room.";
                 return false;
+            }
+        }
+
+        public bool RemovePlayer(Player player)
+        {
+            lock (SyncPlayers) // Thread safe.
+            {
+                countOfPlayers--;
+                return Players.Remove(player);
             }
         }
 

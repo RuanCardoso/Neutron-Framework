@@ -70,7 +70,7 @@ namespace NeutronNetwork.Internal.Server
             onServerAwake?.Invoke();
             SerializeInspector();
             IData IData = Data.LoadSettings();
-            if (IData == null) Utils.LoggerError("Failed to initialize server");
+            if (IData == null) Utilities.LoggerError("Failed to initialize server");
             else
             {
                 try
@@ -80,12 +80,12 @@ namespace NeutronNetwork.Internal.Server
                     ServerSocket.Start(IData.backLog);
                     _ready = true;
                 }
-                catch (Exception ex) { Utils.LoggerError(ex.Message); }
+                catch (Exception ex) { Utilities.LoggerError(ex.Message); }
             }
 #endif
 #else
             Console.WriteLine("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
-            Utils.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
+            Utilities.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
 #endif
         }
 

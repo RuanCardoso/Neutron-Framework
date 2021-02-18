@@ -203,7 +203,6 @@ public class NeutronEditor : EditorWindow
     {
         File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(Data.PASS));
         AssetDatabase.Refresh();
-        Utils.Logger("Saved!");
     }
 
     private void OnEnable()

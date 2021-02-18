@@ -33,7 +33,7 @@ namespace NeutronNetwork.Internal.Comms
                     }
                     return true;
                 }
-                else { if (message != string.Empty) Utils.LoggerError(message); continue; }
+                else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
             }
             return false;
         }
@@ -51,7 +51,7 @@ namespace NeutronNetwork.Internal.Comms
                     Invoker.Invoke(mInstance, new object[] { new NeutronReader(parameters) });
                     break;
                 }
-                else { if (message != string.Empty) Utils.LoggerError(message); continue; }
+                else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
             }
         }
 
@@ -104,7 +104,7 @@ namespace NeutronNetwork.Internal.Comms
             catch (Exception ex)
             {
                 // $"The scope of the Static({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"
-                Utils.StackTrace(ex);
+                Utilities.StackTrace(ex);
                 return false;
             }
         }
@@ -135,7 +135,7 @@ namespace NeutronNetwork.Internal.Comms
             }
             catch (Exception ex)
             {
-                Utils.LoggerError(ex.Message);
+                Utilities.LoggerError(ex.Message);
             }
         }
 

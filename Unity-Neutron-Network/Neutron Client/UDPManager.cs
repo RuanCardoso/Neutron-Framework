@@ -50,10 +50,10 @@
 //                }
 //                else
 //                {
-//                    Utils.LoggerError("UDP Error");
+//                    Utilities.LoggerError("UDP Error");
 //                }
 //            }
-//            catch (SocketException ex) { Utils.LoggerError(ex.Message + ":" + ex.ErrorCode); }
+//            catch (SocketException ex) { Utilities.LoggerError(ex.Message + ":" + ex.ErrorCode); }
 //        }
 //    }
 //}

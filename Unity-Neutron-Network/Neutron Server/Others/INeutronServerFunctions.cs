@@ -300,7 +300,6 @@ namespace NeutronNetwork.Internal.Server
         {
             try
             {
-                Debug.Log(mSender.ID);
                 if (!mSender.IsInChannel()) // Thread safe.
                 {
                     using (NeutronWriter writer = new NeutronWriter())
@@ -314,7 +313,7 @@ namespace NeutronNetwork.Internal.Server
                 }
                 else SendErrorMessage(mSender, mCommand, "WARNING: You are trying to get channels from within a channel, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of channels within a channel, in order to save bandwidth.");
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (Exception ex) { Utilities.LoggerError(ex.Message); }
         }
         // [Thread-Safe]
         protected void HandleJoinChannel(Player mSender, Packet mCommand, int channelID)
@@ -352,7 +351,7 @@ namespace NeutronNetwork.Internal.Server
                 else SendErrorMessage(mSender, mCommand, "ERROR: We couldn't find a channel with this ID.");
 
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (Exception ex) { Utilities.LoggerError(ex.Message); }
         }
         // [Thread-Safe]
         protected void HandleCreateRoom(Player mSender, Packet mCommand, string roomName, int maxPlayers, string Password, bool isVisible, bool JoinOrCreate, string options)
@@ -396,7 +395,7 @@ namespace NeutronNetwork.Internal.Server
                 }
                 else SendErrorMessage(mSender, mCommand, "ERROR: You cannot create a room by being inside one. Call LeaveRoom or you not within a channel");
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (Exception ex) { Utilities.LoggerError(ex.Message); }
         }
         // [Thread-Safe]
         protected void HandleGetCached(Player mSender, CachedPacket packetToSendCache, int ID)
@@ -476,7 +475,7 @@ namespace NeutronNetwork.Internal.Server
                 }
                 else SendErrorMessage(mSender, mCommand, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (Exception ex) { Utilities.LoggerError(ex.Message); }
         }
 
         protected void HandleLeaveRoom(Player mSender, Packet mCommand)
@@ -491,7 +490,10 @@ namespace NeutronNetwork.Internal.Server
                     writer.Write(array);
                     mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Room, Protocol.Tcp);
                 }
+                Channel channel = Channels[mSender.currentChannel];
+                Room room = channel.GetRoom(mSender.currentRoom);
                 mSender.currentRoom = -1;
+                room.RemovePlayer(mSender);
             }
             else SendErrorMessage(mSender, mCommand, "ERROR: LeaveRoom Failed");
         }
@@ -508,6 +510,8 @@ namespace NeutronNetwork.Internal.Server
                     writer.Write(array);
                     mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Channel, Protocol.Tcp);
                 }
+                Channel channel = Channels[mSender.currentChannel];
+                channel.RemovePlayer(mSender);
                 mSender.currentChannel = -1;
             }
             else SendErrorMessage(mSender, mCommand, "ERROR: LeaveChannel Failed");
@@ -541,7 +545,7 @@ namespace NeutronNetwork.Internal.Server
                 }
                 else SendErrorMessage(mSender, mCommand, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
             }
-            catch (Exception ex) { Utils.LoggerError(ex.Message); }
+            catch (Exception ex) { Utilities.LoggerError(ex.Message); }
         }
 
         protected void HandleDestroyPlayer(Player mSender, Packet mCommand)
@@ -568,7 +572,9 @@ namespace NeutronNetwork.Internal.Server
                 byte[] arrayBytes = mSender.Serialize(); // write the player.
                 writer.WritePacket(Packet.SetPlayerProperties);
                 writer.WriteExactly(arrayBytes);
-                mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Channel, Protocol.Tcp);
+                if (mSender.IsInRoom())
+                    mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Room, Protocol.Tcp);
+                else mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Channel, Protocol.Tcp);
             }
         }
 

@@ -137,7 +137,7 @@ namespace NeutronNetwork
 
         public int ReadFixedLength(int len)
         {
-            if (len < sizeof(int)) Utils.LoggerError($"The first bytes must be at least 4 Bytes, increasing the size of the buffer can solve.: {len}");
+            if (len < sizeof(int)) Utilities.LoggerError($"The first bytes must be at least 4 Bytes, increasing the size of the buffer can solve.: {len}");
             return ReadInt32() + sizeof(int);
         }
 

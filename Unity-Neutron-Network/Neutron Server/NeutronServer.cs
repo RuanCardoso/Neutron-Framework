@@ -41,7 +41,7 @@ namespace NeutronNetwork.Internal.Server
         {
             Initialized = true;
             /////////////////////////////////////////////////////////////////////////////////
-            Utils.Logger("TCP and UDP have been initialized, the server is ready!\r\n");
+            Utilities.Logger("TCP and UDP have been initialized, the server is ready!\r\n");
             /////////////////////////////////////////////////////////////////////////////////
             Thread acptTh = new Thread((o) => OnAcceptedClient()); //* exclusive thread to accept connections.
             acptTh.Priority = System.Threading.ThreadPriority.Normal;
@@ -104,7 +104,7 @@ namespace NeutronNetwork.Internal.Server
                 {
                     if (value > LIMIT_OF_CONNECTIONS_BY_IP)
                     {
-                        Utils.LoggerError("Client not allowed!");
+                        Utilities.LoggerError("Client not allowed!");
                         synClient.Close();
                         return false;
                     }
@@ -133,7 +133,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         totalAmountOfPlayers++;
                         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        Utils.Logger($"Incoming client, IP: [{acceptedClient.RemoteEndPoint().Address}] | TCP: [{acceptedClient.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)newPlayer.udpClient.Client.LocalEndPoint).Port}] -:[{totalAmountOfPlayers}]");
+                        Utilities.Logger($"Incoming client, IP: [{acceptedClient.RemoteEndPoint().Address}] | TCP: [{acceptedClient.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)newPlayer.udpClient.Client.LocalEndPoint).Port}] -:[{totalAmountOfPlayers}]");
                         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         Thread procTh = new Thread(() => OnProcessData(newPlayer, cancellationTokenSource.Token)); //* because this method locks the thread, if it falls on a segment of "OnReceive" the data will not be received.
                         procTh.IsBackground = true;
@@ -191,7 +191,7 @@ namespace NeutronNetwork.Internal.Server
                 }
             }
             catch (ThreadAbortException) { }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (Exception ex) { Utilities.StackTrace(ex); }
         }
 
         private async void OnReceiveData(Player player, Protocol protocol, object toToken)
@@ -303,7 +303,7 @@ namespace NeutronNetwork.Internal.Server
             }
             catch (Exception ex)
             {
-                Utils.StackTrace(ex);
+                Utilities.StackTrace(ex);
             }
 #endif
         }
@@ -315,7 +315,7 @@ namespace NeutronNetwork.Internal.Server
 #if !DEVELOPMENT_BUILD
             if (!_ready)
             {
-                Utils.LoggerError("Failed to initialize server -> error code: 0x1003");
+                Utilities.LoggerError("Failed to initialize server -> error code: 0x1003");
                 return;
             }
             if (IData.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
@@ -323,11 +323,11 @@ namespace NeutronNetwork.Internal.Server
             InitilizeServer();
 #elif DEVELOPMENT_BUILD
         Console.Clear();
-        Utils.Logger("Development build is not supported on the Server.");
+        Utilities.Logger("Development build is not supported on the Server.");
 #endif
 #elif NET_STANDARD_2_0
         Console.Clear();
-        Utils.Logger(".NET Standard is not supported, change to .NET 4.x or IL2CPP.");
+        Utilities.Logger(".NET Standard is not supported, change to .NET 4.x or IL2CPP.");
 #endif
         }
 #endif
@@ -338,7 +338,7 @@ namespace NeutronNetwork.Internal.Server
             DisposeAllClients(); //* Dispose all client sockets.
             Dispose();
             //////////////////////////////////////////////////////
-            Utils.Logger("Server: All resources have been released!!");
+            Utilities.Logger("Server: All resources have been released!!");
             //////////////////////////////////////////////////////
         }
     }

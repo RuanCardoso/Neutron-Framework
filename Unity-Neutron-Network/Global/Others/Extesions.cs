@@ -124,7 +124,7 @@ namespace NeutronNetwork.Internal.Extesions
             }
             catch (Exception ex)
             {
-                Utils.LoggerError($"Falha ao deserilizar {ex.Message}");
+                Utilities.LoggerError($"Falha ao deserilizar {ex.Message}");
                 return default;
             }
         }

@@ -40,7 +40,7 @@ namespace NeutronNetwork
                     //NeutronSFunc.onPlayerInstantiated?.Invoke(mPlayer);
                 }
             }
-            catch (Exception ex) { Utils.StackTrace(ex); }
+            catch (Exception ex) { Utilities.StackTrace(ex); }
             return prefabPlayer;
         }
     }

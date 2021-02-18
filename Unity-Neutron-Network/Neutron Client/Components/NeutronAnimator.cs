@@ -62,7 +62,7 @@ namespace NeutronNetwork.Components
                         //-----------------------------------------------------------------------------------------------------------------------------
                         if (NeutronView._.NeutronView == null)
                         {
-                            Utils.LoggerError("NeutronView is null");
+                            Utilities.LoggerError("NeutronView is null");
                             return;
                         }
                         NeutronView._.RPC(254, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);

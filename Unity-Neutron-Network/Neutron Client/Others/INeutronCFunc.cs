@@ -178,7 +178,7 @@ namespace NeutronNetwork.Internal.Client
                 {
                     Communication.InitAPC(executeid, parameters, neutronObject);
                 }
-                //else Utils.LoggerError("APC: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
+                //else Utilities.LoggerError("APC: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
             }).ExecuteOnMainThread(_);
         }
 
@@ -191,7 +191,7 @@ namespace NeutronNetwork.Internal.Client
         //            _.onDatabasePacket(packet, response, _);
         //        }).ExecuteOnMainThread(_, false);
         //    }
-        //    else Utils.LoggerError("onDatabasePacket event not registered.");
+        //    else Utilities.LoggerError("onDatabasePacket event not registered.");
         //}
 
         protected void HandlePlayerDisconnected(Player player)
@@ -210,7 +210,7 @@ namespace NeutronNetwork.Internal.Client
                 //------------------------------------------------------------------------------------
                 playersObjects.TryRemove(player.ID, out NeutronView objRemoved);
             }
-            //else Utils.LoggerError("HPD: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
+            //else Utilities.LoggerError("HPD: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
         }
         protected void HandleJsonProperties(int ownerID, string properties)
         {
@@ -230,9 +230,9 @@ namespace NeutronNetwork.Internal.Client
                     });
                     JsonUtility.FromJsonOverwrite(properties, sync);
                 }
-                else Utils.LoggerError("It was not possible to find a class that inherits from Neutron Sync Behavior.");
+                else Utilities.LoggerError("It was not possible to find a class that inherits from Neutron Sync Behavior.");
             }
-            //else Utils.LoggerError("HJP: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
+            //else Utilities.LoggerError("HJP: An attempt was made to call a method on a local player who was not yet ready.  Most common cause: Server sending data before the local player is instantiated.");
         }
 
         private void InitializeContainer()
@@ -255,7 +255,7 @@ namespace NeutronNetwork.Internal.Client
 
         private void OnFailed(Packet packet, string errorMessage, Neutron localinstance)
         {
-            Utils.LoggerError(packet + ":-> " + errorMessage);
+            Utilities.LoggerError(packet + ":-> " + errorMessage);
         }
 
         private void OnPlayerJoinedChannel(Player player, Neutron localinstance)
@@ -277,7 +277,7 @@ namespace NeutronNetwork.Internal.Client
         {
             _.Dispose();
             //-------------------------------------------------------------------
-            Utils.Logger("You Have Disconnected from server -> [" + reason + "]");
+            Utilities.Logger("You Have Disconnected from server -> [" + reason + "]");
         }
 
         private void OnConnected(bool success, Neutron localinstance)

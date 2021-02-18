@@ -18,10 +18,10 @@
 //                path = $"{Application.dataPath}\\VNeutron\\VNeutron.exe";
 //                if (!WinAPI.InitWindowsSoundAPI(path, NeutronCConst._IEPListen.Port, NeutronCConst._IEPSend.Address.ToString(), bitRate, Frequency, KeyCode))
 //                {
-//                    Utils.LoggerError("SDK Sound Win API Not Found!", true);
+//                    Utilities.LoggerError("SDK Sound Win API Not Found!", true);
 //                }
 //#else
-//Utils.LoggerError("SDK Sound is not compatible with this System");
+//Utilities.LoggerError("SDK Sound is not compatible with this System");
 //#endif
 //            }
 //        }

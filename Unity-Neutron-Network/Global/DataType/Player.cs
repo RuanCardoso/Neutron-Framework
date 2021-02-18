@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Wrappers;
@@ -112,10 +113,10 @@ namespace NeutronNetwork
                     Properties = _properties;
                     break;
                 case 2:
-                    Utils.LoggerError($"Properties is empty -> Player: [{ID}]");
+                    Utilities.LoggerError($"Properties is empty -> Player: [{ID}]");
                     break;
                 case 0:
-                    Utils.LoggerError($"Invalid JSON error -> Player: [{ID}]");
+                    Utilities.LoggerError($"Invalid JSON error -> Player: [{ID}]");
                     break;
             }
         }
