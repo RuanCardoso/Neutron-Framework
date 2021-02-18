@@ -64,11 +64,15 @@ namespace NeutronNetwork.Internal.Server
         //* initiates client acceptance.
         private void OnAcceptedClient()
         {
-            while (Initialized)
+            try
             {
-                TcpClient tcpClient = ServerSocket.AcceptTcpClient();
-                acceptedClients.SafeEnqueue(tcpClient); //* [Thread-Safe]. adds the client to the queue.
+                while (Initialized)
+                {
+                    TcpClient tcpClient = ServerSocket.AcceptTcpClient();
+                    acceptedClients.SafeEnqueue(tcpClient); //* [Thread-Safe]. adds the client to the queue.
+                }
             }
+            catch (SocketException) { }
         }
         //* start server data processing.
         private void ServerDataProcessingStack()
@@ -238,16 +242,16 @@ namespace NeutronNetwork.Internal.Server
         void PacketProcessing(Player mSender, byte[] buffer, bool isUDP) //* process packets received from clients.
         {
 #if UNITY_SERVER || UNITY_EDITOR
-            int length = buffer.Length; // length of packet.
+            int length = buffer.Length;
             try
             {
-                using (NeutronReader mReader = new NeutronReader(buffer)) // read the buffer/message.
+                using (NeutronReader mReader = new NeutronReader(buffer))
                 {
-                    Packet mCommand = mReader.ReadPacket<Packet>(); // packet.
+                    Packet mCommand = mReader.ReadPacket<Packet>();
                     switch (mCommand)
                     {
                         case Packet.Connected:
-                            HandleConfirmation(mSender, mReader.ReadBoolean()); // [Thread-Safe]
+                            HandleConfirmation(mSender, mReader.ReadBoolean());
                             break;
                         case Packet.Nickname:
                             HandleNickname(mSender, mReader.ReadString());
@@ -259,7 +263,7 @@ namespace NeutronNetwork.Internal.Server
                             HandleRPC(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
                             break;
                         case Packet.Static:
-                            HandleRCC(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
+                            HandleStatic(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
                             break;
                         case Packet.GetChannels:
                             HandleGetChannels(mSender, mCommand);

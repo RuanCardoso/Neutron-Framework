@@ -8,18 +8,24 @@ namespace NeutronNetwork.Wrappers
     [Serializable]
     public class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>
     {
-        public delegate void OnChanged();
-        public event OnChanged onChanged;
+        private event ObserverDelegates.OnChanged onChanged;
+        private string fieldName;
+
+        public ObservableDictionary(string fieldName)
+        {
+            this.fieldName = fieldName;
+        }
+
         public new void Add(TKey key, TValue item)
         {
             base.Add(key, item);
-            onChanged?.Invoke();
+            onChanged?.Invoke(fieldName);
         }
 
         public new void Remove(TKey key)
         {
             if (base.Remove(key))
-                onChanged?.Invoke();
+                onChanged?.Invoke(fieldName);
         }
 
         public new TValue this[TKey key]
@@ -28,7 +34,7 @@ namespace NeutronNetwork.Wrappers
             set
             {
                 base[key] = value;
-                onChanged?.Invoke();
+                onChanged?.Invoke(fieldName);
             }
         }
     }

@@ -272,7 +272,7 @@ namespace NeutronNetwork.Internal.Server
             else SendErrorMessage(mSender, Packet.SendChat, "ERROR: You are not on a channel/room.");
         }
         // [Thread-Safe]
-        protected void HandleRCC(Player mSender, Broadcast broadcast, SendTo sendMode, int executeID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
+        protected void HandleStatic(Player mSender, Broadcast broadcast, SendTo sendMode, int executeID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
         {
             new Action(() =>
             {

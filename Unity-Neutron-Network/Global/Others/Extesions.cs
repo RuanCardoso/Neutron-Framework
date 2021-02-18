@@ -182,14 +182,25 @@ namespace NeutronNetwork.Internal.Extesions
             return (IPEndPoint)socket.Client.RemoteEndPoint;
         }
 
-        public static T DeepClone<T>(this object list)
+        public static T DeepClone<T>(this object obj)
         {
             using (MemoryStream stream = new MemoryStream())
             {
                 BinaryFormatter formatter = new BinaryFormatter();
-                formatter.Serialize(stream, list);
+                formatter.Serialize(stream, obj);
                 stream.Position = 0;
                 return (T)formatter.Deserialize(stream);
+            }
+        }
+
+        public static object DeepClone(this object type)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                BinaryFormatter formatter = new BinaryFormatter();
+                formatter.Serialize(stream, type);
+                stream.Position = 0;
+                return formatter.Deserialize(stream);
             }
         }
 
