@@ -12,6 +12,7 @@ public class Data
 [Serializable]
 public class IData
 {
+    public int serializationOptions { get; set; }
     public int compressionOptions { get; set; }
     public int serverPort { get; set; }
     public int voicePort { get; set; }

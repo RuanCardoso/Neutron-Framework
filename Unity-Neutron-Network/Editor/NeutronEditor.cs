@@ -16,6 +16,7 @@ public class NeutronEditor : EditorWindow
     List<MethodInfo[]> viewers = new List<MethodInfo[]>();
     Dictionary<string, object> duplicateEntrys = new Dictionary<string, object>();
     [SerializeField] Compression compressionOptions;
+    [SerializeField] Serialization serializationOptions;
     [SerializeField] int serverPort = 5055, voicePort = 5056, backLog = 10, serverFPS = 45, serverMonoChunkSize = 30, serverPacketChunkSize = 30, serverProcessChunkSize = 30, serverSendRate = 3, serverSendRateUDP = 3;
     [SerializeField] int serverReceiveRate = 3, serverReceiveRateUDP = 3, clientReceiveRate = 3, clientReceiveRateUDP = 3, clientFPS = 45, clientMonoChunkSize = 30, clientSendRate = 3, clientSendRateUDP = 3;
     [SerializeField] bool serverNoDelay, clientNoDelay, antiCheat = true, dontDestroyOnLoad = true, UDPDontFragment = true;
@@ -108,7 +109,8 @@ public class NeutronEditor : EditorWindow
         if (fodoultServerAndClientSettings)
         {
             EditorGUI.BeginChangeCheck();
-            compressionOptions = (Compression)EditorGUILayout.EnumPopup("Compression Mode", compressionOptions);
+            serializationOptions = (Serialization)EditorGUILayout.EnumPopup("Serialization", serializationOptions);
+            compressionOptions = (Compression)EditorGUILayout.EnumPopup("Compression", compressionOptions);
             ipAddress = EditorGUILayout.TextField("Address", ipAddress);
             serverPort = EditorGUILayout.IntField("Port", serverPort);
             if (EditorGUI.EndChangeCheck()) SaveSettings();

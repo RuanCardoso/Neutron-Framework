@@ -15,16 +15,19 @@ using NeutronNetwork.Internal.Client.InternalEvents;
 using NeutronNetwork.Internal.Attributes;
 using System.IO;
 using NeutronNetwork.Internal;
+using System.Threading.Tasks;
 
 namespace NeutronNetwork
 {
-    public class Neutron : NeutronCFunc
+    public class Neutron : NeutronClientFunctions
     {
         /// <summary>
         /// Returns instance of server
         /// </summary>
-        public static NeutronServer Server {
-            get {
+        public static NeutronServer Server
+        {
+            get
+            {
                 if (NeutronServerFunctions._ != null) return (NeutronServer)NeutronServerFunctions._;
 #if !UNITY_EDITOR && !UNITY_SERVER
                 Utilities.LoggerError("You cannot access server functions on the client outside of Unity Editor.");
@@ -59,9 +62,11 @@ namespace NeutronNetwork
         /// <summary>
         /// The nickname of the player that will be used to be displayed to other players.
         /// </summary>
-        public string Nickname {
+        public string Nickname
+        {
             get => _nickname;
-            set {
+            set
+            {
                 if (string.IsNullOrEmpty(value)) Utilities.LoggerError("Nick not allowed");
                 else
                     SetNickname(value);
@@ -195,7 +200,7 @@ namespace NeutronNetwork
 
                 IData = Data.LoadSettings(); // load settings
                 if (!Utilities.LoggerError("Failed to load settings.", IData)) return;
-                if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase) || IsBot) IData.ipAddress = "127.0.0.1";
+                //if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase) || IsBot) IData.ipAddress = "127.0.0.1";
                 COMPRESSION_MODE = (Compression)IData.compressionOptions;
                 Internal(); // initialize cliente.
                 if (!IsConnected)
@@ -205,7 +210,22 @@ namespace NeutronNetwork
                     Utilities.Logger("Wait, connecting to the server.");
 #endif
                     //////////////////////////////////////////////////////////////////////////////////
-                    await _TCPSocket.ConnectAsync(IData.ipAddress, IData.serverPort); // await connection.
+                    IPAddress Ip = null;
+                    string toReplace = IData.ipAddress;
+                    toReplace = toReplace.Replace("http://", string.Empty);
+                    toReplace = toReplace.Replace("https://", string.Empty);
+                    toReplace = toReplace.Replace("/", string.Empty);
+                    IData.ipAddress = toReplace;
+                    if (IPAddress.TryParse(IData.ipAddress, out var ip))
+                    {
+                        Ip = ip;
+                    }
+                    else
+                    {
+                        Ip = (await Dns.GetHostAddressesAsync(IData.ipAddress))[0];
+                        IData.ipAddress = Ip.ToString();
+                    }
+                    await _TCPSocket.ConnectAsync(Ip, IData.serverPort); // await connection.
                     if (_TCPSocket.Connected)
                     {
                         IsConnected = true;
@@ -385,9 +405,10 @@ namespace NeutronNetwork
                             break;
                         case Packet.RPC:
                             {
-                                int ID = mReader.ReadInt32();
+                                int playerID = mReader.ReadInt32();
+                                int rpcID = mReader.ReadInt32();
                                 byte[] array = mReader.ReadExactly();
-                                HandleRPC(ID, array);
+                                HandleRPC(rpcID, playerID, array);
                             }
                             break;
                         case Packet.APC:
@@ -656,39 +677,14 @@ namespace NeutronNetwork
             InternalRCC(mThis, RCCID, writer.ToArray(), enableCache, sendTo, protocolType, broadcast);
         }
 
-        private bool RPCTimer(int RPCID, float Delay)
+        public void RPC(int ID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
         {
-            if (timeRPC.ContainsKey(RPCID))
-            {
-                timeRPC[RPCID] += Time.deltaTime;
-                if (timeRPC[RPCID] >= Delay)
-                {
-                    timeRPC[RPCID] = 0;
-                    return true;
-                }
-                return false;
-            }
-            else
-            {
-                timeRPC.Add(RPCID, 0);
-                return true;
-            }
+            InternalRPC(MyPlayer.ID, ID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
         }
 
-        public void RPC(int RPCID, float secondsDelay, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
+        public void RPC(Player playerToSend, int ID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
         {
-            if (RPCTimer(RPCID, secondsDelay))
-            {
-                InternalRPC(MyPlayer.ID, RPCID, new object[] { parametersStream.ToArray() }, sendTo, enableCache, protocolType, broadcast);
-            }
-        }
-
-        public void RPC(Player playerToSend, int RPCID, float secondsDelay, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
-        {
-            if (RPCTimer(RPCID, secondsDelay))
-            {
-                InternalRPC(playerToSend.ID, RPCID, new object[] { parametersStream.ToArray() }, sendTo, enableCache, protocolType, broadcast);
-            }
+            InternalRPC(playerToSend.ID, ID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
         }
 
         /// <summary>

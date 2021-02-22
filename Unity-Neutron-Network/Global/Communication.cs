@@ -13,7 +13,7 @@ namespace NeutronNetwork.Internal.Comms
     {
         public const int BUFFER_SIZE = 1024;
         public const string PATH_SETTINGS = "\\Unity-Neutron-Network\\Resources\\neutronsettings.txt";
-        public static bool InitRPC(int executeID, object[] parameters, MonoBehaviour behaviour)
+        public static bool InitRPC(int rpcID, byte[] parameters, MonoBehaviour behaviour)
         {
             //-----------------------------------------------------------------------------------------------------------//
             NeutronBehaviour[] scriptComponents = behaviour.GetComponentsInChildren<NeutronBehaviour>();
@@ -21,10 +21,10 @@ namespace NeutronNetwork.Internal.Comms
             for (int i = 0; i < scriptComponents.Length; i++)
             {
                 NeutronBehaviour mInstance = scriptComponents[i];
-                MethodInfo Invoker = mInstance.HasRPC(executeID, out string message);
+                MethodInfo Invoker = mInstance.HasRPC(rpcID, out string message);
                 if (Invoker != null)
                 {
-                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader((byte[])parameters[0]) });
+                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader(parameters) });
                     if (obj != null)
                     {
                         Type objType = obj.GetType();

@@ -230,38 +230,34 @@ namespace NeutronNetwork.Internal.Server
             }
         }
         // [Thread-Safe]
-        protected void HandleRPC(Player mSender, Broadcast broadcast, SendTo sendMode, int executeID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
+        protected void HandleRPC(Player mSender, Broadcast broadcast, SendTo sendMode, int playerID, int rpcID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
         {
             void Send()
             {
                 using (NeutronWriter writer = new NeutronWriter()) // write the message.
                 {
                     writer.WritePacket(Packet.RPC); // packet name
-                    writer.Write(executeID); // write RPC ID.
-                    writer.Write(parameters.Length); // write rpc length.
-                    writer.Write(parameters); // write RPC.
+                    writer.Write(playerID); // write RPC ID.
+                    writer.Write(rpcID); // write RPC ID.
+                    writer.WriteExactly(parameters);
 
                     Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
                     mSender.Send(sendMode, writer.ToArray(), broadcast, protocol); // send the message. [Thread-Safe]
 
-                    if (cacheEnabled) Cache(executeID, mSender, writer.ToArray(), CachedPacket.RPC);
+                    if (cacheEnabled) Cache(rpcID, mSender, writer.ToArray(), CachedPacket.RPC);
                 }
             }
 
             if (mSender.IsInChannel()) // [Thread-Safe - individual access, only the parent thread has access.]
             {
-                object[] _array = parameters.DeserializeObject<object[]>();
-                int senderID = (int)_array[0];
-                object[] objectParams = (object[])_array[1];
-
                 new Action(() =>
                 {
-                    if (GetPlayer(senderID, out Player findPlayer))
+                    if (GetPlayer(playerID, out Player findPlayer))
                     {
                         if (findPlayer.neutronView == null) Send();
                         else
                         {
-                            if (Communication.InitRPC(executeID, objectParams, findPlayer.neutronView))
+                            if (Communication.InitRPC(rpcID, parameters, findPlayer.neutronView))
                             {
                                 Send();
                             }

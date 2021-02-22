@@ -45,7 +45,7 @@ namespace NeutronNetwork.Components
                         using (NeutronWriter streamParams = new NeutronWriter())
                         {
                             streamParams.Write(hit.point);
-                            NeutronView._.RPC(252, 0, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
+                            //NeutronView._.RPC(252, 0, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
                         }
                     }
                 }

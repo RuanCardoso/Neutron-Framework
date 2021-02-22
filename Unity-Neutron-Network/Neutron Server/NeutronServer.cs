@@ -245,43 +245,43 @@ namespace NeutronNetwork.Internal.Server
             int length = buffer.Length;
             try
             {
-                using (NeutronReader mReader = new NeutronReader(buffer))
+                using (NeutronReader parametersReader = new NeutronReader(buffer))
                 {
-                    Packet mCommand = mReader.ReadPacket<Packet>();
+                    Packet mCommand = parametersReader.ReadPacket<Packet>();
                     switch (mCommand)
                     {
                         case Packet.Connected:
-                            HandleConfirmation(mSender, mReader.ReadBoolean());
+                            HandleConfirmation(mSender, parametersReader.ReadBoolean());
                             break;
                         case Packet.Nickname:
-                            HandleNickname(mSender, mReader.ReadString());
+                            HandleNickname(mSender, parametersReader.ReadString());
                             break;
                         case Packet.SendChat:
-                            HandleSendChat(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadString());
+                            HandleSendChat(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
                             break;
                         case Packet.RPC:
-                            HandleRPC(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
+                            HandleRPC(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), isUDP);
                             break;
                         case Packet.Static:
-                            HandleStatic(mSender, mReader.ReadPacket<Broadcast>(), mReader.ReadPacket<SendTo>(), mReader.ReadInt32(), mReader.ReadBoolean(), mReader.ReadBytes(length), isUDP);
+                            HandleStatic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), isUDP);
                             break;
                         case Packet.GetChannels:
                             HandleGetChannels(mSender, mCommand);
                             break;
                         case Packet.JoinChannel:
-                            HandleJoinChannel(mSender, mCommand, mReader.ReadInt32());
+                            HandleJoinChannel(mSender, mCommand, parametersReader.ReadInt32());
                             break;
                         case Packet.GetChached:
-                            HandleGetCached(mSender, mReader.ReadPacket<CachedPacket>(), mReader.ReadInt32());
+                            HandleGetCached(mSender, parametersReader.ReadPacket<CachedPacket>(), parametersReader.ReadInt32());
                             break;
                         case Packet.CreateRoom:
-                            HandleCreateRoom(mSender, mCommand, mReader.ReadString(), mReader.ReadInt32(), mReader.ReadString(), mReader.ReadBoolean(), mReader.ReadBoolean(), mReader.ReadString());
+                            HandleCreateRoom(mSender, mCommand, parametersReader.ReadString(), parametersReader.ReadInt32(), parametersReader.ReadString(), parametersReader.ReadBoolean(), parametersReader.ReadBoolean(), parametersReader.ReadString());
                             break;
                         case Packet.GetRooms:
                             HandleGetRooms(mSender, mCommand);
                             break;
                         case Packet.JoinRoom:
-                            HandleJoinRoom(mSender, mCommand, mReader.ReadInt32());
+                            HandleJoinRoom(mSender, mCommand, parametersReader.ReadInt32());
                             break;
                         case Packet.LeaveRoom:
                             HandleLeaveRoom(mSender, mCommand);
@@ -293,10 +293,10 @@ namespace NeutronNetwork.Internal.Server
                             HandleDestroyPlayer(mSender, mCommand);
                             break;
                         case Packet.SetPlayerProperties:
-                            HandleSetPlayerProperties(mSender, mReader.ReadString());
+                            HandleSetPlayerProperties(mSender, parametersReader.ReadString());
                             break;
                         case Packet.SetRoomProperties:
-                            HandleSetRoomProperties(mSender, mReader.ReadString());
+                            HandleSetRoomProperties(mSender, parametersReader.ReadString());
                             break;
                     }
                 }

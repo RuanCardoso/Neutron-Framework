@@ -1,5 +1,6 @@
 ﻿using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Server;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,31 +17,58 @@ namespace NeutronNetwork.Internal.Extesions
 {
     public static class Extesions
     {
-        /// <summary>
-        /// queue data in server.
-        /// </summary>
-        /// <param name="action"></param>
         public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.monoActions);
-        /// <summary>
-        /// queue data in client.
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="_"></param>
         public static void ExecuteOnMainThread(this Action action, Neutron _) => Utils.Enqueue(action, _.mainThreadActions);
-
-        public static byte[] Serialize(this string message) => Encoding.UTF8.GetBytes(message);
-        public static string Deserialize(this byte[] buffer) => Encoding.UTF8.GetString(buffer);
-
-        public static int GetUniqueID(this GameObject obj) => obj.GetInstanceID() ^ new System.Random().Next(0, 1000) ^ DateTime.Now.Millisecond ^ DateTime.Now.Second;
-
         public static byte[] Serialize(this object message)
         {
-            BinaryFormatter formatter = new BinaryFormatter();
-            using (MemoryStream mStream = new MemoryStream())
+            try
             {
-                formatter.Serialize(mStream, message);
-                return mStream.ToArray();
+                Serialization serializationMode = (Serialization)NeutronServer.IData.serializationOptions;
+                switch (serializationMode)
+                {
+                    case Serialization.Json:
+                        string jsonString = JsonConvert.SerializeObject(message);
+                        using (NeutronWriter jsonWriter = new NeutronWriter())
+                        {
+                            jsonWriter.Write(jsonString);
+                            return jsonWriter.ToArray();
+                        }
+                    case Serialization.BinaryFormatter:
+                        BinaryFormatter formatter = new BinaryFormatter();
+                        using (MemoryStream mStream = new MemoryStream())
+                        {
+                            formatter.Serialize(mStream, message);
+                            return mStream.ToArray();
+                        }
+                    default:
+                        return null;
+                }
             }
+            catch (Exception ex) { Utilities.StackTrace(ex); return null; }
+        }
+        public static T DeserializeObject<T>(this byte[] message)
+        {
+            try
+            {
+                Serialization serializationMode = (Serialization)NeutronServer.IData.serializationOptions;
+                switch (serializationMode)
+                {
+                    case Serialization.Json:
+                        using (NeutronReader reader = new NeutronReader(message))
+                        {
+                            return JsonConvert.DeserializeObject<T>(reader.ReadString());
+                        }
+                    case Serialization.BinaryFormatter:
+                        BinaryFormatter formatter = new BinaryFormatter();
+                        using (MemoryStream mStream = new MemoryStream(message))
+                        {
+                            return (T)formatter.Deserialize(mStream);
+                        }
+                    default:
+                        return default;
+                }
+            }
+            catch (Exception ex) { Utilities.StackTrace(ex); return default; }
         }
 
         public static byte[] Compress(this byte[] data, Compression compressionType)
@@ -109,24 +137,6 @@ namespace NeutronNetwork.Internal.Extesions
                 }
             }
             else return data;
-        }
-
-        public static T DeserializeObject<T>(this byte[] message)
-        {
-            BinaryFormatter formatter = new BinaryFormatter();
-            try
-            {
-                using (MemoryStream mStream = new MemoryStream(message))
-                {
-                    T obj = (T)formatter.Deserialize(mStream);
-                    return obj;
-                }
-            }
-            catch (Exception ex)
-            {
-                Utilities.LoggerError($"Falha ao deserilizar {ex.Message}");
-                return default;
-            }
         }
 
         public static byte[] StringToByteArray(this String hex)

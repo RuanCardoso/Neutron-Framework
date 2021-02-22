@@ -1,146 +1,65 @@
-﻿using NeutronNetwork.Internal.Server;
+using NeutronNetwork.Internal.Server;
 using NeutronNetwork.Internal.Server.Cheats;
 using System;
+using System.Collections;
 using System.Net.Sockets;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
 {
-    [Flags]
-    public enum WhenChanging : int
-    {
-        Position = 1,
-        Rotation = 2,
-        Velocity = 4,
-        AngularVelocity = 8,
-    }
-
     [RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu("Neutron/Neutron Rigidbody")]
     public class NeutronRigidbody : NeutronBehaviour
     {
-        private delegate void OnChanged();
-        private event OnChanged onChanged;
-
-        [SerializeField] private WhenChanging whenChanging;
+        [SerializeField] private bool synchronizeVelocity = true;
+        [SerializeField] private bool synchronizeAngularVelocity = true;
+        [SerializeField] private float synchronizeDelay = 0.1f;
         [SerializeField] private SendTo sendTo = SendTo.Others;
-        [SerializeField] private Broadcast broadcast;
-        [SerializeField] private Protocol protocol = Protocol.Tcp;
-
-        [SerializeField] [Range(0, 30)] private float syncTime = 0.1f;
-        [SerializeField] [Range(0, 30)] private float smoothSync = 5f;
-        [SerializeField] private bool isCached;
-
+        [SerializeField] private Broadcast broadcast = Broadcast.Room;
+        [SerializeField] private Protocol protocol = Protocol.Udp;
         private Vector3 velocity;
         private Vector3 angularVelocity;
-        private Vector3 position;
-        private Quaternion rotation;
-
         private Rigidbody _rigidbody;
-
-        private Vector3 Velocity {
-            get => velocity;
-            set {
-                if (whenChanging.HasFlag(WhenChanging.Velocity))
-                {
-                    if (velocity != value)
-                        onChanged?.Invoke();
-                }
-                velocity = value;
-            }
-        }
-        private Vector3 AngularVelocity {
-            get => angularVelocity;
-            set {
-                if (whenChanging.HasFlag(WhenChanging.AngularVelocity))
-                {
-                    if (angularVelocity != value)
-                        onChanged?.Invoke();
-                }
-                angularVelocity = value;
-            }
-        }
-        private Vector3 Position {
-            get => position;
-            set {
-                if (whenChanging.HasFlag(WhenChanging.Position))
-                {
-                    if (position != value)
-                        onChanged?.Invoke();
-                }
-                position = value;
-            }
-        }
-        private Quaternion Rotation {
-            get => rotation;
-            set {
-                if (whenChanging.HasFlag(WhenChanging.Rotation))
-                {
-                    if (rotation != value)
-                        onChanged?.Invoke();
-                }
-                rotation = value;
-            }
-        }
 
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody>();
         }
 
-        private void Start()
+        public override void OnNeutronStart()
         {
-            if (IsMine)
-                onChanged += NeutronRigidbody_OnChanged;
+            if (IsClient && (synchronizeVelocity || synchronizeAngularVelocity) && IsMine)
+                StartCoroutine(Synchronize());
         }
 
-        private void Update()
+        private IEnumerator Synchronize()
         {
-            if (!IsMine)
+            while (true)
             {
-                if (Position != Vector3.zero)
-                    transform.position = Vector3.Lerp(transform.position, Position, Time.deltaTime * smoothSync);
-                if (Rotation != Quaternion.identity)
-                    transform.rotation = Quaternion.Lerp(transform.rotation, Rotation, Time.deltaTime * smoothSync);
-                return;
+                using (NeutronWriter options = new NeutronWriter())
+                {
+                    if (synchronizeVelocity) options.Write(_rigidbody.velocity);
+                    if (synchronizeAngularVelocity) options.Write(_rigidbody.angularVelocity);
+                    if (_rigidbody.velocity != Vector3.zero || _rigidbody.angularVelocity != Vector3.zero)
+                        NeutronView._.RPC(10012, options, sendTo, false, broadcast, protocol);
+                }
+                yield return new WaitForSeconds(synchronizeDelay);
             }
-            if (whenChanging == default) onChanged?.Invoke();
-            Position = transform.position;
-            Rotation = transform.rotation;
-            Velocity = _rigidbody.velocity;
-            AngularVelocity = _rigidbody.angularVelocity;
+        }
+
+        [RPC(10012)]
+        private void RPC(NeutronReader options)
+        {
+            if (synchronizeVelocity) velocity = options.ReadVector3();
+            if (synchronizeAngularVelocity) angularVelocity = options.ReadVector3();
         }
 
         private void FixedUpdate()
         {
-            if (IsMine) return;
-            _rigidbody.velocity = Velocity;
-            _rigidbody.angularVelocity = AngularVelocity;
-        }
-
-        private void NeutronRigidbody_OnChanged()
-        {
-            using (NeutronWriter writeParams = new NeutronWriter())
+            if (!IsMine)
             {
-                writeParams.Write(Position);
-                writeParams.Write(Rotation);
-                writeParams.Write(Velocity);
-                writeParams.Write(AngularVelocity);
-                NeutronView._.RPC(1002, syncTime, writeParams, sendTo, isCached, broadcast, protocol);
-            }
-        }
-
-        [RPC(1002)]
-#pragma warning disable IDE0051 // Remover membros privados não utilizados
-        void SyncRigidbody(NeutronReader readParams)
-#pragma warning restore IDE0051 // Remover membros privados não utilizados
-        {
-            using (readParams)
-            {
-                Position = readParams.ReadVector3();
-                Rotation = readParams.ReadQuaternion();
-                Velocity = readParams.ReadVector3();
-                AngularVelocity = readParams.ReadVector3();
+                if (synchronizeVelocity) _rigidbody.velocity = velocity;
+                if (synchronizeAngularVelocity) _rigidbody.angularVelocity = angularVelocity;
             }
         }
     }

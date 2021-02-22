@@ -15,9 +15,6 @@ namespace NeutronNetwork
                 view.isServerOrClient = isServer;
                 view.owner = mPlayer;
 
-                var neutronBehaviours = view.GetComponentsInChildren<NeutronBehaviour>();
-                foreach (var neutronBehaviour in neutronBehaviours) neutronBehaviour.NeutronView = view;
-
                 if (!isServer)
                 {
 
@@ -38,6 +35,13 @@ namespace NeutronNetwork
 
                     prefabPlayer.name = (!mPlayer.isBot) ? mPlayer.Nickname + " -> [Server]" : mPlayer.Nickname + " -> [Bot]";
                     //NeutronSFunc.onPlayerInstantiated?.Invoke(mPlayer);
+                }
+
+                var neutronBehaviours = view.GetComponentsInChildren<NeutronBehaviour>();
+                foreach (var neutronBehaviour in neutronBehaviours)
+                {
+                    neutronBehaviour.NeutronView = view;
+                    neutronBehaviour.OnNeutronStart();
                 }
             }
             catch (Exception ex) { Utilities.StackTrace(ex); }

@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
 {
-    public class NeutronCConst : MonoBehaviour
+    public class NeutronClientConstants : MonoBehaviour
     {   // It inherits from MonoBehaviour because it is an instance of GameObject.
         protected Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
         //-------------------------------------------------------------------------------------------------------------
@@ -34,9 +34,7 @@ namespace NeutronNetwork.Internal.Client
         public ConcurrentDictionary<int, object[]> properties;
         //-------------------------------------------------------------------------------------------------------------
         protected IPEndPoint endPointUDP;
-
         protected IData IData;
-
         /// <summary>
         /// Cancellation token.
         /// </summary>

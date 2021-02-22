@@ -65,7 +65,7 @@ namespace NeutronNetwork.Components
                             Utilities.LoggerError("NeutronView is null");
                             return;
                         }
-                        NeutronView._.RPC(254, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
+                       // NeutronView._.RPC(254, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
                     }
                 }
             }

@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
 {
-    public class NeutronCFunc : NeutronCConst
+    public class NeutronClientFunctions : NeutronClientConstants
     {
         /// <summary>
         /// Get instance of derived class.
@@ -71,6 +71,7 @@ namespace NeutronNetwork.Internal.Client
                     writerOnly.WriteFixedLength(buffer.Length);
                     writerOnly.Write(buffer);
                     byte[] nBuffer = writerOnly.ToArray();
+                    Debug.LogError("Bytes: " + nBuffer.ToArray().Length);
                     await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
                 }
             }
@@ -99,19 +100,17 @@ namespace NeutronNetwork.Internal.Client
                 Send(writer.ToArray());
             }
         }
-        protected void InternalRPC(int playerID, int RPCID, object[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRPC(int playerID, int RPCID, byte[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                object[] bArray = { playerID, parameters };
-                //---------------------------------------------------------------------------------------------------------------------
                 writer.WritePacket(Packet.RPC);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
+                writer.Write(playerID);
                 writer.Write(RPCID);
                 writer.Write(cached);
-                writer.Write(bArray.Serialize());
-                //---------------------------------------------------------------------------------------------------------------------
+                writer.WriteExactly(parameters);
                 Send(writer.ToArray(), protocolType);
             }
         }
@@ -125,7 +124,7 @@ namespace NeutronNetwork.Internal.Client
                 writer.WritePacket(sendTo);
                 writer.Write(RCCID);
                 writer.Write(enableCache);
-                writer.Write(parameters);
+                writer.WriteExactly(parameters);
                 //---------------------------------------------------------------------------------------------------------------------
                 Send(writer.ToArray(), protocolType);
             }
@@ -138,16 +137,13 @@ namespace NeutronNetwork.Internal.Client
             _myPlayer = array.DeserializeObject<Player>();
         }
 
-        protected void HandleRPC(int id, byte[] parameters)
+        protected void HandleRPC(int rpcID, int playerID, byte[] parameters)
         {
-            object[] _array = parameters.DeserializeObject<object[]>();
-            int senderID = (int)_array[0];
-            object[] objectParams = (object[])_array[1];
             if (_.IsBot) return;
             new Action(() =>
             {
-                if (playersObjects.TryGetValue(senderID, out NeutronView neutronObject))
-                    Communication.InitRPC(id, objectParams, neutronObject);
+                if (playersObjects.TryGetValue(playerID, out NeutronView neutronObject))
+                    Communication.InitRPC(rpcID, parameters, neutronObject);
             }).ExecuteOnMainThread(_);
         }
 

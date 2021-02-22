@@ -1,6 +1,4 @@
-﻿using System;
-
-public enum SendTo : byte
+﻿public enum SendTo : byte
 {
     /// <summary>
     /// Broadcast data to all Players, including you.
@@ -62,7 +60,7 @@ public enum CachedPacket : byte
     //======================================================
 }
 
-public enum Compression : byte
+public enum Compression : int
 {
     /// <summary>
     /// Disable data compression.
@@ -107,7 +105,7 @@ public enum Broadcast : byte
     Group
 }
 
-public enum ClientType : byte
+public enum ClientType : int
 {
     MainPlayer,
     Bot,
@@ -118,4 +116,10 @@ public enum Protocol : byte
 {
     Tcp = 6,
     Udp = 17,
+}
+
+public enum Serialization : int
+{
+    BinaryFormatter,
+    Json,
 }

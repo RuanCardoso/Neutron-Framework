@@ -5,12 +5,14 @@ namespace NeutronNetwork
 {
     public class NeutronBehaviour : MonoBehaviour
     {
-        [NonSerialized] public NeutronView NeutronView;
-        public bool IsMine {
+        public virtual void OnNeutronStart() { }
+        public NeutronView NeutronView { get; set; }
+        protected bool IsMine
+        {
             get => !IsServer && NeutronView._.isLocalPlayer(NeutronView.owner);
         }
-        public bool IsBot { get => NeutronView.owner.isBot; }
-        public bool IsServer { get => NeutronView.isServerOrClient; }
-        public bool IsClient { get => !NeutronView.isServerOrClient; }
+        protected bool IsBot { get => NeutronView.owner.isBot; }
+        protected bool IsServer { get => NeutronView.isServerOrClient; }
+        protected bool IsClient { get => !NeutronView.isServerOrClient; }
     }
 }

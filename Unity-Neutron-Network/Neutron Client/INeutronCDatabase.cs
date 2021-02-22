@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
 {
-    public class NeutronCDatabase : NeutronCFunc
+    public class NeutronCDatabase : NeutronClientFunctions
     {
        
     }
