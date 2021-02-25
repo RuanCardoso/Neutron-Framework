@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System;
 using UnityEngine;
 
-public class Data
+public class NeutronData
 {
     public const string PASS = "duG@%sATOTbL";
     public static JsonData LoadSettings() => JsonConvert.DeserializeObject<JsonData>(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(PASS));

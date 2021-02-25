@@ -13,6 +13,6 @@ public class Config : MonoBehaviour
     public static void LoadSettings()
     {
         if (GetConfig == null)
-            GetConfig = Data.LoadSettings();
+            GetConfig = NeutronData.LoadSettings();
     }
 }

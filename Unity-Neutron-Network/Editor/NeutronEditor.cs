@@ -199,11 +199,11 @@ public class NeutronEditor : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
-    void LoadSettings() => JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(Data.PASS), this);
+    void LoadSettings() => JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(NeutronData.PASS), this);
 
     void SaveSettings()
     {
-        File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(Data.PASS));
+        File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(NeutronData.PASS));
         AssetDatabase.Refresh();
     }
 
