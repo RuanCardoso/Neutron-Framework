@@ -49,7 +49,7 @@ namespace NeutronNetwork.Internal.Client
         {
             if (!_.IsConnected) return;
 
-            buffer = buffer.Compress(COMPRESSION_MODE);
+            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             switch (protocolType)
             {
                 case Protocol.Tcp:
@@ -266,7 +266,7 @@ namespace NeutronNetwork.Internal.Client
 
         private void OnCreatedRoom(Room room, Neutron localinstance)
         {
-            _.MyPlayer.currentRoom = room.ID;
+            _.MyPlayer.CurrentRoom = room.ID;
         }
 
         private void OnDisconnected(string reason, Neutron localinstance)

@@ -11,7 +11,7 @@ namespace NeutronNetwork
         {
             get => !IsServer && NeutronView._.isLocalPlayer(NeutronView.owner);
         }
-        protected bool IsBot { get => NeutronView.owner.isBot; }
+        protected bool IsBot { get => NeutronView.owner.IsBot; }
         protected bool IsServer { get => NeutronView.isServerOrClient; }
         protected bool IsClient { get => !NeutronView.isServerOrClient; }
     }

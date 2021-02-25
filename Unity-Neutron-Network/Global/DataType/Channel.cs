@@ -12,118 +12,113 @@ using NeutronNetwork.Internal;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Channel : IEquatable<Channel>, INotify, ISerializable, IEqualityComparer<Channel>
+    public class Channel : IEquatable<Channel>, INotify, IEqualityComparer<Channel>
     {
-        private readonly object SyncBuffer = new object(); // sync
-        private readonly object SyncRooms = new object(); // sync
-        private readonly object SyncPlayers = new object(); // sync
+        [NonSerialized] private readonly object SyncBuffer = new object();
+        [NonSerialized] private readonly object SyncRooms = new object();
+        [NonSerialized] private readonly object SyncPlayers = new object();
         /// <summary>
         /// ID of channel.
         /// </summary>
-        [SerializeField] private int iD;
-        /// <summary>
-        /// ID of channel.
-        /// </summary>
-        public int ID { get => iD; }
+        public int ID { get => iD; set => iD = value; }
+        [SerializeField, ReadOnly] private int iD;
         /// <summary>
         /// Name of channel.
         /// </summary>
-        public string Name;
+        public string Name { get => name; set => name = value; }
+        [SerializeField] private string name;
         /// <summary>
         /// Current amount of players serialized in inspector.
         /// </summary>
-        [SerializeField, ReadOnly] private int countOfPlayers; // Only show in inspector.
-        public int CountOfPlayers {
-            get {
+        public int CountOfPlayers
+        {
+            get
+            {
                 lock (SyncPlayers)
                 {
                     return countOfPlayers;
                 }
             }
         }
+        [SerializeField, ReadOnly] private int countOfPlayers; // Only show in inspector.
         /// <summary>
         /// Current amount of rooms serialized in inspector.
         /// </summary>
-        [SerializeField, ReadOnly] private int countOfRooms; // Only show in inspector.
-        public int CountOfRooms {
-            get {
+        public int CountOfRooms
+        {
+            get
+            {
                 lock (SyncRooms)
                 {
                     return countOfRooms;
                 }
             }
         }
+        [SerializeField, ReadOnly] private int countOfRooms; // Only show in inspector.
         /// <summary>
         /// Max Players of channel.
         /// </summary>
-        public int maxPlayers; // Thread safe. Immutable
+        public int MaxPlayers { get => maxPlayers; set => maxPlayers = value; }
+        [SerializeField] private int maxPlayers; // Thread safe. Immutable
         /// <summary>
         /// Max rooms of channel.
         /// </summary>
-        public int maxRooms; // Thread safe. Immutable
+        public int MaxRooms { get => maxRooms; set => maxRooms = value; }
+        [SerializeField] private int maxRooms; // Thread safe. Immutable
         /// <summary>
         /// Properties of channel(JSON).
         /// </summary>
+        public string ___props { get => properties; set => properties = value; }
         [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
         /// <summary>
         /// Properties of channel.
         /// </summary>
-        public Dictionary<string, object> Properties; // not thread safe, requires locking? no....
+        [field: NonSerialized]
+        [JsonIgnore]
+        public Dictionary<string, object> GetProps { get; set; }
         /// <summary>
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-        [SerializeField] private List<CachedBuffer> CachedPackets = new List<CachedBuffer>(); // not thread safe, requires locking.
+        [NonSerialized] private List<CachedBuffer> CachedPackets = new List<CachedBuffer>(); // not thread safe, requires locking.
         /// <summary>
         /// list of players.
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-        [SerializeField] private List<Player> Players = new List<Player>(); // not thread safe, requires locking.
+#if !UNITY_EDITOR
+        [NonSerialized]
+#else
+        [SerializeField]
+#endif
+        private List<Player> Players = new List<Player>(); // not thread safe, requires locking.
         /// <summary>
         /// list of rooms.
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-        [SerializeField] private List<Room> Rooms = new List<Room>(); // not thread safe, requires locking.
+#if !UNITY_EDITOR
+        [NonSerialized]
+#else
+        [SerializeField]
+#endif
+        private List<Room> Rooms = new List<Room>(); // not thread safe, requires locking.
 
         public Channel() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
         public Channel(int ID, string Name, int maxPlayers, string properties)
         {
-            this.iD = ID;
+            this.ID = ID;
             this.Name = Name;
-            this.maxPlayers = maxPlayers;
-            this.properties = properties;
-        }
-
-        public Channel(SerializationInfo info, StreamingContext context) // deserialization constructor.
-        {
-            iD = (int)info.GetValue("ID", typeof(int));
-            Name = (string)info.GetValue("Name", typeof(string));
-            countOfPlayers = (int)info.GetValue("countPlayers", typeof(int));
-            maxPlayers = (int)info.GetValue("maxPlayers", typeof(int));
-            properties = (string)info.GetValue("properties", typeof(string));
-            int code = Utils.ValidateAndDeserializeJson(properties, out Dictionary<string, object> _properties);
-            switch (code)
-            {
-                case 1:
-                    Properties = _properties;
-                    break;
-                case 2:
-                    Utilities.LoggerError($"Properties is empty -> Channel: [{ID}]");
-                    break;
-                case 0:
-                    Utilities.LoggerError($"Invalid JSON error -> Channel: [{ID}]");
-                    break;
-            }
+            this.MaxPlayers = maxPlayers;
+            this.___props = properties;
         }
 
         public bool AddPlayer(Player player, out string errorMessage) // [Thread-Safe]
         {
             lock (SyncPlayers) // Thread safe.
             {
-                if (countOfPlayers >= maxPlayers) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
+                if (countOfPlayers >= MaxPlayers) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
                 { errorMessage = "The Channel is full."; return false; }
                 else
                 {
@@ -154,7 +149,7 @@ namespace NeutronNetwork
         {
             lock (SyncRooms) // Thread safe.
             {
-                if (countOfRooms >= maxRooms) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
+                if (countOfRooms >= MaxRooms) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
                 { errorMessage = "The Channel is full."; return false; }
                 else
                 {
@@ -252,15 +247,6 @@ namespace NeutronNetwork
         public Int32 GetHashCode(Channel obj)
         {
             return obj.ID.GetHashCode();
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("ID", ID, typeof(int));
-            info.AddValue("Name", Name, typeof(string));
-            info.AddValue("countPlayers", countOfPlayers, typeof(int));
-            info.AddValue("maxPlayers", maxPlayers, typeof(int));
-            info.AddValue("properties", properties, typeof(string));
         }
     }
 }

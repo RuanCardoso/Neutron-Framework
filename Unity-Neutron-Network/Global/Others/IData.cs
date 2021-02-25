@@ -6,11 +6,11 @@ using UnityEngine;
 public class Data
 {
     public const string PASS = "duG@%sATOTbL";
-    public static IData LoadSettings() => JsonConvert.DeserializeObject<IData>(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(PASS));
+    public static JsonData LoadSettings() => JsonConvert.DeserializeObject<JsonData>(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(PASS));
 }
 
 [Serializable]
-public class IData
+public class JsonData
 {
     public int serializationOptions { get; set; }
     public int compressionOptions { get; set; }

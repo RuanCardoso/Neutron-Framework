@@ -11,7 +11,6 @@ namespace NeutronNetwork.Internal.Client
 {
     public class NeutronClientConstants : MonoBehaviour
     {   // It inherits from MonoBehaviour because it is an instance of GameObject.
-        protected Compression COMPRESSION_MODE = Compression.None; // OBS: Compression.None change to BUFFER_SIZE in StateObject to 4092 or 9192.
         //-------------------------------------------------------------------------------------------------------------
         public NeutronQueue<Action> mainThreadActions;
         public NeutronQueue<Action> monoBehaviourRPCActions;
@@ -34,7 +33,6 @@ namespace NeutronNetwork.Internal.Client
         public ConcurrentDictionary<int, object[]> properties;
         //-------------------------------------------------------------------------------------------------------------
         protected IPEndPoint endPointUDP;
-        protected IData IData;
         /// <summary>
         /// Cancellation token.
         /// </summary>
@@ -42,6 +40,7 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
+            Config.LoadSettings();
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------

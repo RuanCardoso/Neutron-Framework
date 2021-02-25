@@ -1,6 +1,7 @@
 ﻿using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -9,62 +10,66 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Room : IEquatable<Room>, INotify, ISerializable, IEqualityComparer<Room>
+    public class Room : IEquatable<Room>, INotify, IEqualityComparer<Room>
     {
-        private readonly object SyncPlayers = new object(); // sync
+        [NonSerialized] private readonly object SyncPlayers = new object();
         /// <summary>
         /// ID of channel.
         /// </summary>
-        [SerializeField] private int iD;
-        /// <summary>
-        /// ID of channel.
-        /// </summary>
-        public int ID { get => iD; }
-        /// <summary>
+        public int ID { get => iD; set => iD = value; }
+        [SerializeField, ReadOnly] private int iD;
         /// Name of room.
         /// </summary>
-        public string Name;
+        public string Name { get => name; set => name = value; }
+        [SerializeField] private string name;
         /// <summary>
         /// Current amount of players
-        /// </summary>
+        /// </summary>  
+        public int CountOfPlayers { get => countOfPlayers; }
         [SerializeField, ReadOnly] private int countOfPlayers;
-        public int CountOfPlayers
-        {
-            get
-            {
-                return countOfPlayers;
-            }
-        }
-        // <summary>
+        /// <summary>
         /// Max Players of room.
         /// </summary>
-        public int maxPlayers;
+        public int MaxPlayers { get => maxPlayers; set => maxPlayers = value; }
+        [SerializeField] private int maxPlayers;
         /// <summary>
         /// Check if room has password.
         /// </summary>
-        [ReadOnly] public bool hasPassword;
+        public bool HasPassword { get => hasPassword; set => hasPassword = value; }
+        [SerializeField, ReadOnly] private bool hasPassword;
         /// <summary>
         /// Check if room is visible.
         /// </summary>
-        public bool isVisible;
+        public bool IsVisible { get => isVisible; set => isVisible = value; }
+        [SerializeField] private bool isVisible;
         /// <summary>
         /// owner of room.
         /// </summary>
-        [NonSerialized] public Player Owner;
+        [field: NonSerialized]
+        [JsonIgnore]
+        public Player Owner { get; set; }
         /// <summary>
         /// Properties of channel.
         /// </summary>
+        public string ___props { get => properties; set => properties = value; }
         [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
         /// <summary>
         /// Properties of channel.
         /// </summary>
-        [NonSerialized] public Dictionary<string, object> Properties;
+        [field: NonSerialized]
+        [JsonIgnore]
+        public Dictionary<string, object> GetProps { get; set; }
         /// <summary>
         /// list of players.
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-        [SerializeField] private List<Player> Players = new List<Player>(); // not thread safe, requires locking.
+#if !UNITY_EDITOR
+        [NonSerialized]
+#else
+        [SerializeField]
+#endif
+        private List<Player> Players = new List<Player>();
 
         public Room() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
@@ -72,41 +77,17 @@ namespace NeutronNetwork
         {
             this.iD = ID;
             this.Name = roomName;
-            this.maxPlayers = maxPlayers;
-            this.hasPassword = hasPassword;
-            this.isVisible = isVisible;
-            this.properties = options;
-        }
-
-        public Room(SerializationInfo info, StreamingContext context)
-        {
-            iD = (int)info.GetValue("ID", typeof(int));
-            Name = (string)info.GetValue("Name", typeof(string));
-            countOfPlayers = (int)info.GetValue("countPlayers", typeof(int));
-            maxPlayers = (int)info.GetValue("maxPlayers", typeof(int));
-            hasPassword = (bool)info.GetValue("hasPassword", typeof(bool));
-            isVisible = (bool)info.GetValue("isVisible", typeof(bool));
-            properties = (string)info.GetValue("properties", typeof(string));
-            int code = Utils.ValidateAndDeserializeJson(properties, out Dictionary<string, object> _properties);
-            switch (code)
-            {
-                case 1:
-                    Properties = _properties;
-                    break;
-                case 2:
-                    Utilities.LoggerError($"Properties is empty -> Room: [{ID}]");
-                    break;
-                case 0:
-                    Utilities.LoggerError($"Invalid JSON error -> Room: [{ID}]");
-                    break;
-            }
+            this.MaxPlayers = maxPlayers;
+            this.HasPassword = hasPassword;
+            this.IsVisible = isVisible;
+            this.___props = options;
         }
 
         public bool AddPlayer(Player player, out string errorMessage)
         {
             lock (SyncPlayers) // Thread safe.
             {
-                if (countOfPlayers >= maxPlayers) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
+                if (countOfPlayers >= MaxPlayers) // Thread-Safe - check if CountOfPlayers(Interlocked) > maxplayers(Immutable)
                 { errorMessage = "The Room is full."; return false; }
                 else
                 {
@@ -160,25 +141,9 @@ namespace NeutronNetwork
             return x.ID == y.ID;
         }
 
-        public void SetProperties(string props) // [THREAD-SAFE - player is individual]
-        {
-            properties = props;
-        }
-
         public Int32 GetHashCode(Room obj)
         {
             return obj.ID.GetHashCode();
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("ID", ID, typeof(int));
-            info.AddValue("Name", Name, typeof(string));
-            info.AddValue("countPlayers", countOfPlayers, typeof(int));
-            info.AddValue("maxPlayers", maxPlayers, typeof(int));
-            info.AddValue("hasPassword", hasPassword, typeof(bool));
-            info.AddValue("isVisible", isVisible, typeof(bool));
-            info.AddValue("properties", properties, typeof(string));
         }
     }
 }

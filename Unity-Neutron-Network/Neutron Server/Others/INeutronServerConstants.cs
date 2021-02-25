@@ -38,7 +38,6 @@ namespace NeutronNetwork.Internal.Server
         protected NeutronSafeDictionary<string, int> SYN = new NeutronSafeDictionary<string, int>();
         public NeutronQueue<Action> monoActions = new NeutronQueue<Action>(); // Thread-Safe - All shares that inherit from 
         protected bool _ready; // indicate server is up.
-        public static IData IData;
 
         private void SerializeInspector()
         {
@@ -66,18 +65,18 @@ namespace NeutronNetwork.Internal.Server
         Console.Clear();
 #endif
 #if UNITY_SERVER || UNITY_EDITOR
+            Config.LoadSettings();
             InitializeEvents();
             onServerAwake?.Invoke();
             SerializeInspector();
-            IData IData = Data.LoadSettings();
-            if (IData == null) Utilities.LoggerError("Failed to initialize server");
+            if (Config.GetConfig == null) Utilities.LoggerError("Failed to initialize server");
             else
             {
                 try
                 {
-                    SetSetting(IData);
-                    ServerSocket = new TcpListener(new IPEndPoint(IPAddress.Any, IData.serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                    ServerSocket.Start(IData.backLog);
+                    SetSetting(Config.GetConfig);
+                    ServerSocket = new TcpListener(new IPEndPoint(IPAddress.Any, Config.GetConfig.serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                    ServerSocket.Start(Config.GetConfig.backLog);
                     _ready = true;
                 }
                 catch (Exception ex) { Utilities.LoggerError(ex.Message); }
@@ -89,10 +88,8 @@ namespace NeutronNetwork.Internal.Server
 #endif
         }
 
-        void SetSetting(IData Data)
+        void SetSetting(JsonData Data)
         {
-            IData = Data;
-
             TELEPORT_DISTANCE_TOLERANCE = Data.teleportTolerance;
             SPEEDHACK_TOLERANCE = Data.speedHackTolerance;
             MAX_RECEIVE_MESSAGE_SIZE = Data.max_rec_msg;

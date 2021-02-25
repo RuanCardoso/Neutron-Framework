@@ -2,6 +2,6 @@
 {
     public interface INotify
     {
-        int ID { get; }
+        int ID { get; set; }
     }
 }

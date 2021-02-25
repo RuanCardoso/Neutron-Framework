@@ -16,47 +16,61 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Player : IEquatable<Player>, INotify, ISerializable, IEqualityComparer<Player>, IDisposable
+    public class Player : IEquatable<Player>, INotify, IEqualityComparer<Player>, IDisposable
     {
-        public int ID { get; set; }
         /// <summary>
-        /// nickname of player.
+        /// ID of player.
         /// </summary>
-        [ReadOnly] public string Nickname;
+        public int ID { get => iD; set => iD = value; }
+        [SerializeField, ReadOnly] private int iD;
         /// <summary>
-        /// current channel of player.
+        /// Nickname of player.
         /// </summary>
-        [ReadOnly] public int currentChannel = -1;
+        public string Nickname { get => nickname; set => nickname = value; }
+        [SerializeField, ReadOnly] private string nickname;
         /// <summary>
-        /// current room of player.
+        /// Current channel of player.
         /// </summary>
-        [ReadOnly] public int currentRoom = -1;
+        public int CurrentChannel { get => currentChannel; set => currentChannel = value; }
+        [SerializeField, ReadOnly] private int currentChannel = -1;
+        /// <summary>
+        /// Current room of player.
+        /// </summary>
+        public int CurrentRoom { get => currentRoom; set => currentRoom = value; }
+        [SerializeField, ReadOnly] private int currentRoom = -1;
         /// <summary>
         /// Check if player is a bot.
         /// </summary>
-        [ReadOnly] public bool isBot;
+        public bool IsBot { get => isBot; set => isBot = value; }
+        [SerializeField, ReadOnly] private bool isBot;
+        /// <summary>
+        /// Properties of player.
+        /// </summary>
+        public string ___props { get => properties; set => properties = value; }
+        [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
+        /// <summary>
+        /// ID of database.
+        /// </summary>
+        [JsonIgnore] public int DatabaseID { get => databaseID; set => databaseID = value; }
+        [SerializeField, ReadOnly] private int databaseID;
         /// <summary>
         /// state of player.
         /// </summary>
-        [NonSerialized] public NeutronView neutronView;
+        [field: NonSerialized]
+        [JsonIgnore]
+        public NeutronView NeutronView { get; set; }
         /// <summary>
-        /// Properties of channel.
+        /// Properties of player.
         /// </summary>
-        [SerializeField, TextArea, ReadOnly] private string properties = "{\"\":\"\"}";
-        /// <summary>
-        /// Properties of channel.
-        /// </summary>
-        [NonSerialized] public Dictionary<string, object> Properties;
+        [field: NonSerialized]
+        [JsonIgnore]
+        public Dictionary<string, object> GetProps { get; set; }
         /// <summary>
         /// queue of data TCP.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
         [NonSerialized] public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
-        /// <summary>
-        /// id of database.
-        /// </summary>
-        public int databaseID;
         /// <summary>
         /// Remote EndPoint of player.
         /// returns null on the client.
@@ -91,34 +105,11 @@ namespace NeutronNetwork
         public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
         {
             this.ID = ID;
-            this.Nickname = "Unknown";
+            this.Nickname = $"Unknown#{new System.Random().Next(0, 100000)}";
             this.tcpClient = tcpClient;
             this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
             this._cts = _cts;
-        }
-
-        public Player(SerializationInfo info, StreamingContext context)
-        {
-            ID = (int)info.GetValue("ID", typeof(int));
-            Nickname = (string)info.GetValue("Nickname", typeof(string));
-            currentChannel = (int)info.GetValue("currentChannel", typeof(int));
-            currentRoom = (int)info.GetValue("currentRoom", typeof(int));
-            isBot = (bool)info.GetValue("isBot", typeof(bool));
-            properties = (string)info.GetValue("properties", typeof(string));
-            int code = Utils.ValidateAndDeserializeJson(properties, out Dictionary<string, object> _properties);
-            switch (code)
-            {
-                case 1:
-                    Properties = _properties;
-                    break;
-                case 2:
-                    Utilities.LoggerError($"Properties is empty -> Player: [{ID}]");
-                    break;
-                case 0:
-                    Utilities.LoggerError($"Invalid JSON error -> Player: [{ID}]");
-                    break;
-            }
         }
 
         public Boolean Equals(Player other)
@@ -145,27 +136,18 @@ namespace NeutronNetwork
             return obj.ID.GetHashCode();
         }
 
-        public void SetProperties(string props) // [THREAD-SAFE - player is individual]
-        {
-            properties = props;
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("ID", ID, typeof(int));
-            info.AddValue("Nickname", Nickname, typeof(string));
-            info.AddValue("currentChannel", currentChannel, typeof(int));
-            info.AddValue("currentRoom", currentRoom, typeof(int));
-            info.AddValue("isBot", isBot, typeof(bool));
-            info.AddValue("properties", properties, typeof(string));
-        }
-
         public void Dispose()
         {
-            _cts.Cancel();
-            _cts.Dispose();
-            udpClient?.Dispose();
-            tcpClient?.Dispose();
+            using (_cts)
+            {
+                using (udpClient)
+                {
+                    using (tcpClient)
+                    {
+                        _cts.Cancel();
+                    }
+                }
+            }
         }
     }
 }

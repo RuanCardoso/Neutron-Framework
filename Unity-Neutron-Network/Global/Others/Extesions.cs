@@ -23,7 +23,7 @@ namespace NeutronNetwork.Internal.Extesions
         {
             try
             {
-                Serialization serializationMode = (Serialization)NeutronServer.IData.serializationOptions;
+                Serialization serializationMode = (Serialization)Config.GetConfig.serializationOptions;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -50,7 +50,7 @@ namespace NeutronNetwork.Internal.Extesions
         {
             try
             {
-                Serialization serializationMode = (Serialization)NeutronServer.IData.serializationOptions;
+                Serialization serializationMode = (Serialization)Config.GetConfig.serializationOptions;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -159,7 +159,7 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, Protocol protocolType)
         {
-            buffer = buffer.Compress((Compression)NeutronServer.IData.compressionOptions);
+            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             switch (protocolType)
             {
                 case Protocol.Tcp:
@@ -173,18 +173,18 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, byte[] buffer)
         {
-            buffer = buffer.Compress((Compression)NeutronServer.IData.compressionOptions);
+            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, SendBroadcast(mSender, Broadcast.None), false);
         }
 
         public static bool IsInChannel(this Player _player)
         {
-            return _player.currentChannel > -1;
+            return _player.CurrentChannel > -1;
         }
 
         public static bool IsInRoom(this Player _player)
         {
-            return _player.currentRoom > -1;
+            return _player.CurrentRoom > -1;
         }
 
         public static IPEndPoint RemoteEndPoint(this TcpClient socket)
@@ -321,27 +321,27 @@ namespace NeutronNetwork.Internal.Extesions
                     }
                 case Broadcast.Channel:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.currentChannel];
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
                         Player[] channelPlayers = channel.GetPlayers();
                         return channelPlayers;
                     }
                 case Broadcast.Room:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.currentChannel];
-                        Room room = channel.GetRoom(mPlayer.currentRoom);
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
+                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         return roomsPlayers;
                     }
                 case Broadcast.Instantiated:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.currentChannel];
-                        Room room = channel.GetRoom(mPlayer.currentRoom);
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
+                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         Player[] channelPlayers = channel.GetPlayers();
 
                         Player[] players = (!mPlayer.IsInRoom()) ? channelPlayers : roomsPlayers;
 
-                        return players.Where(x => x.neutronView != null).ToArray();
+                        return players.Where(x => x.NeutronView != null).ToArray();
                     }
                 default:
                     return null;

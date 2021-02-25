@@ -18,7 +18,7 @@ namespace NeutronNetwork
                 if (!isServer)
                 {
 
-                    view.name = (!mPlayer.isBot) ? mPlayer.Nickname + " -> [Client]" : mPlayer.Nickname + " -> [Bot]";
+                    view.name = (!mPlayer.IsBot) ? mPlayer.Nickname + " -> [Client]" : mPlayer.Nickname + " -> [Bot]";
                     view._ = localInstance;
                     if (localInstance.isLocalPlayer(mPlayer)) localInstance.NeutronView = view;
                     localInstance.playersObjects.TryAdd(mPlayer.ID, view);
@@ -27,13 +27,13 @@ namespace NeutronNetwork
                 else if (isServer)
                 {
 
-                    Neutron.Server.Players[mPlayer.tcpClient].neutronView = view;
+                    Neutron.Server.Players[mPlayer.tcpClient].NeutronView = view;
 
                     Renderer renderer = view.GetComponentInChildren<Renderer>();
                     if (renderer != null)
                         renderer.material.color = Color.red;
 
-                    prefabPlayer.name = (!mPlayer.isBot) ? mPlayer.Nickname + " -> [Server]" : mPlayer.Nickname + " -> [Bot]";
+                    prefabPlayer.name = (!mPlayer.IsBot) ? mPlayer.Nickname + " -> [Server]" : mPlayer.Nickname + " -> [Bot]";
                     //NeutronSFunc.onPlayerInstantiated?.Invoke(mPlayer);
                 }
 

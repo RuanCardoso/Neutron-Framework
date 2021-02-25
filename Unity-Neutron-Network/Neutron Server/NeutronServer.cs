@@ -21,6 +21,7 @@ using UnityEngine;
 namespace NeutronNetwork.Internal.Server
 {
     [RequireComponent(typeof(NeutronEvents))]
+    [RequireComponent(typeof(Config))]
     public class NeutronServer : NeutronServerFunctions
     {
         //* Amounts of clients that have signed in since the server was started.
@@ -82,11 +83,11 @@ namespace NeutronNetwork.Internal.Server
                 dataForProcessing.manualResetEvent.Reset(); //* Sets the state of the event to nonsignaled, which causes threads to block.
                 while (dataForProcessing.SafeCount > 0) //* thread-safe - loop to process all data in the queue, before blocking the thread.
                 {
-                    for (int i = 0; i < IData.serverPacketChunkSize && dataForProcessing.SafeCount > 0; i++)
+                    for (int i = 0; i < Config.GetConfig.serverPacketChunkSize && dataForProcessing.SafeCount > 0; i++)
                     {
                         var data = dataForProcessing.SafeDequeue();
                         bool isUDP = (data.protocol == Protocol.Udp) ? true : false;
-                        byte[] bufferToProcess = data.buffer.Decompress((Compression)IData.compressionOptions);
+                        byte[] bufferToProcess = data.buffer.Decompress((Compression)Config.GetConfig.compressionOptions);
                         PacketProcessing(data.player, bufferToProcess, isUDP);
                     }
                 }
@@ -124,7 +125,7 @@ namespace NeutronNetwork.Internal.Server
                 {
                     var acceptedClient = acceptedClients.SafeDequeue();
                     if (!SYNCheck(acceptedClient)) continue;
-                    acceptedClient.NoDelay = IData.serverNoDelay;
+                    acceptedClient.NoDelay = Config.GetConfig.serverNoDelay;
                     // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
                     // TODO acceptedClient.SendTimeout = int.MaxValue;
                     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
@@ -163,7 +164,7 @@ namespace NeutronNetwork.Internal.Server
                     manualResetEvent.Reset();
                     while (queueData.SafeCount > 0)
                     {
-                        for (int i = 0; i < IData.serverProcessChunkSize && queueData.SafeCount > 0; i++)
+                        for (int i = 0; i < Config.GetConfig.serverProcessChunkSize && queueData.SafeCount > 0; i++)
                         {
                             var data = queueData.SafeDequeue();
                             using (NeutronWriter header = new NeutronWriter())
@@ -176,12 +177,12 @@ namespace NeutronNetwork.Internal.Server
                                     case Protocol.Tcp:
                                         if (player.tcpClient != null)
                                             netStream.Write(nBuffer, 0, nBuffer.Length);
-                                        Thread.Sleep(IData.serverSendRate);
+                                        Thread.Sleep(Config.GetConfig.serverSendRate);
                                         break;
                                     case Protocol.Udp:
                                         if (player.rPEndPoint != null && player.tcpClient != null) //* rPEndPointis not thread-safe....  but as it is assigned only once and only by a single thread, it doesn't matter.
                                             player.udpClient.Send(data.buffer, data.buffer.Length, player.rPEndPoint); // send message
-                                        Thread.Sleep(IData.serverSendRateUDP);
+                                        Thread.Sleep(Config.GetConfig.serverSendRateUDP);
                                         break;
                                 }
                             }
@@ -223,7 +224,7 @@ namespace NeutronNetwork.Internal.Server
                     }
                     else HandleDisconnect(player, player._cts);
                     ///////////////////////////////////////////
-                    await Task.Delay(IData.serverReceiveRate);
+                    await Task.Delay(Config.GetConfig.serverReceiveRate);
                 }
                 else if (protocol == Protocol.Udp)
                 {
@@ -234,7 +235,7 @@ namespace NeutronNetwork.Internal.Server
                         dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Udp, udpReceiveResult.Buffer, player));
                     }
                     //////////////////////////////////////////////
-                    await Task.Delay(IData.serverReceiveRateUDP);
+                    await Task.Delay(Config.GetConfig.serverReceiveRateUDP);
                 }
             }
         }
@@ -318,20 +319,19 @@ namespace NeutronNetwork.Internal.Server
                 Utilities.LoggerError("Failed to initialize server -> error code: 0x1003");
                 return;
             }
-            if (IData.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
-            StartCoroutine(Utils.KeepFramerate(IData.serverFPS));
+            if (Config.GetConfig.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
+            StartCoroutine(Utils.KeepFramerate(Config.GetConfig.serverFPS));
             InitilizeServer();
 #elif DEVELOPMENT_BUILD
-        Console.Clear();
-        Utilities.Logger("Development build is not supported on the Server.");
+            Console.Clear();
+            Utilities.LoggerError("Development build is not supported on the Server.");
 #endif
 #elif NET_STANDARD_2_0
         Console.Clear();
-        Utilities.Logger(".NET Standard is not supported, change to .NET 4.x or IL2CPP.");
+        Utilities.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
 #endif
         }
 #endif
-
         private void OnApplicationQuit()
         {
             Initialized = false; //* Disable server(disable all loop and kill all threads).
