@@ -5,7 +5,7 @@ namespace NeutronNetwork.Internal.Server.Cheats
 {
     public class CheatsUtils
     {
-        public static SEvents.OnCheatDetected onCheatDetected;
+        public static ServerEvents.OnCheatDetected onCheatDetected;
         public static bool enabled = true;
         public static bool AntiTeleport(Vector3 oldPosition, Vector3 newPosition, float tolerance, Player detectedPlayer)
         {

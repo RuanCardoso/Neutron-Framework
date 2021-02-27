@@ -27,7 +27,6 @@ namespace NeutronNetwork.Internal.Client
         protected double packetLoss = 0;
         protected int pingAmount = 0;
         //-------------------------------------------------------------------------------------------------------------
-        protected Dictionary<int, float> timeRPC;
         //-------------------------------------------------------------------------------------------------------------
         public ConcurrentDictionary<int, NeutronView> playersObjects;
         public ConcurrentDictionary<int, object[]> properties;
@@ -40,14 +39,13 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
-            Config.LoadSettings();
+            NeutronConfig.LoadSettings();
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------
             _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Tcp)));
             _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             //-------------------------------------------------------------------------------------------------------------
-            timeRPC = new Dictionary<int, float>();
             //-------------------------------------------------------------------------------------------------------------
             playersObjects = new ConcurrentDictionary<int, NeutronView>();
             properties = new ConcurrentDictionary<int, object[]>();

@@ -21,14 +21,15 @@ using UnityEngine;
 namespace NeutronNetwork.Internal.Server
 {
     [RequireComponent(typeof(NeutronEvents))]
-    [RequireComponent(typeof(Config))]
+    [RequireComponent(typeof(NeutronConfig))]
+    [RequireComponent(typeof(NeutronStatistics))]
     public class NeutronServer : NeutronServerFunctions
     {
         //* Amounts of clients that have signed in since the server was started.
         //* This property is not reset and does not decrease its value.
         static int totalAmountOfPlayers = 0;
         //* notifies you if the server has started.
-        public static event SEvents.OnServerStart onServerStart;
+        public static event ServerEvents.OnServerStart onServerStart;
         //* all accepted clients will be queued here.
         private NeutronQueue<TcpClient> acceptedClients = new NeutronQueue<TcpClient>();
         //* here the data received from clients for processing will be queued.
@@ -83,12 +84,11 @@ namespace NeutronNetwork.Internal.Server
                 dataForProcessing.manualResetEvent.Reset(); //* Sets the state of the event to nonsignaled, which causes threads to block.
                 while (dataForProcessing.SafeCount > 0) //* thread-safe - loop to process all data in the queue, before blocking the thread.
                 {
-                    for (int i = 0; i < Config.GetConfig.serverPacketChunkSize && dataForProcessing.SafeCount > 0; i++)
+                    for (int i = 0; i < NeutronConfig.GetConfig.serverPacketChunkSize && dataForProcessing.SafeCount > 0; i++)
                     {
                         var data = dataForProcessing.SafeDequeue();
                         bool isUDP = (data.protocol == Protocol.Udp) ? true : false;
-                        byte[] bufferToProcess = data.buffer.Decompress((Compression)Config.GetConfig.compressionOptions);
-                        PacketProcessing(data.player, bufferToProcess, isUDP);
+                        PacketProcessing(data.player, data.buffer, isUDP);
                     }
                 }
                 dataForProcessing.manualResetEvent.WaitOne(); //* Blocks the current thread until the current WaitHandle receives a signal.
@@ -125,11 +125,11 @@ namespace NeutronNetwork.Internal.Server
                 {
                     var acceptedClient = acceptedClients.SafeDequeue();
                     if (!SYNCheck(acceptedClient)) continue;
-                    acceptedClient.NoDelay = Config.GetConfig.serverNoDelay;
+                    acceptedClient.NoDelay = NeutronConfig.GetConfig.serverNoDelay;
                     // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
                     // TODO acceptedClient.SendTimeout = int.MaxValue;
                     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
-                    Player newPlayer = new Player(Utils.GetUniqueID(acceptedClient.RemoteEndPoint()), acceptedClient, cancellationTokenSource);
+                    Player newPlayer = new Player(Utils.GetUniqueID(), acceptedClient, cancellationTokenSource);
                     if (AddPlayer(newPlayer))
                     {
                         totalAmountOfPlayers++;
@@ -164,7 +164,7 @@ namespace NeutronNetwork.Internal.Server
                     manualResetEvent.Reset();
                     while (queueData.SafeCount > 0)
                     {
-                        for (int i = 0; i < Config.GetConfig.serverProcessChunkSize && queueData.SafeCount > 0; i++)
+                        for (int i = 0; i < NeutronConfig.GetConfig.serverProcessChunkSize && queueData.SafeCount > 0; i++)
                         {
                             var data = queueData.SafeDequeue();
                             using (NeutronWriter header = new NeutronWriter())
@@ -177,12 +177,12 @@ namespace NeutronNetwork.Internal.Server
                                     case Protocol.Tcp:
                                         if (player.tcpClient != null)
                                             netStream.Write(nBuffer, 0, nBuffer.Length);
-                                        Thread.Sleep(Config.GetConfig.serverSendRate);
+                                        Thread.Sleep(NeutronConfig.GetConfig.serverSendRate);
                                         break;
                                     case Protocol.Udp:
                                         if (player.rPEndPoint != null && player.tcpClient != null) //* rPEndPointis not thread-safe....  but as it is assigned only once and only by a single thread, it doesn't matter.
                                             player.udpClient.Send(data.buffer, data.buffer.Length, player.rPEndPoint); // send message
-                                        Thread.Sleep(Config.GetConfig.serverSendRateUDP);
+                                        Thread.Sleep(NeutronConfig.GetConfig.serverSendRateUDP);
                                         break;
                                 }
                             }
@@ -224,7 +224,7 @@ namespace NeutronNetwork.Internal.Server
                     }
                     else HandleDisconnect(player, player._cts);
                     ///////////////////////////////////////////
-                    await Task.Delay(Config.GetConfig.serverReceiveRate);
+                    await Task.Delay(NeutronConfig.GetConfig.serverReceiveRate);
                 }
                 else if (protocol == Protocol.Udp)
                 {
@@ -235,7 +235,7 @@ namespace NeutronNetwork.Internal.Server
                         dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Udp, udpReceiveResult.Buffer, player));
                     }
                     //////////////////////////////////////////////
-                    await Task.Delay(Config.GetConfig.serverReceiveRateUDP);
+                    await Task.Delay(NeutronConfig.GetConfig.serverReceiveRateUDP);
                 }
             }
         }
@@ -319,8 +319,8 @@ namespace NeutronNetwork.Internal.Server
                 Utilities.LoggerError("Failed to initialize server -> error code: 0x1003");
                 return;
             }
-            if (Config.GetConfig.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
-            StartCoroutine(Utils.KeepFramerate(Config.GetConfig.serverFPS));
+            if (NeutronConfig.GetConfig.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
+            StartCoroutine(Utils.KeepFramerate(NeutronConfig.GetConfig.serverFPS));
             InitilizeServer();
 #elif DEVELOPMENT_BUILD
             Console.Clear();

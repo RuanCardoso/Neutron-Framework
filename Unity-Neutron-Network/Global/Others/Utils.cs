@@ -12,8 +12,8 @@ namespace NeutronNetwork.Internal
 {
     public class Utils
     {
-        private static int uniqueID = 3005975;
-        public static int GetUniqueID(IPEndPoint endPoint) => uniqueID++;
+        private static int uniqueID;
+        public static int GetUniqueID() => ++uniqueID;
         public static int GetFreePort(Protocol type)
         {
             switch (type)

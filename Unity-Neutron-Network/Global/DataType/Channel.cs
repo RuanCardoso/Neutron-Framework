@@ -21,7 +21,7 @@ namespace NeutronNetwork
         /// ID of channel.
         /// </summary>
         public int ID { get => iD; set => iD = value; }
-        [SerializeField, ReadOnly] private int iD;
+        [SerializeField] private int iD;
         /// <summary>
         /// Name of channel.
         /// </summary>

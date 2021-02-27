@@ -23,7 +23,7 @@ namespace NeutronNetwork.Internal.Extesions
         {
             try
             {
-                Serialization serializationMode = (Serialization)Config.GetConfig.serializationOptions;
+                Serialization serializationMode = (Serialization)NeutronConfig.GetConfig.serializationOptions;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -31,14 +31,14 @@ namespace NeutronNetwork.Internal.Extesions
                         using (NeutronWriter jsonWriter = new NeutronWriter())
                         {
                             jsonWriter.Write(jsonString);
-                            return jsonWriter.ToArray();
+                            return jsonWriter.ToArray().Compress(NeutronServer.COMPRESSION_MODE);
                         }
                     case Serialization.BinaryFormatter:
                         BinaryFormatter formatter = new BinaryFormatter();
                         using (MemoryStream mStream = new MemoryStream())
                         {
                             formatter.Serialize(mStream, message);
-                            return mStream.ToArray();
+                            return mStream.ToArray().Compress(NeutronServer.COMPRESSION_MODE);
                         }
                     default:
                         return null;
@@ -48,9 +48,10 @@ namespace NeutronNetwork.Internal.Extesions
         }
         public static T DeserializeObject<T>(this byte[] message)
         {
+            message = message.Decompress(NeutronServer.COMPRESSION_MODE);
             try
             {
-                Serialization serializationMode = (Serialization)Config.GetConfig.serializationOptions;
+                Serialization serializationMode = (Serialization)NeutronConfig.GetConfig.serializationOptions;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -159,7 +160,6 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, Protocol protocolType)
         {
-            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             switch (protocolType)
             {
                 case Protocol.Tcp:
@@ -173,18 +173,17 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static void Send(this Player mSender, byte[] buffer)
         {
-            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, SendBroadcast(mSender, Broadcast.None), false);
         }
 
         public static bool IsInChannel(this Player _player)
         {
-            return _player.CurrentChannel > -1;
+            return _player.CurrCh > -1;
         }
 
         public static bool IsInRoom(this Player _player)
         {
-            return _player.CurrentRoom > -1;
+            return _player.CurrRoom > -1;
         }
 
         public static IPEndPoint RemoteEndPoint(this TcpClient socket)
@@ -321,21 +320,21 @@ namespace NeutronNetwork.Internal.Extesions
                     }
                 case Broadcast.Channel:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
                         Player[] channelPlayers = channel.GetPlayers();
                         return channelPlayers;
                     }
                 case Broadcast.Room:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
-                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
+                        Room room = channel.GetRoom(mPlayer.CurrRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         return roomsPlayers;
                     }
                 case Broadcast.Instantiated:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrentChannel];
-                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
+                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
+                        Room room = channel.GetRoom(mPlayer.CurrRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         Player[] channelPlayers = channel.GetPlayers();
 

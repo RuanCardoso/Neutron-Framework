@@ -85,8 +85,8 @@ namespace NeutronNetwork.Internal.Comms
                                         else
                                         {
                                             if (!sender.IsInRoom())
-                                                Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.CurrentChannel}]");
-                                            else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.CurrentRoom}]");
+                                                Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.CurrCh}]");
+                                            else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.CurrRoom}]");
                                         }
                                     }
                                     else if (objType == typeof(bool))

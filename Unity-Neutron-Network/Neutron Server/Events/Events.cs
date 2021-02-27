@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Server.InternalEvents
 {
-    public class SEvents
+    public class ServerEvents
     {
         public delegate void OnPlayerDisconnected(Player playerDisconnected);
         public delegate void OnPlayerInstantiated(Player playerInstantiated);

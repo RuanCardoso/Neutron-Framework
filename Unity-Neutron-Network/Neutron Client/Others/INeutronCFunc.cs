@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Threading;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Client
@@ -45,11 +46,25 @@ namespace NeutronNetwork.Internal.Client
             _.OnCreatedRoom += OnCreatedRoom;
         }
 
+        private void UpdateStatistics(int length)
+        {
+            new Action(() =>
+            {
+                NeutronStatistics.clientBytesSent += length;
+            }).ExecuteOnMainThread(_);
+        }
+
+        protected void UpdateStatisticsRec(int length)
+        {
+            new Action(() =>
+            {
+                NeutronStatistics.clientBytesRec += length;
+            }).ExecuteOnMainThread(_);
+        }
+
         protected void Send(byte[] buffer, Protocol protocolType = Protocol.Tcp)
         {
             if (!_.IsConnected) return;
-
-            buffer = buffer.Compress((Compression)Config.GetConfig.compressionOptions);
             switch (protocolType)
             {
                 case Protocol.Tcp:
@@ -71,24 +86,25 @@ namespace NeutronNetwork.Internal.Client
                     writerOnly.WriteFixedLength(buffer.Length);
                     writerOnly.Write(buffer);
                     byte[] nBuffer = writerOnly.ToArray();
-                    Debug.LogError("Bytes: " + nBuffer.ToArray().Length);
+                    UpdateStatistics(nBuffer.Length);
                     await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
                 }
             }
             catch (ObjectDisposedException) { }
             catch (SocketException) { }
-            catch (Exception ex) { }
+            catch (Exception) { }
         }
 
         protected async void SendUDP(byte[] message)
         {
             try
             {
+                UpdateStatistics(message.Length);
                 await _UDPSocket.SendAsync(message, message.Length, endPointUDP);
             }
             catch (ObjectDisposedException) { }
             catch (SocketException) { }
-            catch (Exception ex) { }
+            catch (Exception) { }
         }
 
         protected void InitConnect()
@@ -266,7 +282,7 @@ namespace NeutronNetwork.Internal.Client
 
         private void OnCreatedRoom(Room room, Neutron localinstance)
         {
-            _.MyPlayer.CurrentRoom = room.ID;
+            _.MyPlayer.CurrRoom = room.ID;
         }
 
         private void OnDisconnected(string reason, Neutron localinstance)

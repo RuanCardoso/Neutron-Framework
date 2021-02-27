@@ -22,22 +22,22 @@ namespace NeutronNetwork
         /// ID of player.
         /// </summary>
         public int ID { get => iD; set => iD = value; }
-        [SerializeField, ReadOnly] private int iD;
+        [SerializeField] private int iD;
         /// <summary>
         /// Nickname of player.
         /// </summary>
-        public string Nickname { get => nickname; set => nickname = value; }
-        [SerializeField, ReadOnly] private string nickname;
+        public string Nick { get => nick; set => nick = value; }
+        [SerializeField, ReadOnly] private string nick;
         /// <summary>
         /// Current channel of player.
         /// </summary>
-        public int CurrentChannel { get => currentChannel; set => currentChannel = value; }
-        [SerializeField, ReadOnly] private int currentChannel = -1;
+        public int CurrCh { get => currCh; set => currCh = value; }
+        [SerializeField, ReadOnly] private int currCh = -1;
         /// <summary>
         /// Current room of player.
         /// </summary>
-        public int CurrentRoom { get => currentRoom; set => currentRoom = value; }
-        [SerializeField, ReadOnly] private int currentRoom = -1;
+        public int CurrRoom { get => currRoom; set => currRoom = value; }
+        [SerializeField, ReadOnly] private int currRoom = -1;
         /// <summary>
         /// Check if player is a bot.
         /// </summary>
@@ -46,13 +46,19 @@ namespace NeutronNetwork
         /// <summary>
         /// Properties of player.
         /// </summary>
-        public string ___props { get => properties; set => properties = value; }
-        [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
+        public string _ { get => props; set => props = value; }
+        [SerializeField, TextArea] private string props = string.Empty;
         /// <summary>
         /// ID of database.
         /// </summary>
-        [JsonIgnore] public int DatabaseID { get => databaseID; set => databaseID = value; }
-        [SerializeField, ReadOnly] private int databaseID;
+        [JsonIgnore]
+        public int DID { get => dID; set => dID = value; }
+#if !UNITY_EDITOR
+        [NonSerialized]
+#else
+        [SerializeField]
+#endif
+        [ReadOnly] private int dID;
         /// <summary>
         /// state of player.
         /// </summary>
@@ -105,7 +111,7 @@ namespace NeutronNetwork
         public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
         {
             this.ID = ID;
-            this.Nickname = $"Unknown#{new System.Random().Next(0, 100000)}";
+            this.Nick = $"Unknown#{new System.Random().Next(0, 100000)}";
             this.tcpClient = tcpClient;
             this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;

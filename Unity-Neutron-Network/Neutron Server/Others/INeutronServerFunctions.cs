@@ -15,13 +15,13 @@ namespace NeutronNetwork.Internal.Server
     public class NeutronServerFunctions : NeutronServerConstants
     {
         public static NeutronServerFunctions _;
-        public static event SEvents.OnPlayerDisconnected onPlayerDisconnected;
-        public static event SEvents.OnPlayerDestroyed onPlayerDestroyed;
-        public static event SEvents.OnPlayerJoinedChannel onPlayerJoinedChannel;
-        public static event SEvents.OnPlayerLeaveChannel onPlayerLeaveChannel;
-        public static event SEvents.OnPlayerJoinedRoom onPlayerJoinedRoom;
-        public static event SEvents.OnPlayerLeaveRoom onPlayerLeaveRoom;
-        public static event SEvents.OnPlayerPropertiesChanged onPlayerPropertiesChanged;
+        public static event ServerEvents.OnPlayerDisconnected onPlayerDisconnected;
+        public static event ServerEvents.OnPlayerDestroyed onPlayerDestroyed;
+        public static event ServerEvents.OnPlayerJoinedChannel onPlayerJoinedChannel;
+        public static event ServerEvents.OnPlayerLeaveChannel onPlayerLeaveChannel;
+        public static event ServerEvents.OnPlayerJoinedRoom onPlayerJoinedRoom;
+        public static event ServerEvents.OnPlayerLeaveRoom onPlayerLeaveRoom;
+        public static event ServerEvents.OnPlayerPropertiesChanged onPlayerPropertiesChanged;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //MonoBehaviour
@@ -35,7 +35,7 @@ namespace NeutronNetwork.Internal.Server
 #if UNITY_SERVER || UNITY_EDITOR
         private void Update()
         {
-            Utils.Dequeue(monoActions, Config.GetConfig.serverMonoChunkSize); // process de server data. // [Thread-Safe]
+            Utils.Dequeue(monoActions, NeutronConfig.GetConfig.serverMonoChunkSize); // process de server data. // [Thread-Safe]
         }
 #endif
 
@@ -110,7 +110,7 @@ namespace NeutronNetwork.Internal.Server
             keyBuffer.buffer = buffer;
             keyBuffer.cachedPacket = packet;
 
-            Channel channel = Channels[owner.CurrentChannel];
+            Channel channel = Channels[owner.CurrCh];
             channel.AddCache(keyBuffer);
         }
 
@@ -209,7 +209,7 @@ namespace NeutronNetwork.Internal.Server
 
         protected void HandleNickname(Player mSender, string Nickname) // [Thread-Safe]
         {
-            mSender.Nickname = Nickname; // [Thread-Safe - individual access, only the parent thread has access.]
+            mSender.Nick = Nickname; // [Thread-Safe - individual access, only the parent thread has access.]
             using (NeutronWriter writer = new NeutronWriter()) // write the message.
             {
                 writer.WritePacket(Packet.Nickname); // packet name
@@ -329,7 +329,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         if (channel.AddPlayer(mSender, out string errorMessage))
                         {
-                            mSender.CurrentChannel = channelID; // Thread safe - because mSender is individual (not simultaneous) - update current channel of player.
+                            mSender.CurrCh = channelID; // Thread safe - because mSender is individual (not simultaneous) - update current channel of player.
                             using (NeutronWriter writer = new NeutronWriter())
                             {
                                 byte[] array = mSender.Serialize();
@@ -356,7 +356,7 @@ namespace NeutronNetwork.Internal.Server
             {
                 if (mSender.IsInChannel() && !mSender.IsInRoom())
                 {
-                    Channel channel = Channels[mSender.CurrentChannel];
+                    Channel channel = Channels[mSender.CurrCh];
                     int automaticID = channel.CountOfRooms;
                     Room nRoom = new Room(automaticID, roomName, maxPlayers, !string.IsNullOrEmpty(Password), isVisible, options);
 
@@ -364,7 +364,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         if (channel.AddRoom(nRoom, out string errorMessage))
                         {
-                            mSender.CurrentRoom = automaticID;
+                            mSender.CurrRoom = automaticID;
                             using (NeutronWriter writer = new NeutronWriter())
                             {
                                 byte[] array = nRoom.Serialize();
@@ -382,7 +382,7 @@ namespace NeutronNetwork.Internal.Server
                     }
                     else
                     {
-                        if (!Channels[mSender.CurrentChannel].RoomExists(roomName))
+                        if (!Channels[mSender.CurrCh].RoomExists(roomName))
                         {
                             CreateRoom();
                         }
@@ -396,7 +396,7 @@ namespace NeutronNetwork.Internal.Server
         // [Thread-Safe]
         protected void HandleGetCached(Player mSender, CachedPacket packetToSendCache, int ID)
         {
-            Channel channel = Channels[mSender.CurrentChannel];
+            Channel channel = Channels[mSender.CurrCh];
             CachedBuffer[] buffers = channel.GetCaches();
             foreach (var cached in buffers)
             {
@@ -458,7 +458,7 @@ namespace NeutronNetwork.Internal.Server
             {
                 if (mSender.IsInChannel() && !mSender.IsInRoom())
                 {
-                    Channel channel = Channels[mSender.CurrentChannel];
+                    Channel channel = Channels[mSender.CurrCh];
                     //if (Channels[indexChannel]._rooms.Count == 0) return;
                     using (NeutronWriter writer = new NeutronWriter())
                     {
@@ -486,9 +486,9 @@ namespace NeutronNetwork.Internal.Server
                     writer.Write(array);
                     mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Room, Protocol.Tcp);
                 }
-                Channel channel = Channels[mSender.CurrentChannel];
-                Room room = channel.GetRoom(mSender.CurrentRoom);
-                mSender.CurrentRoom = -1;
+                Channel channel = Channels[mSender.CurrCh];
+                Room room = channel.GetRoom(mSender.CurrRoom);
+                mSender.CurrRoom = -1;
                 room.RemovePlayer(mSender);
             }
             else SendErrorMessage(mSender, mCommand, "ERROR: LeaveRoom Failed");
@@ -506,9 +506,9 @@ namespace NeutronNetwork.Internal.Server
                     writer.Write(array);
                     mSender.Send(SendTo.All, writer.ToArray(), Broadcast.Channel, Protocol.Tcp);
                 }
-                Channel channel = Channels[mSender.CurrentChannel];
+                Channel channel = Channels[mSender.CurrCh];
                 channel.RemovePlayer(mSender);
-                mSender.CurrentChannel = -1;
+                mSender.CurrCh = -1;
             }
             else SendErrorMessage(mSender, mCommand, "ERROR: LeaveChannel Failed");
         }
@@ -519,14 +519,14 @@ namespace NeutronNetwork.Internal.Server
             {
                 if (mSender.IsInChannel() && !mSender.IsInRoom())
                 {
-                    Channel channel = Channels[mSender.CurrentChannel]; // Thread safe
+                    Channel channel = Channels[mSender.CurrCh]; // Thread safe
                     Room room = channel.GetRoom(roomID); // thread safe
 
                     if (room == null) return;
 
                     if (room.AddPlayer(mSender, out string errorMessage))
                     {
-                        mSender.CurrentRoom = roomID;
+                        mSender.CurrRoom = roomID;
                         using (NeutronWriter writer = new NeutronWriter())
                         {
                             byte[] array = mSender.Serialize();
@@ -562,7 +562,7 @@ namespace NeutronNetwork.Internal.Server
 
         public void HandleSetPlayerProperties(Player mSender, string properties) // [THREAD-SAFE]
         {
-            mSender.___props = properties;
+            mSender._ = properties;
             using (NeutronWriter writer = new NeutronWriter())
             {
                 byte[] arrayBytes = mSender.Serialize(); // write the player.
@@ -578,8 +578,8 @@ namespace NeutronNetwork.Internal.Server
         {
             if (mSender.IsInRoom())
             {
-                Channel channel = Channels[mSender.CurrentChannel];
-                Room room = channel.GetRoom(mSender.CurrentRoom);
+                Channel channel = Channels[mSender.CurrCh];
+                Room room = channel.GetRoom(mSender.CurrRoom);
 
                 if (room.Owner == null)
                 {

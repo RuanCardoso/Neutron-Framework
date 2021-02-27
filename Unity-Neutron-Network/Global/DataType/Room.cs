@@ -17,7 +17,7 @@ namespace NeutronNetwork
         /// ID of channel.
         /// </summary>
         public int ID { get => iD; set => iD = value; }
-        [SerializeField, ReadOnly] private int iD;
+        [SerializeField] private int iD;
         /// Name of room.
         /// </summary>
         public string Name { get => name; set => name = value; }

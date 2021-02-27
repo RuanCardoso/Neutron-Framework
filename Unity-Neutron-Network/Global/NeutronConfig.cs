@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Config : MonoBehaviour
+public class NeutronConfig : MonoBehaviour
 {
     public static JsonData GetConfig { get; private set; }
     private void Awake()

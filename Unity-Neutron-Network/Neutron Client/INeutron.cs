@@ -160,7 +160,7 @@ namespace NeutronNetwork
         {
 #if !UNITY_SERVER
             if (Server == null)
-                Application.targetFrameRate = Config.GetConfig.clientFPS;
+                Application.targetFrameRate = NeutronConfig.GetConfig.clientFPS;
 #endif
             if (!IsConnected) return;
 
@@ -170,8 +170,8 @@ namespace NeutronNetwork
             //     Destroy(this);
             // }
 
-            Utils.Dequeue(mainThreadActions, Config.GetConfig.clientMonoChunkSize);
-            Utils.Dequeue(monoBehaviourRPCActions, Config.GetConfig.clientMonoChunkSize);
+            Utils.Dequeue(mainThreadActions, NeutronConfig.GetConfig.clientMonoChunkSize);
+            Utils.Dequeue(monoBehaviourRPCActions, NeutronConfig.GetConfig.clientMonoChunkSize);
         }
 
         /// <summary>
@@ -181,6 +181,7 @@ namespace NeutronNetwork
         /// <param name="ipAddress">The ip of server to connect</param>
         public async void Connect()
         {
+            await Task.Delay(5);
             try
             {
                 if (!IsBot)
@@ -198,7 +199,7 @@ namespace NeutronNetwork
 #endif
                 }
                 Internal(); // initialize cliente.
-                if (!Utilities.LoggerError("Failed to load settings.", Config.GetConfig)) return;
+                if (!Utilities.LoggerError("Failed to load settings.", NeutronConfig.GetConfig)) return;
                 //if (IData.ipAddress.Equals("LocalHost", StringComparison.InvariantCultureIgnoreCase) || IsBot) IData.ipAddress = "127.0.0.1";
                 if (!IsConnected)
                 {
@@ -208,21 +209,21 @@ namespace NeutronNetwork
 #endif
                     //////////////////////////////////////////////////////////////////////////////////
                     IPAddress Ip = null;
-                    string toReplace = Config.GetConfig.ipAddress;
+                    string toReplace = NeutronConfig.GetConfig.ipAddress;
                     toReplace = toReplace.Replace("http://", string.Empty);
                     toReplace = toReplace.Replace("https://", string.Empty);
                     toReplace = toReplace.Replace("/", string.Empty);
-                    Config.GetConfig.ipAddress = toReplace;
-                    if (IPAddress.TryParse(Config.GetConfig.ipAddress, out var ip))
+                    NeutronConfig.GetConfig.ipAddress = toReplace;
+                    if (IPAddress.TryParse(NeutronConfig.GetConfig.ipAddress, out var ip))
                     {
                         Ip = ip;
                     }
                     else
                     {
-                        Ip = (await Dns.GetHostAddressesAsync(Config.GetConfig.ipAddress))[0];
-                        Config.GetConfig.ipAddress = Ip.ToString();
+                        Ip = (await Dns.GetHostAddressesAsync(NeutronConfig.GetConfig.ipAddress))[0];
+                        NeutronConfig.GetConfig.ipAddress = Ip.ToString();
                     }
-                    await _TCPSocket.ConnectAsync(Ip, Config.GetConfig.serverPort); // await connection.
+                    await _TCPSocket.ConnectAsync(Ip, NeutronConfig.GetConfig.serverPort); // await connection.
                     if (_TCPSocket.Connected)
                     {
                         IsConnected = true;
@@ -282,13 +283,8 @@ namespace NeutronNetwork
                 UdpReceiveResult udpReceiveResult = await _UDPSocket.ReceiveAsync();
                 if (udpReceiveResult.Buffer.Length > 0)
                 {
-                    if ((Compression)Config.GetConfig.compressionOptions == Compression.None) // client
-                        ProcessClientData(udpReceiveResult.Buffer); // client
-                    else // client
-                    {
-                        byte[] bBuffer = udpReceiveResult.Buffer.Decompress((Compression)Config.GetConfig.compressionOptions);
-                        ProcessClientData(bBuffer);
-                    }
+                    UpdateStatisticsRec(udpReceiveResult.Buffer.Length);
+                    ProcessClientData(udpReceiveResult.Buffer);
                 }
 
             } while (!token.IsCancellationRequested);
@@ -309,17 +305,12 @@ namespace NeutronNetwork
                         {
                             int fixedLength = BitConverter.ToInt32(messageLenBuffer, 0);
                             byte[] messageBuffer = new byte[fixedLength];
+                            UpdateStatisticsRec(fixedLength);
                             if (await Communication.ReadAsyncBytes(buffStream, messageBuffer, 0, fixedLength, token))
                             {
                                 using (NeutronReader messageReader = new NeutronReader(messageBuffer, 0, fixedLength))
                                 {
-                                    if ((Compression)Config.GetConfig.compressionOptions == Compression.None) // client
-                                        ProcessClientData(messageReader.ToArray()); // client
-                                    else // client
-                                    {
-                                        byte[] bBuffer = messageReader.ToArray().Decompress((Compression)Config.GetConfig.compressionOptions);
-                                        ProcessClientData(bBuffer);
-                                    }
+                                    ProcessClientData(messageReader.ToArray());
                                 }
                             }
                         }
@@ -350,7 +341,7 @@ namespace NeutronNetwork
                         }
                         else packetLoss += 1;
                     };
-                    pingSender.SendAsync(Config.GetConfig.ipAddress, null);
+                    pingSender.SendAsync(NeutronConfig.GetConfig.ipAddress, null);
                 }
                 tNetworkStatsDelay = 0;
             }
@@ -380,7 +371,7 @@ namespace NeutronNetwork
                                 int port = mReader.ReadInt32();
                                 byte[] array = mReader.ReadExactly();
                                 ///////////////////////////////////////////////////////////////////////
-                                endPointUDP = new IPEndPoint(IPAddress.Parse(Config.GetConfig.ipAddress), port);
+                                endPointUDP = new IPEndPoint(IPAddress.Parse(NeutronConfig.GetConfig.ipAddress), port);
                                 ///////////////////////////////////////////////////////////////////////
                                 HandleConnected(array);
                                 new Action(() => OnNeutronConnected?.Invoke(true, this)).ExecuteOnMainThread(this);
@@ -505,7 +496,7 @@ namespace NeutronNetwork
                         case Packet.SetPlayerProperties:
                             {
                                 Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                player.GetProps = JsonConvert.DeserializeObject<Dictionary<string, object>>(player.___props);
+                                player.GetProps = JsonConvert.DeserializeObject<Dictionary<string, object>>(player._);
                                 new Action(() => OnPlayerPropertiesChanged?.Invoke(player, this)).ExecuteOnMainThread(this);
                             }
                             break;

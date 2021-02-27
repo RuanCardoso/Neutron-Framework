@@ -5,8 +5,8 @@ using UnityEngine;
 [RequireComponent (typeof (Rigidbody))]
 public class ServerOnCollisionEvents : MonoBehaviour {
     private NeutronView StatePlayer;
-    public static event SEvents.OnPlayerCollision onPlayerCollision;
-    public static event SEvents.OnPlayerTrigger onPlayerTrigger;
+    public static event ServerEvents.OnPlayerCollision onPlayerCollision;
+    public static event ServerEvents.OnPlayerTrigger onPlayerTrigger;
     [SerializeField] private string objectIdentifier;
 
     private void Start () {

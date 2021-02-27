@@ -13,12 +13,11 @@ namespace NeutronNetwork.Components
     {
         [SerializeField] private bool synchronizeVelocity = true;
         [SerializeField] private bool synchronizeAngularVelocity = true;
-        [SerializeField] private float synchronizeDelay = 0.1f;
+        [SerializeField] [Range(0, 1f)] private float synchronizeDelay = 0.1f;
         [SerializeField] private SendTo sendTo = SendTo.Others;
         [SerializeField] private Broadcast broadcast = Broadcast.Room;
         [SerializeField] private Protocol protocol = Protocol.Udp;
-        private Vector3 velocity;
-        private Vector3 angularVelocity;
+        private Vector3 velocity, angularVelocity;
         private Rigidbody _rigidbody;
 
         private void Awake()
