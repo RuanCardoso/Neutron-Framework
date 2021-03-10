@@ -5,32 +5,37 @@ namespace NeutronNetwork.Internal.Server.Cheats
 {
     public class CheatsUtils
     {
-        public static ServerEvents.OnCheatDetected onCheatDetected;
+        public static event ServerEvents.OnCheatDetected onCheatDetected;
         public static bool enabled = true;
-        public static bool AntiTeleport(Vector3 oldPosition, Vector3 newPosition, float tolerance, Player detectedPlayer)
+
+        public static bool Teleport(Vector3 lagDistance, float tolerance, Player detectedPlayer)
         {
             if (enabled)
             {
-                if (Mathf.Abs(Vector3.Distance(oldPosition, newPosition)) > tolerance)
+                if (lagDistance.magnitude > tolerance)
                 {
-                    onCheatDetected(detectedPlayer, $"Teleport Detected T: {tolerance}");
-                    return true;
+                    return Notify(detectedPlayer, $"Teleport Detected T: {tolerance}");
                 }
             }
             return false;
         }
 
-        public static bool AntiSpeedHack(float currentFrequency, float tolerance, Player detectedPlayer)
+        public static bool SpeedHack(float currentFrequency, float tolerance, Player detectedPlayer)
         {
             if (enabled)
             {
                 if (currentFrequency > tolerance)
                 {
-                    onCheatDetected(detectedPlayer, $"Speedhack Detected T: {tolerance}");
-                    return true;
+                    return Notify(detectedPlayer, $"Speedhack Detected T: {tolerance}");
                 }
             }
             return false;
+        }
+
+        private static bool Notify(Player detectedPlayer, string message)
+        {
+            onCheatDetected?.Invoke(detectedPlayer, message);
+            return true;
         }
     }
 }

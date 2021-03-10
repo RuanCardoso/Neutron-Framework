@@ -1,6 +1,6 @@
 ﻿namespace NeutronNetwork.Internal.Client
 {
-    public interface INotify
+    public interface INeutronNotify
     {
         int ID { get; set; }
     }

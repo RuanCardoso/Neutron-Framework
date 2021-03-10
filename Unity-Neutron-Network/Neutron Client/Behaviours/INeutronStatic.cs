@@ -6,7 +6,7 @@ namespace NeutronNetwork
     public class NeutronStatic : MonoBehaviour
     {
         public static NeutronStatic[] neutronStatics { get; private set; }
-        public MethodInfo[] methodInfos { get; private set; }
+        public MethodInfo[] methods { get; private set; }
 
         private void OnEnable()
         {
@@ -16,7 +16,7 @@ namespace NeutronNetwork
 
         public void GetMethods()
         {
-            methodInfos = this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            methods = this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         }
     }
 }

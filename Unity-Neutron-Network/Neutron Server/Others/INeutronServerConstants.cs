@@ -13,24 +13,32 @@ using UnityEngine.SceneManagement;
 
 namespace NeutronNetwork.Internal.Server
 {
-    public class NeutronServerConstants : MonoBehaviour // It inherits from MonoBehaviour because it is an instance of GameObject.
+    public class NeutronServerConstants : MonoBehaviour
     {
+        #region Socket
+        protected static TcpListener TcpSocket;
+        #endregion
+
+        #region Events
         public static event ServerEvents.OnServerAwake onServerAwake;
-        protected static TcpListener ServerSocket;
+        #endregion
 
-        public static Compression COMPRESSION_MODE;
-        public static float TELEPORT_DISTANCE_TOLERANCE; // maximum teleport distance.
-        public static float SPEEDHACK_TOLERANCE; // 0.1 = 0.1 x 1000 = 100 -> 1000/100 = 10 pckts per seconds.
-        public static int MAX_RECEIVE_MESSAGE_SIZE; // max message receiv in server.
-        public static int MAX_SEND_MESSAGE_SIZE; // max send receive in server.
-        public static int LIMIT_OF_CONNECTIONS_BY_IP; // limit of connections per ip.
+        #region Constants
+        public static int MAX_RECEIVE_MESSAGE_SIZE;
+        public static int MAX_SEND_MESSAGE_SIZE;
+        public static int LIMIT_OF_CONNECTIONS_BY_IP;
+        #endregion
 
-        public NeutronQueue<Action> monoActions = new NeutronQueue<Action>(); // Thread-Safe - All shares that inherit from 
-        public NeutronSafeDictionary<TcpClient, Player> Players = new NeutronSafeDictionary<TcpClient, Player>(); // thread safe - players of server.
-        public NeutronSafeDictionary<int, Channel> Channels = new NeutronSafeDictionary<int, Channel>(); // thread safe - channels of server.
-        protected NeutronSafeDictionary<string, int> SYN = new NeutronSafeDictionary<string, int>();
-
+        #region Collections
+        public NeutronSafeDictionary<TcpClient, Player> PlayersBySocket = new NeutronSafeDictionary<TcpClient, Player>();
+        public NeutronSafeDictionary<int, Player> PlayersById = new NeutronSafeDictionary<int, Player>();
+        public NeutronSafeDictionary<int, Channel> ChannelsById = new NeutronSafeDictionary<int, Channel>();
+        public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
+        public NeutronQueue<Action> ActionsDispatcher = new NeutronQueue<Action>();
         [SerializeField] private List<Channel> _Channels = new List<Channel>();
+        #endregion
+
+        #region Physics
         [SerializeField] private GameObject[] sharedObjects;
         [SerializeField] private GameObject[] unsharedObjects;
         [SerializeField] private bool ChannelPhysics;
@@ -38,27 +46,8 @@ namespace NeutronNetwork.Internal.Server
         [SerializeField] private bool SharingOnChannels;
         [SerializeField] private bool SharingOnRooms;
         [SerializeField] private LocalPhysicsMode PhysicsMode = LocalPhysicsMode.None;
-
-        protected bool _ready; // indicate server is up.
-
-        private void SerializeInspector()
-        {
-            for (int i = 0; i < _Channels.Count; i++)
-            {
-                Channel channel = _Channels[i];
-                Channels.TryAdd(channel.ID, channel);
-                Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", ChannelPhysics, SharingOnChannels, sharedObjects, unsharedObjects, PhysicsMode);
-                foreach (Room room in channel.GetRooms())
-                {
-                    Utils.CreateContainer($"[Container] -> Room[{room.ID}]", RoomPhysics, SharingOnRooms, sharedObjects, unsharedObjects, PhysicsMode);
-                }
-            }
-        }
-
-        void InitializeEvents()
-        {
-            GetComponent<NeutronEvents>().Initialize();
-        }
+        #endregion
+        protected bool isReady;
 
         public void Awake()
         {
@@ -69,38 +58,55 @@ namespace NeutronNetwork.Internal.Server
 #if UNITY_SERVER || UNITY_EDITOR
             NeutronConfig.LoadSettings();
             InitializeEvents();
-            onServerAwake?.Invoke();
-            SerializeInspector();
-            if (NeutronConfig.GetConfig == null) Utilities.LoggerError("Failed to initialize server");
-            else
+            CreateDefaultContainers();
+            if (NeutronConfig.GetConfig != null)
             {
                 try
                 {
-                    SetSetting(NeutronConfig.GetConfig);
-                    ServerSocket = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronConfig.GetConfig.serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                    ServerSocket.Start(NeutronConfig.GetConfig.backLog);
-                    _ready = true;
+                    SetConstants(NeutronConfig.GetConfig);
+                    TcpSocket = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronConfig.GetConfig.serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                    TcpSocket.Start(NeutronConfig.GetConfig.backLog);
+                    isReady = true;
                 }
-                catch (Exception ex) { Utilities.LoggerError(ex.Message); }
+                catch (SocketException ex)
+                {
+                    if (ex.ErrorCode == 10048)
+                        Utilities.LoggerError("This Server instance has been disabled, because another instance is in use.");
+                    else Utilities.LoggerError(ex.Message);
+                }
             }
 #endif
 #else
-            Console.WriteLine("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
             Utilities.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
 #endif
         }
 
-        void SetSetting(JsonData Data)
+        private void CreateDefaultContainers()
         {
-            COMPRESSION_MODE = (Compression)Data.compressionOptions;
+            for (int i = 0; i < _Channels.Count; i++)
+            {
+                Channel channel = _Channels[i];
+                if (ChannelsById.TryAdd(channel.ID, channel))
+                {
+                    Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", ChannelPhysics, SharingOnChannels, sharedObjects, unsharedObjects, PhysicsMode);
+                    foreach (Room room in channel.GetRooms())
+                        Utils.CreateContainer($"[Container] -> Room[{room.ID}]", RoomPhysics, SharingOnRooms, sharedObjects, unsharedObjects, PhysicsMode);
+                }
+            }
+        }
 
-            TELEPORT_DISTANCE_TOLERANCE = Data.teleportTolerance;
-            SPEEDHACK_TOLERANCE = Data.speedHackTolerance;
+        private void InitializeEvents()
+        {
+            GetComponent<NeutronEvents>().Initialize();
+            onServerAwake?.Invoke();
+        }
+
+        private void SetConstants(JsonData Data)
+        {
+            CheatsUtils.enabled = Data.antiCheat;
             MAX_RECEIVE_MESSAGE_SIZE = Data.max_rec_msg;
             MAX_SEND_MESSAGE_SIZE = Data.max_send_msg;
             LIMIT_OF_CONNECTIONS_BY_IP = Data.limit_of_conn_by_ip;
-
-            CheatsUtils.enabled = Data.antiCheat;
         }
     }
 }

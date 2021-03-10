@@ -5,30 +5,31 @@ using UnityEngine.AI;
 
 namespace NeutronNetwork
 {
-    public class NeutronView : MonoBehaviour
+    public class NeutronView : IViewConfig
     {
-        [NonSerialized] public NeutronSyncBehaviour neutronSyncBehaviour;
-        [NonSerialized] public Neutron _;
-        [NonSerialized] public Player owner;
-        [NonSerialized] public bool isServerOrClient;
-
-        public Vector3 lastPosition;
-        public Vector3 lastRotation;
-
-        private void Awake()
+        private new void Awake()
         {
-            neutronSyncBehaviour = GetComponent<NeutronSyncBehaviour>();
+            base.Awake(); //* do not remove this line. place your code below it.
         }
 
-        private void Start()
+        private new void Start()
         {
-            
+            base.Start(); //* do not remove this line. place your code below it.
         }
 
-        private void Update()
+        public override void OnNeutronStart()
         {
-            lastPosition = transform.position;
-            lastRotation = transform.eulerAngles;
+            base.OnNeutronStart(); //* do not remove this line. place your code below it.
+        }
+
+        public override void OnNeutronAwake()
+        {
+            base.OnNeutronAwake(); //* do not remove this line. place your code below it.
+        }
+
+        private new void Update()
+        {
+            base.Update(); //* do not remove this line. place your code below it.
         }
     }
 }

@@ -1,4 +1,9 @@
-﻿using NeutronNetwork.Internal.Extesions;
+﻿using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Internal.Extesions;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using UnityEngine;
 
@@ -8,89 +13,82 @@ namespace NeutronNetwork.Components
     [AddComponentMenu("Neutron/Neutron Animator")]
     public class NeutronAnimator : NeutronBehaviour
     {
-        [SerializeField] private Protocol protocolType = Protocol.Tcp;
+        [Header("[Component]")]
+        [ReadOnly] public Animator animator;
 
-        [Range(0, 1)]
-        [SerializeField] private float syncTime = 0.3f;
+        [Header("[Parameters Settings]")]
+        public NeutronAnimatorParameter[] parameters;
 
-        [SerializeField] private Animator GetAnimator;
+        [Header("[General Settings]")]
+        [SerializeField] [Range(0, 1)] private float synchronizeInterval = 0.1f;
+        [SerializeField] private SendTo sendTo = SendTo.Others;
+        [SerializeField] private Broadcast broadcast = Broadcast.Room;
+        [SerializeField] private Protocol protocol = Protocol.Udp;
 
-        [SerializeField] private SendTo sendTo;
-
-        [SerializeField] private Broadcast broadcast;
-
-        private void OnValidate()
+        private void Start()
         {
-            if (protocolType != Protocol.Tcp && protocolType != Protocol.Udp) protocolType = Protocol.Tcp;
+
         }
 
-        bool GetParameters(out object[] mParams)
+        public override void OnNeutronStart()
         {
-            object[] parametersToSend = new object[GetAnimator.parameterCount];
-
-            for (int i = 0; i < parametersToSend.Length; i++)
-            {
-                AnimatorControllerParameter parameter = GetAnimator.GetParameter(i);
-                if (parameter.type == AnimatorControllerParameterType.Bool)
-                {
-                    parametersToSend[i] = GetAnimator.GetBool(parameter.name);
-                }
-                else if (parameter.type == AnimatorControllerParameterType.Float)
-                {
-                    parametersToSend[i] = GetAnimator.GetFloat(parameter.name);
-                }
-                else if (parameter.type == AnimatorControllerParameterType.Int)
-                {
-                    parametersToSend[i] = GetAnimator.GetInteger(parameter.name);
-                }
-            }
-            mParams = parametersToSend;
-            //===========================//
-            return true;
+            if (IsClient && IsMine)
+                StartCoroutine(Synchronize());
         }
 
-        // Update is called once per frame
-        void Update()
+        private IEnumerator Synchronize()
         {
-            if (IsMine)
+            while (true)
             {
-                if (GetParameters(out object[] parameters))
+                using (NeutronWriter options = new NeutronWriter())
                 {
-                    using (NeutronWriter streamParams = new NeutronWriter())
+                    for (int i = 0; i < parameters.Length; i++)
                     {
-                        streamParams.Write(parameters.Serialize());
-                        //-----------------------------------------------------------------------------------------------------------------------------
-                        if (NeutronView._.NeutronView == null)
+                        var networkedParameter = parameters[i];
+                        if (networkedParameter.parameterMode == ParameterMode.NonSync) continue;
+                        switch (networkedParameter.parameterType)
                         {
-                            Utilities.LoggerError("NeutronView is null");
-                            return;
+                            case AnimatorControllerParameterType.Float:
+                                options.Write(animator.GetFloat(networkedParameter.parameterName));
+                                break;
+                            case AnimatorControllerParameterType.Int:
+                                options.Write(animator.GetInteger(networkedParameter.parameterName));
+                                break;
+                            case AnimatorControllerParameterType.Bool:
+                                options.Write(animator.GetBool(networkedParameter.parameterName));
+                                break;
+                            case AnimatorControllerParameterType.Trigger:
+                                break;
                         }
-                       // NeutronView._.RPC(254, syncTime, streamParams, sendTo, false, broadcast, (Protocol)(int)protocolType);
                     }
+                    NeutronView._.RPC(10018, options, sendTo, false, broadcast, protocol);
                 }
+                yield return new WaitForSeconds(synchronizeInterval);
             }
         }
 
-        [RPC(254)]
-        void Sync(NeutronReader streamReader, bool isServer)
+        [RPC(10018)]
+        private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
-            using (streamReader)
+            using (options)
             {
-                object[] parameters = streamReader.ReadBytes(8192).DeserializeObject<object[]>();
                 for (int i = 0; i < parameters.Length; i++)
                 {
-                    AnimatorControllerParameter parameter = GetAnimator.GetParameter(i);
-                    if (parameter.type == AnimatorControllerParameterType.Bool)
+                    var networkedParameter = parameters[i];
+                    if (networkedParameter.parameterMode == ParameterMode.NonSync) continue;
+                    switch (networkedParameter.parameterType)
                     {
-                        GetAnimator.SetBool(parameter.name, (bool)parameters[i]);
-                    }
-                    else if (parameter.type == AnimatorControllerParameterType.Float)
-                    {
-                        GetAnimator.SetFloat(parameter.name, (float)parameters[i]);
-                    }
-                    else if (parameter.type == AnimatorControllerParameterType.Int)
-                    {
-                        GetAnimator.SetInteger(parameter.name, (int)parameters[i]);
+                        case AnimatorControllerParameterType.Float:
+                            animator.SetFloat(networkedParameter.parameterName, options.ReadSingle());
+                            break;
+                        case AnimatorControllerParameterType.Int:
+                            animator.SetInteger(networkedParameter.parameterName, options.ReadInt32());
+                            break;
+                        case AnimatorControllerParameterType.Bool:
+                            animator.SetBool(networkedParameter.parameterName, options.ReadBoolean());
+                            break;
+                        case AnimatorControllerParameterType.Trigger:
+                            break;
                     }
                 }
             }

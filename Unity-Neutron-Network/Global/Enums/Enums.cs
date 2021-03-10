@@ -1,4 +1,6 @@
-﻿public enum SendTo : byte
+﻿using System;
+
+public enum SendTo : byte
 {
     /// <summary>
     /// Broadcast data to all Players, including you.
@@ -40,6 +42,7 @@ public enum Packet : byte
     Nickname,
     SetPlayerProperties,
     SetRoomProperties,
+    Heartbeat,
     Test,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
@@ -48,9 +51,6 @@ public enum Packet : byte
 
 public enum CachedPacket : byte
 {
-    /// <summary>
-    /// Used to instantiate other players on this client.
-    /// </summary>
     Static = 121,
     RPC = 122,
     APC = 123,
@@ -123,3 +123,15 @@ public enum Serialization : int
     BinaryFormatter,
     Json,
 }
+
+public enum Statistics : int
+{
+    ClientSent,
+    ClientRec,
+    ServerSent,
+    ServerRec
+}
+
+public enum SmoothMode { Lerp, MoveTowards }
+public enum ParameterMode { Sync, NonSync }
+[Flags] public enum ComponentMode { IsMine = 2, IsServer = 4 }

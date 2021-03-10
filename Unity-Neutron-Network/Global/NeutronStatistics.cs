@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Threading;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Internal.Wrappers;
 using UnityEngine;
 
 public class NeutronStatistics : MonoBehaviour
 {
-    private static readonly string[] SizeSuffixes = { "B/s", "kB/s", "mB/s" };
     public static int clientBytesSent, clientBytesRec, serverBytesSent, serverBytesRec;
     [SerializeField] private float perSeconds = 1;
 
@@ -21,20 +21,26 @@ public class NeutronStatistics : MonoBehaviour
 
     private void Awake()
     {
+#if UNITY_SERVER || UNITY_EDITOR
         StartCoroutine(UpdateStatistics());
+#endif
     }
 
     private void Start()
     {
+#if UNITY_SERVER || UNITY_EDITOR
         StartCoroutine(ClearStatistics());
+#endif
     }
 
     private IEnumerator UpdateStatistics()
     {
         while (true)
         {
-            _BytesSent = $"{SizeSuffix(clientBytesSent)}";
-            _BytesRec = $"{SizeSuffix(clientBytesRec)}";
+            _BytesSent = $"{Utils.SizeSuffix(clientBytesSent)} | [{Utils.SizeSuffixMB(clientBytesSent)}]";
+            _BytesRec = $"{Utils.SizeSuffix(clientBytesRec)} | [{Utils.SizeSuffixMB(clientBytesRec)}]";
+            BytesSent = $"{Utils.SizeSuffix(serverBytesSent)} | [{Utils.SizeSuffixMB(serverBytesSent)}]";
+            BytesRec = $"{Utils.SizeSuffix(serverBytesRec)} | [{Utils.SizeSuffixMB(serverBytesRec)}]";
             yield return new WaitForSeconds(perSeconds);
         }
     }
@@ -43,34 +49,11 @@ public class NeutronStatistics : MonoBehaviour
     {
         while (true)
         {
-            clientBytesSent = 0;
-            clientBytesRec = 0;
+            Interlocked.Exchange(ref clientBytesSent, 0);
+            Interlocked.Exchange(ref clientBytesRec, 0);
+            Interlocked.Exchange(ref serverBytesSent, 0);
+            Interlocked.Exchange(ref serverBytesRec, 0);
             yield return new WaitForSeconds(perSeconds);
         }
-    }
-    private static string SizeSuffix(int value, int decimalPlaces = 0)
-    {
-        if (decimalPlaces < 0) { throw new ArgumentOutOfRangeException("decimalPlaces"); }
-        if (value < 0) { return "-" + SizeSuffix(-value, decimalPlaces); }
-        if (value == 0) { return string.Format("{0:n" + decimalPlaces + "} B/s", 0); }
-
-        // mag is 0 for bytes, 1 for KB, 2, for MB, etc.
-        int mag = (int)Math.Log(value, 1024);
-
-        // 1L << (mag * 10) == 2 ^ (10 * mag) 
-        // [i.e. the number of bytes in the unit corresponding to mag]
-        decimal adjustedSize = (decimal)value / (1L << (mag * 10));
-
-        // make adjustment when the value is large enough that
-        // it would round up to 1000 or more
-        if (Math.Round(adjustedSize, decimalPlaces) >= 1000)
-        {
-            mag += 1;
-            adjustedSize /= 1024;
-        }
-
-        return string.Format("{0:n" + decimalPlaces + "} {1}",
-            adjustedSize,
-            SizeSuffixes[mag]);
     }
 }

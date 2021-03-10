@@ -6,7 +6,7 @@ using UnityEngine.AI;
 namespace NeutronNetwork.Components
 {
     [RequireComponent(typeof(NavMeshAgent))]
-    [AddComponentMenu("Neutron/NeutronNavAgent")]
+    [AddComponentMenu("Neutron/Neutron Nav Agent")]
     public class NeutronNavAgent : NeutronBehaviour
     {
         [SerializeField] private bool avoidOnlyEditorMode = false;

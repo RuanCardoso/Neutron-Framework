@@ -46,22 +46,6 @@ namespace NeutronNetwork.Internal.Client
             _.OnCreatedRoom += OnCreatedRoom;
         }
 
-        private void UpdateStatistics(int length)
-        {
-            new Action(() =>
-            {
-                NeutronStatistics.clientBytesSent += length;
-            }).ExecuteOnMainThread(_);
-        }
-
-        protected void UpdateStatisticsRec(int length)
-        {
-            new Action(() =>
-            {
-                NeutronStatistics.clientBytesRec += length;
-            }).ExecuteOnMainThread(_);
-        }
-
         protected void Send(byte[] buffer, Protocol protocolType = Protocol.Tcp)
         {
             if (!_.IsConnected) return;
@@ -74,6 +58,7 @@ namespace NeutronNetwork.Internal.Client
                     SendUDP(buffer);
                     break;
             }
+            Utils.UpdateStatistics(Statistics.ClientSent, buffer.Length);
         }
 
         protected async void SendTCP(byte[] buffer)
@@ -86,7 +71,6 @@ namespace NeutronNetwork.Internal.Client
                     writerOnly.WriteFixedLength(buffer.Length);
                     writerOnly.Write(buffer);
                     byte[] nBuffer = writerOnly.ToArray();
-                    UpdateStatistics(nBuffer.Length);
                     await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
                 }
             }
@@ -99,7 +83,6 @@ namespace NeutronNetwork.Internal.Client
         {
             try
             {
-                UpdateStatistics(message.Length);
                 await _UDPSocket.SendAsync(message, message.Length, endPointUDP);
             }
             catch (ObjectDisposedException) { }
@@ -116,8 +99,10 @@ namespace NeutronNetwork.Internal.Client
                 Send(writer.ToArray());
             }
         }
+        
         protected void InternalRPC(int playerID, int RPCID, byte[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
         {
+            NeutronMessageInfo infor = _myPlayer.infor;
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.WritePacket(Packet.RPC);
@@ -127,6 +112,7 @@ namespace NeutronNetwork.Internal.Client
                 writer.Write(RPCID);
                 writer.Write(cached);
                 writer.WriteExactly(parameters);
+                writer.WriteExactly(infor.Serialize());
                 Send(writer.ToArray(), protocolType);
             }
         }
@@ -153,13 +139,13 @@ namespace NeutronNetwork.Internal.Client
             _myPlayer = array.DeserializeObject<Player>();
         }
 
-        protected void HandleRPC(int rpcID, int playerID, byte[] parameters)
+        protected void HandleRPC(int rpcID, int playerID, byte[] parameters, Player sender, NeutronMessageInfo infor)
         {
             if (_.IsBot) return;
             new Action(() =>
             {
                 if (playersObjects.TryGetValue(playerID, out NeutronView neutronObject))
-                    Communication.InitRPC(rpcID, parameters, neutronObject);
+                    Communication.InitRPC(rpcID, parameters, sender, infor, neutronObject);
             }).ExecuteOnMainThread(_);
         }
 
@@ -282,7 +268,7 @@ namespace NeutronNetwork.Internal.Client
 
         private void OnCreatedRoom(Room room, Neutron localinstance)
         {
-            _.MyPlayer.CurrRoom = room.ID;
+            _.MyPlayer.CurrentRoom = room.ID;
         }
 
         private void OnDisconnected(string reason, Neutron localinstance)

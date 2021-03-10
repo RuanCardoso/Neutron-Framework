@@ -13,28 +13,34 @@ namespace NeutronNetwork.Internal.Comms
     {
         public const int BUFFER_SIZE = 1024;
         public const string PATH_SETTINGS = "\\Unity-Neutron-Network\\Resources\\neutronsettings.txt";
-        public static bool InitRPC(int rpcID, byte[] parameters, MonoBehaviour behaviour)
+        public static bool InitRPC(int rpcID, byte[] parameters, Player sender, NeutronMessageInfo infor, NeutronView neutronView)
         {
-            //-----------------------------------------------------------------------------------------------------------//
-            NeutronBehaviour[] scriptComponents = behaviour.GetComponentsInChildren<NeutronBehaviour>();
-            //-----------------------------------------------------------------------------------------------------------//
-            for (int i = 0; i < scriptComponents.Length; i++)
+            NeutronBehaviour[] neutronBehaviours = neutronView.neutronBehaviours;
+            if (neutronBehaviours != null)
             {
-                NeutronBehaviour mInstance = scriptComponents[i];
-                MethodInfo Invoker = mInstance.HasRPC(rpcID, out string message);
-                if (Invoker != null)
+                for (int i = 0; i < neutronBehaviours.Length; i++)
                 {
-                    object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader(parameters) });
-                    if (obj != null)
+                    NeutronBehaviour mInstance = neutronBehaviours[i];
+                    if (mInstance != null)
                     {
-                        Type objType = obj.GetType();
-                        if (objType == typeof(bool))
-                            return (bool)obj;
+                        MethodInfo Invoker = mInstance.HasRPC(rpcID, out string message);
+                        if (Invoker != null)
+                        {
+                            object obj = Invoker.Invoke(mInstance, new object[] { new NeutronReader(parameters), sender, infor });
+                            if (obj != null)
+                            {
+                                Type objType = obj.GetType();
+                                if (objType == typeof(bool))
+                                    return (bool)obj;
+                            }
+                            return true;
+                        }
+                        else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
                     }
-                    return true;
+                    else neutronView.ResetBehaviours();
                 }
-                else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
             }
+            else Utilities.LoggerError("Could not find any implementation of \"NeutronBehaviour\"");
             return false;
         }
 
@@ -59,10 +65,10 @@ namespace NeutronNetwork.Internal.Comms
         {
             try
             {
-                NeutronStatic[] activator = NeutronStatic.neutronStatics;
-                for (int z = 0; z < activator.Length; z++)
+                NeutronStatic[] neutronStatics = NeutronStatic.neutronStatics;
+                for (int z = 0; z < neutronStatics.Length; z++)
                 {
-                    MethodInfo[] methods = activator[z].methodInfos;
+                    MethodInfo[] methods = neutronStatics[z].methods;
                     for (int i = 0; i < methods.Length; i++)
                     {
                         Static _static = methods[i].GetCustomAttribute<Static>();
@@ -70,7 +76,7 @@ namespace NeutronNetwork.Internal.Comms
                         {
                             if (_static.ID == executeID)
                             {
-                                object obj = methods[i].Invoke(activator[z], new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
+                                object obj = methods[i].Invoke(neutronStatics[z], new object[] { new NeutronReader(parameters), isServer, sender, localInstance });
                                 if (obj != null)
                                 {
                                     Type objType = obj.GetType();
@@ -85,8 +91,8 @@ namespace NeutronNetwork.Internal.Comms
                                         else
                                         {
                                             if (!sender.IsInRoom())
-                                                Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.CurrCh}]");
-                                            else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.CurrRoom}]");
+                                                Utils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.CurrentChannel}]");
+                                            else Utils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.CurrentRoom}]");
                                         }
                                     }
                                     else if (objType == typeof(bool))
@@ -116,7 +122,7 @@ namespace NeutronNetwork.Internal.Comms
                 NeutronStatic[] activator = NeutronStatic.neutronStatics;
                 for (int z = 0; z < activator.Length; z++)
                 {
-                    MethodInfo[] methods = activator[z].methodInfos;
+                    MethodInfo[] methods = activator[z].methods;
                     for (int i = 0; i < methods.Length; i++)
                     {
                         Response _Response = methods[i].GetCustomAttribute<Response>();

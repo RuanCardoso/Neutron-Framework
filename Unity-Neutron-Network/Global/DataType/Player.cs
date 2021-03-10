@@ -1,11 +1,9 @@
-﻿using NeutronNetwork;
-using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Wrappers;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -16,7 +14,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Player : IEquatable<Player>, INotify, IEqualityComparer<Player>, IDisposable
+    public class Player : IEquatable<Player>, INeutronNotify, IEqualityComparer<Player>, IDisposable, INeutronSerializable
     {
         /// <summary>
         /// ID of player.
@@ -26,18 +24,18 @@ namespace NeutronNetwork
         /// <summary>
         /// Nickname of player.
         /// </summary>
-        public string Nick { get => nick; set => nick = value; }
-        [SerializeField, ReadOnly] private string nick;
+        public string Nickname { get => nickname; set => nickname = value; }
+        [SerializeField, ReadOnly] private string nickname = string.Empty;
         /// <summary>
         /// Current channel of player.
         /// </summary>
-        public int CurrCh { get => currCh; set => currCh = value; }
-        [SerializeField, ReadOnly] private int currCh = -1;
+        public int CurrentChannel { get => currentChannel; set => currentChannel = value; }
+        [SerializeField, ReadOnly] private int currentChannel = -1;
         /// <summary>
         /// Current room of player.
         /// </summary>
-        public int CurrRoom { get => currRoom; set => currRoom = value; }
-        [SerializeField, ReadOnly] private int currRoom = -1;
+        public int CurrentRoom { get => currentRoom; set => currentRoom = value; }
+        [SerializeField, ReadOnly] private int currentRoom = -1;
         /// <summary>
         /// Check if player is a bot.
         /// </summary>
@@ -51,71 +49,89 @@ namespace NeutronNetwork
         /// <summary>
         /// ID of database.
         /// </summary>
-        [JsonIgnore]
-        public int DID { get => dID; set => dID = value; }
-#if !UNITY_EDITOR
-        [NonSerialized]
-#else
-        [SerializeField]
-#endif
-        [ReadOnly] private int dID;
+        public int DatabaseID { get => databaseID; set => databaseID = value; }
+        [ReadOnly] private int databaseID;
         /// <summary>
         /// state of player.
         /// </summary>
-        [field: NonSerialized]
-        [JsonIgnore]
         public NeutronView NeutronView { get; set; }
         /// <summary>
         /// Properties of player.
         /// </summary>
-        [field: NonSerialized]
-        [JsonIgnore]
-        public Dictionary<string, object> GetProps { get; set; }
+        public Dictionary<string, object> Get { get; set; }
         /// <summary>
         /// queue of data TCP.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
+        public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
         /// <summary>
         /// Remote EndPoint of player.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public IPEndPoint rPEndPoint;
+        public IPEndPoint rPEndPoint;
         /// <summary>
         /// Local EndPoint of player.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public IPEndPoint lPEndPoint;
+        public IPEndPoint lPEndPoint;
         /// <summary>
         /// Socket.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public TcpClient tcpClient;
+        public TcpClient tcpClient;
         /// <summary>
         /// Socket.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        [NonSerialized] public UdpClient udpClient;
+        public UdpClient udpClient;
         /// <summary>
         /// cts.
         /// </summary>
-        [NonSerialized] public CancellationTokenSource _cts;
+        public CancellationTokenSource _cts;
+        /// <summary>
+        /// infor.
+        /// </summary>
+        public NeutronMessageInfo infor;
 
         public Player() { }// the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
         public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
         {
+            string randomNickname = $"Unk#{new System.Random().Next(0, 10000)}";
+            IPEndPoint localIPEndPoint = new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp));
             this.ID = ID;
-            this.Nick = $"Unknown#{new System.Random().Next(0, 100000)}";
+            this.Nickname = randomNickname;
             this.tcpClient = tcpClient;
-            this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
+            this.udpClient = new UdpClient(localIPEndPoint);
             this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
+            this.infor = new NeutronMessageInfo(0);
             this._cts = _cts;
+        }
+
+        public Player(SerializationInfo info, StreamingContext context)
+        {
+            ID = info.GetInt32("ID");
+            Nickname = info.GetString("NN");
+            currentChannel = info.GetInt32("CC");
+            CurrentRoom = info.GetInt32("CR");
+            IsBot = info.GetBoolean("IB");
+            _ = info.GetString("_");
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(_);
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("ID", ID);
+            info.AddValue("NN", Nickname);
+            info.AddValue("CC", CurrentChannel);
+            info.AddValue("CR", CurrentRoom);
+            info.AddValue("IB", IsBot);
+            info.AddValue("_", _);
         }
 
         public Boolean Equals(Player other)

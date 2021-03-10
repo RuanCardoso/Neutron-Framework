@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using System.Threading.Tasks;
 
 public class NeutronEditor : EditorWindow
 {
@@ -201,8 +202,9 @@ public class NeutronEditor : EditorWindow
 
     void LoadSettings() => JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(NeutronData.PASS), this);
 
-    void SaveSettings()
+    async void SaveSettings()
     {
+        await Task.Delay(500);
         File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(NeutronData.PASS));
         AssetDatabase.Refresh();
     }

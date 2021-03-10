@@ -25,13 +25,14 @@ namespace NeutronNetwork
 #endif
         }
 
-        public static void LoggerError(object message)
+        public static bool LoggerError(object message)
         {
 #if UNITY_SERVER
-        Console.WriteLine (message);
+            Console.WriteLine(message);
 #else
             Debug.LogError(message);
 #endif
+            return false;
         }
 
         public static bool LoggerError(object message, object obj)

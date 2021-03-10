@@ -5,10 +5,10 @@ using System;
 [Serializable]
 public class CachedBuffer
 {
-    [ReadOnly] public int ID;
-    [NonSerialized] public byte[] buffer;
-    [NonSerialized] public Player owner;
-    [ReadOnly] public CachedPacket cachedPacket;
+    public int ID;
+    public byte[] buffer;
+    public Player owner;
+    public CachedPacket cachedPacket;
 }
 
 [Serializable]

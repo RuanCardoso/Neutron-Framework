@@ -17,7 +17,7 @@ namespace NeutronNetwork.Internal.Extesions
 {
     public static class Extesions
     {
-        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.monoActions);
+        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.ActionsDispatcher);
         public static void ExecuteOnMainThread(this Action action, Neutron _) => Utils.Enqueue(action, _.mainThreadActions);
         public static byte[] Serialize(this object message)
         {
@@ -31,14 +31,14 @@ namespace NeutronNetwork.Internal.Extesions
                         using (NeutronWriter jsonWriter = new NeutronWriter())
                         {
                             jsonWriter.Write(jsonString);
-                            return jsonWriter.ToArray().Compress(NeutronServer.COMPRESSION_MODE);
+                            return jsonWriter.ToArray().Compress(NeutronConfig.COMPRESSION_MODE);
                         }
                     case Serialization.BinaryFormatter:
                         BinaryFormatter formatter = new BinaryFormatter();
                         using (MemoryStream mStream = new MemoryStream())
                         {
                             formatter.Serialize(mStream, message);
-                            return mStream.ToArray().Compress(NeutronServer.COMPRESSION_MODE);
+                            return mStream.ToArray().Compress(NeutronConfig.COMPRESSION_MODE);
                         }
                     default:
                         return null;
@@ -48,7 +48,7 @@ namespace NeutronNetwork.Internal.Extesions
         }
         public static T DeserializeObject<T>(this byte[] message)
         {
-            message = message.Decompress(NeutronServer.COMPRESSION_MODE);
+            message = message.Decompress(NeutronConfig.COMPRESSION_MODE);
             try
             {
                 Serialization serializationMode = (Serialization)NeutronConfig.GetConfig.serializationOptions;
@@ -178,17 +178,17 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static bool IsInChannel(this Player _player)
         {
-            return _player.CurrCh > -1;
+            return _player.CurrentChannel > -1;
         }
 
         public static bool IsInRoom(this Player _player)
         {
-            return _player.CurrRoom > -1;
+            return _player.CurrentRoom > -1;
         }
 
-        public static IPEndPoint RemoteEndPoint(this TcpClient socket)
+        public static IPEndPoint RemoteEndPoint(this Player socket)
         {
-            return (IPEndPoint)socket.Client.RemoteEndPoint;
+            return (IPEndPoint)socket.tcpClient.Client.RemoteEndPoint;
         }
 
         public static T DeepClone<T>(this object obj)
@@ -237,37 +237,41 @@ namespace NeutronNetwork.Internal.Extesions
 
         public static MethodInfo HasRPC(this NeutronBehaviour mThis, int executeID, out string Error)
         {
-            MethodInfo[] infor = mThis.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            for (int i = 0; i < infor.Length; i++)
+            MethodInfo[] infor = mThis.methods;
+            if (infor != null)
             {
-                RPC RPC = infor[i].GetCustomAttribute<RPC>();
-                if (RPC != null)
+                for (int i = 0; i < infor.Length; i++)
                 {
-                    if (RPC.ID == executeID)
+                    RPC RPC = infor[i].GetCustomAttribute<RPC>();
+                    if (RPC != null)
                     {
-                        ParameterInfo[] pInfor = infor[i].GetParameters();
-                        if (pInfor.Length == 1)
+                        if (RPC.ID == executeID)
                         {
-                            if (pInfor[0].ParameterType != typeof(NeutronReader)/* || pInfor[1].ParameterType != typeof(bool)*/)
+                            ParameterInfo[] pInfor = infor[i].GetParameters();
+                            if (pInfor.Length == 3)
+                            {
+                                if (pInfor[0].ParameterType != typeof(NeutronReader)/* || pInfor[1].ParameterType != typeof(bool)*/)
+                                {
+                                    Error = $"The scope of the RPC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
+                                    return null;
+                                }
+                                else
+                                {
+                                    Error = null;
+                                    return infor[i];
+                                }
+                            }
+                            else
                             {
                                 Error = $"The scope of the RPC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
                                 return null;
                             }
-                            else
-                            {
-                                Error = null;
-                                return infor[i];
-                            }
-                        }
-                        else
-                        {
-                            Error = $"The scope of the RPC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
-                            return null;
                         }
                     }
+                    else continue;
                 }
-                else continue;
             }
+            else Utilities.LoggerError($"Could not find a reference, check if \"base.Awake\" has been implemented in \"{mThis.GetType().Name}\" class.");
             Error = string.Empty;
             return null;
         }
@@ -315,26 +319,26 @@ namespace NeutronNetwork.Internal.Extesions
             {
                 case Broadcast.All:
                     {
-                        Player[] allPlayers = Neutron.Server.Players.Values.ToArray();
+                        Player[] allPlayers = Neutron.Server.PlayersBySocket.Values.ToArray();
                         return allPlayers;
                     }
                 case Broadcast.Channel:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
+                        Channel channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
                         Player[] channelPlayers = channel.GetPlayers();
                         return channelPlayers;
                     }
                 case Broadcast.Room:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
-                        Room room = channel.GetRoom(mPlayer.CurrRoom);
+                        Channel channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
+                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         return roomsPlayers;
                     }
                 case Broadcast.Instantiated:
                     {
-                        Channel channel = Neutron.Server.Channels[mPlayer.CurrCh];
-                        Room room = channel.GetRoom(mPlayer.CurrRoom);
+                        Channel channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
+                        Room room = channel.GetRoom(mPlayer.CurrentRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         Player[] channelPlayers = channel.GetPlayers();
 

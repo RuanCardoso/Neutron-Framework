@@ -1,26 +1,39 @@
 ﻿using System.Collections;
-using UnityEngine;
 using System;
-using System.Net.Sockets;
 using System.Net;
-using Newtonsoft.Json;
+using System.Net.Sockets;
 using UnityEngine.SceneManagement;
+using UnityEngine;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Internal.Server;
 using System.Linq;
+using System.Threading;
 
 namespace NeutronNetwork.Internal
 {
     public class Utils
     {
-        private static int uniqueID;
-        public static int GetUniqueID() => ++uniqueID;
+        public static int GetUniqueID() => ++NeutronServer.uniqueID;
+        public static void Enqueue(Action action, NeutronQueue<Action> cQueue) => cQueue.SafeEnqueue(action);
+        public static void ChunkDequeue(NeutronQueue<Action> cQueue, int chunkSize)
+        {
+            try
+            {
+                for (int i = 0; i < chunkSize && cQueue.SafeCount > 0; i++)
+                {
+                    cQueue.SafeDequeue().Invoke();
+                }
+            }
+            catch (Exception ex) { Utilities.StackTrace(ex); }
+        }
+
         public static int GetFreePort(Protocol type)
         {
             switch (type)
             {
                 case Protocol.Udp:
                     {
-                        UdpClient freePort = new UdpClient(0);
+                        UdpClient freePort = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
                         IPEndPoint endPoint = (IPEndPoint)freePort.Client.LocalEndPoint;
                         int port = endPoint.Port;
                         freePort.Close();
@@ -37,38 +50,6 @@ namespace NeutronNetwork.Internal
                 default:
                     return 0;
             }
-        }
-
-        public static void Enqueue(Action action, NeutronQueue<Action> cQueue)
-        {
-            cQueue.SafeEnqueue(action);
-        }
-
-        public static void Dequeue(NeutronQueue<Action> cQueue, int count)
-        {
-            try
-            {
-                for (int i = 0; i < count && cQueue.Count > 0; i++)
-                {
-                    cQueue.SafeDequeue().Invoke();
-                }
-            }
-            catch (Exception ex) { Utilities.StackTrace(ex); }
-        }
-
-        public static int ValidateAndDeserializeJson<T>(string json, out T obj)
-        {
-            obj = default;
-            if (!string.IsNullOrEmpty(json))
-            {
-                try
-                {
-                    obj = JsonConvert.DeserializeObject<T>(json);
-                    return 1;
-                }
-                catch { return 0; }
-            }
-            else return 2;
         }
 
         public static void CreateContainer(string name, bool enablePhysics = false, bool sharingObjects = false, GameObject[] sharedObjects = null, GameObject[] unsharedObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
@@ -127,6 +108,73 @@ namespace NeutronNetwork.Internal
                 QualitySettings.vSyncCount = 0;
                 Application.targetFrameRate = framerate;
             }
+        }
+
+        public static void UpdateStatistics(Statistics statisticsType, int value)
+        {
+#if UNITY_SERVER || UNITY_EDITOR
+            switch (statisticsType)
+            {
+                case Statistics.ClientSent:
+                    {
+                        int bytes = NeutronStatistics.clientBytesSent;
+                        Interlocked.Exchange(ref NeutronStatistics.clientBytesSent, bytes + value);
+                        break;
+                    }
+                case Statistics.ClientRec:
+                    {
+                        int bytes = NeutronStatistics.clientBytesRec;
+                        Interlocked.Exchange(ref NeutronStatistics.clientBytesRec, bytes + value);
+                        break;
+                    }
+                case Statistics.ServerSent:
+                    {
+                        int bytes = NeutronStatistics.serverBytesSent;
+                        Interlocked.Exchange(ref NeutronStatistics.serverBytesSent, bytes + value);
+                        break;
+                    }
+                case Statistics.ServerRec:
+                    {
+                        int bytes = NeutronStatistics.serverBytesRec;
+                        Interlocked.Exchange(ref NeutronStatistics.serverBytesRec, bytes + value);
+                        break;
+                    }
+            }
+#endif
+        }
+
+        public static string SizeSuffixMB(int value, int decimalPlaces = 4)
+        {
+            double count = ((double)value / 1024) / 1024;
+            count = Math.Round(count, decimalPlaces);
+            return $"{count.ToString()} mB/s";
+        }
+
+        private static readonly string[] SizeSuffixes = { "B/s", "kB/s", "mB/s" };
+        public static string SizeSuffix(int value, int decimalPlaces = 2)
+        {
+            if (decimalPlaces < 0) { throw new ArgumentOutOfRangeException("decimalPlaces"); }
+            if (value < 0) { return "-" + SizeSuffix(-value, decimalPlaces); }
+            if (value == 0) { return string.Format("{0:n" + decimalPlaces + "} B/s", 0); }
+
+            // mag is 0 for bytes, 1 for KB, 2, for MB, etc.
+            int mag = (int)Math.Log(value, 1024);
+
+            // 1L << (mag * 10) == 2 ^ (10 * mag) 
+            // [i.e. the number of bytes in the unit corresponding to mag]
+            decimal adjustedSize = (decimal)value / (1L << (mag * 10));
+
+            // make adjustment when the value is large enough that
+            // it would round up to 1000 or more
+            if (Math.Round(adjustedSize, decimalPlaces) >= 1000)
+            {
+                mag += 1;
+                adjustedSize /= 1024;
+            }
+
+            return string.Format("{0:n" + decimalPlaces + "} {1}",
+                adjustedSize,
+                SizeSuffixes[mag]);
         }
     }
 }

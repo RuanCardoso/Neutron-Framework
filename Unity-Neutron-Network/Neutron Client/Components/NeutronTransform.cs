@@ -1,26 +1,22 @@
+﻿using System.Collections;
+using NeutronNetwork;
 using NeutronNetwork.Internal.Attributes;
-using NeutronNetwork.Internal.Server;
 using NeutronNetwork.Internal.Server.Cheats;
-using System;
-using System.Collections;
-using System.Net.Sockets;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
 {
-    [RequireComponent(typeof(Rigidbody))]
-    [AddComponentMenu("Neutron/Neutron Rigidbody")]
-    public class NeutronRigidbody : NeutronBehaviour
+    [AddComponentMenu("Neutron/Neutron Transform")]
+    public class NeutronTransform : NeutronBehaviour
     {
         [Header("[Synchronize Settings]")]
-        [SerializeField] private bool synchronizeVelocity = true;
         [SerializeField] private bool synchronizePosition = true;
         [SerializeField] private bool synchronizeRotation = true;
-        [SerializeField] private bool synchronizeAngularVelocity = true;
+        [SerializeField] private bool synchronizeScale;
 
         [Header("[Smooth Settings]")]
         [SerializeField] [Range(0, 1f)] private float synchronizeInterval = 0.1f;
-        [SerializeField] [Range(0, 30f)] private float Smooth = 2f;
+        [SerializeField] [Range(0, 30f)] private float Smooth = 10f;
         [SerializeField] private bool smoothOnServer = true;
 
         [Header("[Lag Compensation Settings]")]
@@ -34,7 +30,7 @@ namespace NeutronNetwork.Components
         [SerializeField] private bool antiSpeedHack = true;
 
         [Header("[General Settings]")]
-        [SerializeField] SmoothMode smoothMode = SmoothMode.MoveTowards;
+        [SerializeField] SmoothMode smoothMode;
         [SerializeField] private SendTo sendTo = SendTo.Others;
         [SerializeField] private Broadcast broadcast = Broadcast.Room;
         [SerializeField] private Protocol protocol = Protocol.Udp;
@@ -42,20 +38,13 @@ namespace NeutronNetwork.Components
         [Header("[Infor]")]
         [SerializeField] [ReadOnly] private int currentPacketsPerSecond;
         [SerializeField] [ReadOnly] private int maxPacketsPerSecond;
-        private Vector3 position;
+        private Vector3 position, scale;
         private Quaternion rotation;
-        private Rigidbody neutronRigidbody;
         private bool onFirstPacket = false;
-
-        private new void Awake()
-        {
-            base.Awake();
-            neutronRigidbody = GetComponent<Rigidbody>();
-        }
 
         public override void OnNeutronStart()
         {
-            if (IsClient && (synchronizeVelocity || synchronizeRotation) && IsMine)
+            if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && IsMine)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
         }
@@ -68,24 +57,32 @@ namespace NeutronNetwork.Components
 #endif
         }
 
+        private void ResetTransforms()
+        {
+            if (synchronizePosition) position = transform.position;
+            if (synchronizeRotation) rotation = transform.rotation;
+            if (synchronizeScale) scale = transform.localScale;
+        }
+
         private IEnumerator Synchronize()
         {
             while (true)
             {
                 using (NeutronWriter options = new NeutronWriter())
                 {
-                    if (synchronizePosition) options.Write(neutronRigidbody.position);
-                    if (synchronizeVelocity) options.Write(neutronRigidbody.velocity);
-                    if (synchronizeRotation) options.Write(neutronRigidbody.rotation);
-                    if (synchronizeAngularVelocity) options.Write(neutronRigidbody.angularVelocity);
-                    if (neutronRigidbody.velocity != Vector3.zero && synchronizeVelocity || neutronRigidbody.angularVelocity != Vector3.zero && synchronizeAngularVelocity)
-                        NeutronView._.RPC(10012, options, sendTo, false, broadcast, protocol);
+                    if (synchronizePosition) options.Write(transform.position);
+                    if (synchronizeRotation) options.Write(transform.rotation);
+                    if (synchronizeScale) options.Write(transform.localScale);
+                    if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
+                        NeutronView._.RPC(10013, options, sendTo, false, broadcast, protocol);
+                    if (sendTo == SendTo.Others || sendTo == SendTo.Only)
+                        ResetTransforms();
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
         }
 
-        [RPC(10012)]
+        [RPC(10013)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             onFirstPacket = true;
@@ -95,15 +92,14 @@ namespace NeutronNetwork.Components
                 if (IsServer)
                     ++currentPacketsPerSecond;
 #endif
+                Vector3 oldPos = transform.position;
                 if (synchronizePosition) position = options.ReadVector3();
-                if (synchronizeVelocity) neutronRigidbody.velocity = options.ReadVector3();
                 if (synchronizeRotation) rotation = options.ReadQuaternion();
-                if (synchronizeAngularVelocity) neutronRigidbody.angularVelocity = options.ReadVector3();
-
+                if (synchronizeScale) scale = options.ReadVector3();
                 if (IsServer && lagCompensation)
                 {
                     float lag = Mathf.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
-                    position += neutronRigidbody.velocity * (lag / lagMultiplier);
+                    position += (transform.position - oldPos) * (lag / lagMultiplier);
                 }
                 if (synchronizePosition) TeleportByDistance();
             }
@@ -134,21 +130,23 @@ namespace NeutronNetwork.Components
 
         private void SmoothMovement()
         {
-            if (smoothMode == SmoothMode.MoveTowards)
+            if (smoothMode == SmoothMode.Lerp)
             {
-                if (synchronizePosition) neutronRigidbody.position = Vector3.MoveTowards(neutronRigidbody.position, position, Smooth * Time.fixedDeltaTime);
-                if (synchronizeRotation) neutronRigidbody.rotation = Quaternion.RotateTowards(neutronRigidbody.rotation, rotation, Smooth * Time.fixedDeltaTime);
+                if (synchronizePosition) transform.position = Vector3.Lerp(transform.position, position, Smooth * Time.deltaTime);
+                if (synchronizeRotation) transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Smooth * Time.deltaTime);
             }
-            else if (smoothMode == SmoothMode.Lerp)
+            else if (smoothMode == SmoothMode.MoveTowards)
             {
-                if (synchronizePosition) neutronRigidbody.position = Vector3.Lerp(neutronRigidbody.position, position, Smooth * Time.fixedDeltaTime);
-                if (synchronizeRotation) neutronRigidbody.rotation = Quaternion.Slerp(neutronRigidbody.rotation, rotation, Smooth * Time.fixedDeltaTime);
+                if (synchronizePosition) transform.position = Vector3.MoveTowards(transform.position, position, Smooth * Time.deltaTime);
+                if (synchronizeRotation) transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, Smooth * Time.deltaTime);
             }
         }
 
-        private void FixedUpdate()
+        //* Update is called once per frame
+        void Update()
         {
             if (!IsMine && !onFirstPacket) return;
+            if (!IsMine && synchronizeScale) transform.localScale = scale;
             if (IsClient)
             {
                 if (!IsMine)
@@ -164,8 +162,8 @@ namespace NeutronNetwork.Components
                         SmoothMovement();
                     else
                     {
-                        if (synchronizePosition) neutronRigidbody.position = position;
-                        if (synchronizeRotation) neutronRigidbody.rotation = rotation;
+                        if (synchronizePosition) transform.position = position;
+                        if (synchronizeRotation) transform.rotation = rotation;
                     }
                 }
             }

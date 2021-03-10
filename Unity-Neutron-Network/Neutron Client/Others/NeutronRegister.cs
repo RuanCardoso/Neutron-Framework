@@ -14,11 +14,12 @@ namespace NeutronNetwork
                 NeutronView view = prefabPlayer.AddComponent<NeutronView>();
                 view.isServerOrClient = isServer;
                 view.owner = mPlayer;
+                view.OnNeutronAwake();
 
                 if (!isServer)
                 {
 
-                    view.name = (!mPlayer.IsBot) ? mPlayer.Nick + " -> [Client]" : mPlayer.Nick + " -> [Bot]";
+                    view.name = (!mPlayer.IsBot) ? mPlayer.Nickname + " -> [Client]" : mPlayer.Nickname + " -> [Bot]";
                     view._ = localInstance;
                     if (localInstance.isLocalPlayer(mPlayer)) localInstance.NeutronView = view;
                     localInstance.playersObjects.TryAdd(mPlayer.ID, view);
@@ -27,13 +28,13 @@ namespace NeutronNetwork
                 else if (isServer)
                 {
 
-                    Neutron.Server.Players[mPlayer.tcpClient].NeutronView = view;
+                    Neutron.Server.PlayersBySocket[mPlayer.tcpClient].NeutronView = view;
 
                     Renderer renderer = view.GetComponentInChildren<Renderer>();
                     if (renderer != null)
                         renderer.material.color = Color.red;
 
-                    prefabPlayer.name = (!mPlayer.IsBot) ? mPlayer.Nick + " -> [Server]" : mPlayer.Nick + " -> [Bot]";
+                    prefabPlayer.name = (!mPlayer.IsBot) ? mPlayer.Nickname + " -> [Server]" : mPlayer.Nickname + " -> [Bot]";
                     //NeutronSFunc.onPlayerInstantiated?.Invoke(mPlayer);
                 }
 
@@ -41,8 +42,10 @@ namespace NeutronNetwork
                 foreach (var neutronBehaviour in neutronBehaviours)
                 {
                     neutronBehaviour.NeutronView = view;
-                    neutronBehaviour.OnNeutronStart();
+                    if (neutronBehaviour.enabled)
+                        neutronBehaviour.OnNeutronStart();
                 }
+                view.OnNeutronStart();
             }
             catch (Exception ex) { Utilities.StackTrace(ex); }
             return prefabPlayer;

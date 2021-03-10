@@ -6,31 +6,28 @@ namespace NeutronNetwork.Internal.Wrappers
 {
     public class NeutronQueue<T> : Queue<T>
     {
-        // object used to synchronize a list.
+        //* object used to synchronize a list.
         private readonly object syncRoot = new object();
         /// <summary>
-        /// signal to process data.
+        ///* signal to process data.
         /// </summary>
-        public ManualResetEvent manualResetEvent = new ManualResetEvent(false);
+        public ManualResetEvent mEvent = new ManualResetEvent(false);
         public new void Enqueue(T item)
         {
             base.Enqueue(item);
-            manualResetEvent.Set(); // Sets the state of the event to signaled, which allows one or more waiting threads to proceed.
+            mEvent.Set(); //* Sets the state of the event to signaled, which allows one or more waiting threads to proceed.
         }
 
-        public void SafeEnqueue(T item) // thread-safe
+        public void SafeEnqueue(T item)
         {
             lock (syncRoot)
             {
                 base.Enqueue(item);
-                manualResetEvent.Set(); // Sets the state of the event to signaled, which allows one or more waiting threads to proceed.
+                mEvent.Set(); //* Sets the state of the event to signaled, which allows one or more waiting threads to proceed.
             }
         }
 
-        public new T Dequeue()
-        {
-            return base.Dequeue();
-        }
+        public new T Dequeue() => base.Dequeue();
 
         public T SafeDequeue() // thread-safe
         {
@@ -40,16 +37,10 @@ namespace NeutronNetwork.Internal.Wrappers
             }
         }
 
-        public new int Count
-        {
-            get
-            {
-                return base.Count;
-            }
-        }
+        public new int Count { get => base.Count; }
 
         public int SafeCount
-        { // thread-safe
+        {
             get
             {
                 lock (syncRoot)

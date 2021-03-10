@@ -1,22 +1,19 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Runtime.Serialization;
-using System.Threading;
 using UnityEngine;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
-using NeutronNetwork.Internal;
+using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Channel : IEquatable<Channel>, INotify, IEqualityComparer<Channel>
+    public class Channel : IEquatable<Channel>, INeutronNotify, IEqualityComparer<Channel>, INeutronSerializable
     {
-        [NonSerialized] private readonly object SyncBuffer = new object();
-        [NonSerialized] private readonly object SyncRooms = new object();
-        [NonSerialized] private readonly object SyncPlayers = new object();
+        private readonly object SyncBuffer = new object();
+        private readonly object SyncRooms = new object();
+        private readonly object SyncPlayers = new object();
         /// <summary>
         /// ID of channel.
         /// </summary>
@@ -26,7 +23,7 @@ namespace NeutronNetwork
         /// Name of channel.
         /// </summary>
         public string Name { get => name; set => name = value; }
-        [SerializeField] private string name;
+        [SerializeField] private string name = string.Empty;
         /// <summary>
         /// Current amount of players serialized in inspector.
         /// </summary>
@@ -68,41 +65,29 @@ namespace NeutronNetwork
         /// <summary>
         /// Properties of channel(JSON).
         /// </summary>
-        public string ___props { get => properties; set => properties = value; }
-        [SerializeField, TextArea] private string properties = "{\"\":\"\"}";
+        public string _ { get => props; set => props = value; }
+        [SerializeField, TextArea] private string props = string.Empty;
         /// <summary>
         /// Properties of channel.
         /// </summary>
-        [field: NonSerialized]
-        [JsonIgnore]
-        public Dictionary<string, object> GetProps { get; set; }
+        public Dictionary<string, object> Get { get; set; }
         /// <summary>
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-        [NonSerialized] private List<CachedBuffer> CachedPackets = new List<CachedBuffer>(); // not thread safe, requires locking.
+        private Dictionary<int, CachedBuffer> CachedPackets = new Dictionary<int, CachedBuffer>(); // not thread safe, requires locking.
         /// <summary>
         /// list of players.
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-#if !UNITY_EDITOR
-        [NonSerialized]
-#else
-        [SerializeField]
-#endif
-        private List<Player> Players = new List<Player>(); // not thread safe, requires locking.
+        [SerializeField] private List<Player> Players = new List<Player>(); // not thread safe, requires locking.
         /// <summary>
         /// list of rooms.
         /// returns null on the client.
         /// not serialized over the network
         /// </summary>
-#if !UNITY_EDITOR
-        [NonSerialized]
-#else
-        [SerializeField]
-#endif
-        private List<Room> Rooms = new List<Room>(); // not thread safe, requires locking.
+        [SerializeField] private List<Room> Rooms = new List<Room>(); // not thread safe, requires locking.
 
         public Channel() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
@@ -111,7 +96,30 @@ namespace NeutronNetwork
             this.ID = ID;
             this.Name = Name;
             this.MaxPlayers = maxPlayers;
-            this.___props = properties;
+            this._ = properties;
+        }
+
+        public Channel(SerializationInfo info, StreamingContext context)
+        {
+            ID = info.GetInt32("ID");
+            Name = info.GetString("NM");
+            countOfPlayers = info.GetInt32("CP");
+            countOfRooms = info.GetInt32("CR");
+            MaxPlayers = info.GetInt32("MP");
+            MaxRooms = info.GetInt32("MR");
+            _ = info.GetString("_");
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(_);
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("ID", ID);
+            info.AddValue("NM", Name);
+            info.AddValue("CP", CountOfPlayers);
+            info.AddValue("CR", CountOfRooms);
+            info.AddValue("MP", MaxPlayers);
+            info.AddValue("MR", MaxRooms);
+            info.AddValue("_", _);
         }
 
         public bool AddPlayer(Player player, out string errorMessage) // [Thread-Safe]
@@ -192,7 +200,7 @@ namespace NeutronNetwork
         {
             lock (SyncBuffer)
             {
-                CachedPackets.Add(buffer);
+                //CachedPackets.Add(buffer);
             }
         }
 
@@ -200,7 +208,8 @@ namespace NeutronNetwork
         {
             lock (SyncBuffer)
             {
-                return CachedPackets.ToArray();
+                return null;
+                //return CachedPackets.ToArray();
             }
         }
 
