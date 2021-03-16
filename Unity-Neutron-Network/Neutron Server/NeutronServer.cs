@@ -20,8 +20,8 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Server
 {
-    [RequireComponent(typeof(NeutronEvents))]
     [RequireComponent(typeof(NeutronConfig))]
+    [RequireComponent(typeof(NeutronEvents))]
     [RequireComponent(typeof(NeutronStatistics))]
     public class NeutronServer : NeutronServerFunctions
     {
@@ -34,7 +34,7 @@ namespace NeutronNetwork.Internal.Server
         //* Signals that the server has been started.
         public static bool Initialized;
         //* generate uniqueID.
-        public static int uniqueID;
+        public static int uniqueID = Neutron.generateID;
         //* Amounts of clients that have signed in since the server was started.
         //* This property is not reset and does not decrease its value.
         private static int totalAmountOfPlayers;
@@ -55,7 +55,7 @@ namespace NeutronNetwork.Internal.Server
         {
             Initialized = true;
             /////////////////////////////////////////////////////////////////////////////////
-            Utilities.Logger("The Server is ready, all protocols have been initialized.\r\n");
+            NeutronUtils.Logger("The Server is ready, all protocols have been initialized.\r\n");
             /////////////////////////////////////////////////////////////////////////////////
             Thread acptTh = new Thread((o) => OnAcceptedClient()); //* exclusive thread to accept connections.
             acptTh.Priority = System.Threading.ThreadPriority.Normal;
@@ -96,7 +96,7 @@ namespace NeutronNetwork.Internal.Server
                 dataForProcessing.mEvent.Reset(); //* Sets the state of the event to nonsignaled, which causes threads to block.
                 while (dataForProcessing.SafeCount > 0) //* thread-safe - loop to process all data in the queue, before blocking the thread.
                 {
-                    for (int i = 0; i < NeutronConfig.GetConfig.serverPacketChunkSize && dataForProcessing.SafeCount > 0; i++)
+                    for (int i = 0; i < NeutronConfig.Settings.ServerSettings.PacketChunkSize && dataForProcessing.SafeCount > 0; i++)
                     {
                         var data = dataForProcessing.SafeDequeue();
                         bool isUDP = (data.protocol == Protocol.Udp) ? true : false;
@@ -117,7 +117,7 @@ namespace NeutronNetwork.Internal.Server
                 {
                     if (value > LIMIT_OF_CONNECTIONS_BY_IP)
                     {
-                        Utilities.LoggerError("Client not allowed!");
+                        NeutronUtils.LoggerError("Client not allowed!");
                         synClient.Close();
                         return false;
                     }
@@ -137,7 +137,7 @@ namespace NeutronNetwork.Internal.Server
                 {
                     var acceptedClient = acceptedClients.SafeDequeue();
                     if (!SYNCheck(acceptedClient)) continue;
-                    acceptedClient.NoDelay = NeutronConfig.GetConfig.serverNoDelay;
+                    acceptedClient.NoDelay = NeutronConfig.Settings.GlobalSettings.NoDelay;
                     // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
                     // TODO acceptedClient.SendTimeout = int.MaxValue;
                     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
@@ -147,7 +147,7 @@ namespace NeutronNetwork.Internal.Server
                         totalAmountOfPlayers++;
                         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if UNITY_SERVER
-                        Utilities.Logger($"Incoming client, IP: [{acceptedClient.RemoteEndPoint().Address}] | TCP: [{acceptedClient.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)newPlayer.udpClient.Client.LocalEndPoint).Port}] -:[{totalAmountOfPlayers}]");
+                        NeutronUtils.Logger($"Incoming client, IP: [{newPlayer.RemoteEndPoint().Address}] | TCP: [{newPlayer.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)newPlayer.udpClient.Client.LocalEndPoint).Port}] -:[{totalAmountOfPlayers}]");
 #endif
                         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         Thread procTh = new Thread(() => OnProcessData(newPlayer, cancellationTokenSource.Token)); //* because this method locks the thread, if it falls on a segment of "OnReceive" the data will not be received.
@@ -178,7 +178,7 @@ namespace NeutronNetwork.Internal.Server
                     manualResetEvent.Reset();
                     while (queueData.SafeCount > 0)
                     {
-                        for (int i = 0; i < NeutronConfig.GetConfig.serverProcessChunkSize && queueData.SafeCount > 0; i++)
+                        for (int i = 0; i < NeutronConfig.Settings.ServerSettings.ProcessChunkSize && queueData.SafeCount > 0; i++)
                         {
                             var data = queueData.SafeDequeue();
                             using (NeutronWriter header = new NeutronWriter())
@@ -207,7 +207,7 @@ namespace NeutronNetwork.Internal.Server
                 }
             }
             catch (ThreadAbortException) { }
-            catch (Exception ex) { Utilities.StackTrace(ex); }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
         }
 
         private async void OnReceiveData(Player player, Protocol protocol, object toToken)
@@ -315,14 +315,14 @@ namespace NeutronNetwork.Internal.Server
                             HandleSetRoomProperties(mSender, parametersReader.ReadString());
                             break;
                         case Packet.Heartbeat:
-                            HandleHeartbeat(mSender, parametersReader.ReadSingle());
+                            HandleHeartbeat(mSender, parametersReader.ReadDouble());
                             break;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Utilities.StackTrace(ex);
+                NeutronUtils.StackTrace(ex);
             }
 #endif
         }
@@ -335,20 +335,21 @@ namespace NeutronNetwork.Internal.Server
 #if !NET_STANDARD_2_0
 #if !DEVELOPMENT_BUILD
             if (!isReady)
-                Utilities.LoggerError("The server could not be initialized):");
+                NeutronUtils.LoggerError("The server could not be initialized):");
             else
             {
-                if (NeutronConfig.GetConfig.dontDestroyOnLoad) DontDestroyOnLoad(gameObject.transform.root);
-                StartCoroutine(Utils.KeepFramerate(NeutronConfig.GetConfig.serverFPS));
+                DontDestroyOnLoad(gameObject.transform.root);
+                StartCoroutine(Utils.KeepFramerate(NeutronConfig.Settings.ServerSettings.FPS));
                 InitilizeServer();
+                //NeutronRegister.RegisterSceneObject(null, true, null);
             }
 #elif DEVELOPMENT_BUILD
             Console.Clear();
-            Utilities.LoggerError("Development build is not supported on the Server.");
+            NeutronUtils.LoggerError("Development build is not supported on the Server.");
 #endif
 #elif NET_STANDARD_2_0
         Console.Clear();
-        Utilities.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
+        NeutronUtils.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
 #endif
         }
 #endif
@@ -358,7 +359,7 @@ namespace NeutronNetwork.Internal.Server
             DisposeAllClients(); //* Dispose all client sockets.
             DisposeServerSocket();
             ///////////////////////////////////////////////////////////////
-            Utilities.Logger("Server: All resources have been released!!");
+            NeutronUtils.Logger("Server: All resources have been released!!");
             ///////////////////////////////////////////////////////////////
         }
         #endregion

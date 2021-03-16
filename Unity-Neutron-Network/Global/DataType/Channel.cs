@@ -5,6 +5,7 @@ using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace NeutronNetwork
 {
@@ -208,8 +209,7 @@ namespace NeutronNetwork
         {
             lock (SyncBuffer)
             {
-                return null;
-                //return CachedPackets.ToArray();
+                return CachedPackets.Values.ToArray();
             }
         }
 

@@ -24,7 +24,7 @@ namespace NeutronNetwork.Internal
                     cQueue.SafeDequeue().Invoke();
                 }
             }
-            catch (Exception ex) { Utilities.StackTrace(ex); }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
         }
 
         public static int GetFreePort(Protocol type)
@@ -141,6 +141,13 @@ namespace NeutronNetwork.Internal
                     }
             }
 #endif
+        }
+
+        public static void ChangeColor(NeutronView neutronView)
+        {
+            Renderer renderer = neutronView.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+                renderer.material.color = Color.red;
         }
 
         public static string SizeSuffixMB(int value, int decimalPlaces = 4)

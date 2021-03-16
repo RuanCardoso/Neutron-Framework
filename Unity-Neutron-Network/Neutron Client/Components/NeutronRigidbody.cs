@@ -55,6 +55,7 @@ namespace NeutronNetwork.Components
 
         public override void OnNeutronStart()
         {
+            base.OnNeutronStart();
             if (IsClient && (synchronizeVelocity || synchronizeRotation) && IsMine)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
@@ -102,7 +103,7 @@ namespace NeutronNetwork.Components
 
                 if (IsServer && lagCompensation)
                 {
-                    float lag = Mathf.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
+                    float lag = (float)Math.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
                     position += neutronRigidbody.velocity * (lag / lagMultiplier);
                 }
                 if (synchronizePosition) TeleportByDistance();

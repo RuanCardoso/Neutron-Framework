@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using NeutronNetwork;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Server.Cheats;
@@ -44,6 +45,7 @@ namespace NeutronNetwork.Components
 
         public override void OnNeutronStart()
         {
+            base.OnNeutronStart();
             if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && IsMine)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
@@ -98,7 +100,7 @@ namespace NeutronNetwork.Components
                 if (synchronizeScale) scale = options.ReadVector3();
                 if (IsServer && lagCompensation)
                 {
-                    float lag = Mathf.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
+                    float lag = (float)Math.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
                     position += (transform.position - oldPos) * (lag / lagMultiplier);
                 }
                 if (synchronizePosition) TeleportByDistance();

@@ -1,20 +1,22 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using NeutronNetwork;
+using NeutronNetwork.Internal.Attributes;
 using UnityEngine;
 
-public class IViewConfig : MonoBehaviour
+public class ViewConfig : MonoBehaviour
 {
-    public Player owner;
+    public int ID;
+    public AuthorityMode authorityMode;
+    [ReadOnly] public Player owner;
+    [NonSerialized] public bool isServer;
     [NonSerialized] public Neutron _;
-    [NonSerialized] public bool isServerOrClient;
     [NonSerialized] public NeutronSyncBehaviour neutronSyncBehaviour;
 
     public Vector3 lastPosition { get; set; }
     public Vector3 lastRotation { get; set; }
 
     public NeutronBehaviour[] neutronBehaviours { get; private set; }
+    public bool IsSceneObject { get => (ID > 0 && ID < Neutron.generateID); }
 
     public void Awake()
     {
@@ -45,7 +47,7 @@ public class IViewConfig : MonoBehaviour
 
     public void ResetBehaviours()
     {
-        Utilities.LoggerWarning("Component Destroyed");
+        NeutronUtils.LoggerWarning("Component Destroyed");
         GetNeutronBehaviours();
     }
 

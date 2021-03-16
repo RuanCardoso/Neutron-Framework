@@ -1,11 +1,9 @@
-﻿using System;
-using System.Net.Sockets;
-using UnityEngine;
-using UnityEngine.AI;
+﻿using UnityEngine;
 
 namespace NeutronNetwork
 {
-    public class NeutronView : IViewConfig
+    [AddComponentMenu("Neutron/Neutron View")]
+    public class NeutronView : ViewConfig
     {
         private new void Awake()
         {

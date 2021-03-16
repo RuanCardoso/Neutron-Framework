@@ -132,6 +132,16 @@ public enum Statistics : int
     ServerRec
 }
 
+public enum AuthorityMode
+{
+    Server,
+    Owner,
+    MasterClient,
+    IgnoreExceptServer,
+    Ignore,
+}
+
+[Flags] public enum ComponentMode { IsMine = 2, IsServer = 4 }
+
 public enum SmoothMode { Lerp, MoveTowards }
 public enum ParameterMode { Sync, NonSync }
-[Flags] public enum ComponentMode { IsMine = 2, IsServer = 4 }

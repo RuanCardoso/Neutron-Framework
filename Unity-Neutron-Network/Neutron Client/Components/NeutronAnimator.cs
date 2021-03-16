@@ -25,13 +25,11 @@ namespace NeutronNetwork.Components
         [SerializeField] private Broadcast broadcast = Broadcast.Room;
         [SerializeField] private Protocol protocol = Protocol.Udp;
 
-        private void Start()
-        {
-
-        }
+        private void Start() { }
 
         public override void OnNeutronStart()
         {
+            base.OnNeutronStart();
             if (IsClient && IsMine)
                 StartCoroutine(Synchronize());
         }

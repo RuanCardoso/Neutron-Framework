@@ -28,7 +28,7 @@ namespace NeutronNetwork.Internal.Client
         protected int pingAmount = 0;
         //-------------------------------------------------------------------------------------------------------------
         //-------------------------------------------------------------------------------------------------------------
-        public ConcurrentDictionary<int, NeutronView> playersObjects;
+        public ConcurrentDictionary<int, NeutronView> networkObjects;
         public ConcurrentDictionary<int, object[]> properties;
         //-------------------------------------------------------------------------------------------------------------
         protected IPEndPoint endPointUDP;
@@ -39,6 +39,7 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
+            DontDestroyOnLoad(gameObject);
             NeutronConfig.LoadSettings();
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
@@ -47,7 +48,7 @@ namespace NeutronNetwork.Internal.Client
             _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
             //-------------------------------------------------------------------------------------------------------------
             //-------------------------------------------------------------------------------------------------------------
-            playersObjects = new ConcurrentDictionary<int, NeutronView>();
+            networkObjects = new ConcurrentDictionary<int, NeutronView>();
             properties = new ConcurrentDictionary<int, object[]>();
         }
 

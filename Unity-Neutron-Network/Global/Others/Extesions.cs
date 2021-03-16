@@ -23,7 +23,7 @@ namespace NeutronNetwork.Internal.Extesions
         {
             try
             {
-                Serialization serializationMode = (Serialization)NeutronConfig.GetConfig.serializationOptions;
+                Serialization serializationMode = NeutronConfig.Settings.GlobalSettings.Serialization;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -31,27 +31,27 @@ namespace NeutronNetwork.Internal.Extesions
                         using (NeutronWriter jsonWriter = new NeutronWriter())
                         {
                             jsonWriter.Write(jsonString);
-                            return jsonWriter.ToArray().Compress(NeutronConfig.COMPRESSION_MODE);
+                            return jsonWriter.ToArray().Compress(NeutronConfig.Settings.GlobalSettings.Compression);
                         }
                     case Serialization.BinaryFormatter:
                         BinaryFormatter formatter = new BinaryFormatter();
                         using (MemoryStream mStream = new MemoryStream())
                         {
                             formatter.Serialize(mStream, message);
-                            return mStream.ToArray().Compress(NeutronConfig.COMPRESSION_MODE);
+                            return mStream.ToArray().Compress(NeutronConfig.Settings.GlobalSettings.Compression);
                         }
                     default:
                         return null;
                 }
             }
-            catch (Exception ex) { Utilities.StackTrace(ex); return null; }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); return null; }
         }
         public static T DeserializeObject<T>(this byte[] message)
         {
-            message = message.Decompress(NeutronConfig.COMPRESSION_MODE);
+            message = message.Decompress(NeutronConfig.Settings.GlobalSettings.Compression);
             try
             {
-                Serialization serializationMode = (Serialization)NeutronConfig.GetConfig.serializationOptions;
+                Serialization serializationMode = NeutronConfig.Settings.GlobalSettings.Serialization;
                 switch (serializationMode)
                 {
                     case Serialization.Json:
@@ -69,7 +69,7 @@ namespace NeutronNetwork.Internal.Extesions
                         return default;
                 }
             }
-            catch (Exception ex) { Utilities.StackTrace(ex); return default; }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); return default; }
         }
 
         public static byte[] Compress(this byte[] data, Compression compressionType)
@@ -271,7 +271,7 @@ namespace NeutronNetwork.Internal.Extesions
                     else continue;
                 }
             }
-            else Utilities.LoggerError($"Could not find a reference, check if \"base.Awake\" has been implemented in \"{mThis.GetType().Name}\" class.");
+            else NeutronUtils.LoggerError($"Could not find a reference, check if \"base.Awake\" has been implemented in \"{mThis.GetType().Name}\" class.");
             Error = string.Empty;
             return null;
         }
@@ -341,9 +341,7 @@ namespace NeutronNetwork.Internal.Extesions
                         Room room = channel.GetRoom(mPlayer.CurrentRoom);
                         Player[] roomsPlayers = room.GetPlayers();
                         Player[] channelPlayers = channel.GetPlayers();
-
                         Player[] players = (!mPlayer.IsInRoom()) ? channelPlayers : roomsPlayers;
-
                         return players.Where(x => x.NeutronView != null).ToArray();
                     }
                 default:

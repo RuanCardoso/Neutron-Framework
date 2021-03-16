@@ -6,10 +6,11 @@ using UnityEngine;
 public class NeutronComponents : NeutronBehaviour
 {
     [SerializeField] private NeutronComponent[] neutronComponents;
-
     private void Start() { }
+
     public override void OnNeutronStart()
     {
+        base.OnNeutronStart();
         DisallowComponents();
     }
 

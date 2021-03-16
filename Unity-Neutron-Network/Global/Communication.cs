@@ -35,12 +35,12 @@ namespace NeutronNetwork.Internal.Comms
                             }
                             return true;
                         }
-                        else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
+                        else { if (message != string.Empty) NeutronUtils.LoggerError(message); continue; }
                     }
                     else neutronView.ResetBehaviours();
                 }
             }
-            else Utilities.LoggerError("Could not find any implementation of \"NeutronBehaviour\"");
+            else NeutronUtils.LoggerError("Could not find any implementation of \"NeutronBehaviour\"");
             return false;
         }
 
@@ -57,7 +57,7 @@ namespace NeutronNetwork.Internal.Comms
                     Invoker.Invoke(mInstance, new object[] { new NeutronReader(parameters) });
                     break;
                 }
-                else { if (message != string.Empty) Utilities.LoggerError(message); continue; }
+                else { if (message != string.Empty) NeutronUtils.LoggerError(message); continue; }
             }
         }
 
@@ -83,7 +83,7 @@ namespace NeutronNetwork.Internal.Comms
                                     if (objType == typeof(GameObject))
                                     {
                                         GameObject objectToInst = (GameObject)obj;
-                                        NeutronRegister.RegisterPlayer(localInstance, objectToInst, sender, isServer);
+                                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
                                         if (!isServer)
                                         {
                                             Utils.MoveToContainer(objectToInst, "[Container] -> Player[Main]");
@@ -110,7 +110,7 @@ namespace NeutronNetwork.Internal.Comms
             catch (Exception ex)
             {
                 // $"The scope of the Static({executeID}:{monoBehaviour}) is incorrect. Fix to \"void function (NeutronReader reader, bool isServer)\"
-                Utilities.StackTrace(ex);
+                NeutronUtils.StackTrace(ex);
                 return false;
             }
         }
@@ -141,7 +141,7 @@ namespace NeutronNetwork.Internal.Comms
             }
             catch (Exception ex)
             {
-                Utilities.LoggerError(ex.Message);
+                NeutronUtils.LoggerError(ex.Message);
             }
         }
 

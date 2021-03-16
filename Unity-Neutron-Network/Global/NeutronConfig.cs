@@ -2,8 +2,7 @@
 
 public class NeutronConfig : MonoBehaviour
 {
-    public static JsonData GetConfig { get; private set; }
-    public static Compression COMPRESSION_MODE;
+    public static NeutronSettings Settings { get; private set; }
     private void Awake()
     {
         LoadSettings();
@@ -11,8 +10,7 @@ public class NeutronConfig : MonoBehaviour
 
     public static void LoadSettings()
     {
-        if (GetConfig == null)
-            GetConfig = NeutronData.LoadSettings();
-        COMPRESSION_MODE = (Compression)GetConfig.compressionOptions;
+        if (Settings == null)
+            Settings = Resources.Load<NeutronSettings>("Neutron Settings");
     }
 }

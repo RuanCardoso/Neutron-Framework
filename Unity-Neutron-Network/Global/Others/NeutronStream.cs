@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using NeutronNetwork.Internal.Extesions;
 using UnityEngine;
 
 namespace NeutronNetwork
@@ -55,10 +56,17 @@ namespace NeutronNetwork
             Write(length);
         }
 
-        public void WriteExactly(byte[] bytes)
+        public void WriteExactly<T>(T objectToSerialize)
         {
-            WriteFixedLength(bytes.Length);
-            Write(bytes);
+            byte[] serializedBytes = objectToSerialize.Serialize();
+            WriteFixedLength(serializedBytes.Length);
+            Write(serializedBytes);
+        }
+
+        public void WriteExactly(byte[] serializedBytes)
+        {
+            WriteFixedLength(serializedBytes.Length);
+            Write(serializedBytes);
         }
 
         public MemoryStream GetStream()
@@ -137,8 +145,14 @@ namespace NeutronNetwork
 
         public int ReadFixedLength(int len)
         {
-            if (len < sizeof(int)) Utilities.LoggerError($"The first bytes must be at least 4 Bytes, increasing the size of the buffer can solve.: {len}");
+            if (len < sizeof(int)) NeutronUtils.LoggerError($"The first bytes must be at least 4 Bytes, increasing the size of the buffer can solve.: {len}");
             return ReadInt32() + sizeof(int);
+        }
+
+        public T ReadExactly<T>()
+        {
+            int len = ReadInt32();
+            return ReadBytes(len).DeserializeObject<T>();
         }
 
         public byte[] ReadExactly()

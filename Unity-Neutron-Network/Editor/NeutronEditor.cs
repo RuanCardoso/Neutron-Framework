@@ -200,13 +200,16 @@ public class NeutronEditor : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
-    void LoadSettings() => JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(NeutronData.PASS), this);
+    void LoadSettings()
+    {
+        //JsonUtility.FromJsonOverwrite(Resources.Load<TextAsset>("neutronsettings").text.Decrypt(NeutronData.PASS), this);
+    }
 
     async void SaveSettings()
     {
-        await Task.Delay(500);
-        File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(NeutronData.PASS));
-        AssetDatabase.Refresh();
+        // await Task.Delay(500);
+        // File.WriteAllText(Application.dataPath + Communication.PATH_SETTINGS, JsonUtility.ToJson(this).Encrypt(NeutronData.PASS));
+        // AssetDatabase.Refresh();
     }
 
     private void OnEnable()

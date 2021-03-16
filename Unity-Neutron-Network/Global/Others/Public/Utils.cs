@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace NeutronNetwork
 {
-    public class Utilities
+    public class NeutronUtils
     {
         public static void Logger(object message)
         {

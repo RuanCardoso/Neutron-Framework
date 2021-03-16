@@ -37,7 +37,7 @@ namespace NeutronNetwork.Internal.Client.InternalEvents
         /// <summary>
         ///This event is only triggered by you.
         /// <summary>
-        public delegate void OnNicknameChanged(Neutron instance);
+        public delegate void OnPlayerNicknameChanged(Player player, bool isMine, Neutron localInstance);
         /// <summary>
         /// This event is triggered when you or other players join the channel.
         /// This event is triggered by you and other players.

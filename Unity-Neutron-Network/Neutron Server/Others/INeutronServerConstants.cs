@@ -19,10 +19,6 @@ namespace NeutronNetwork.Internal.Server
         protected static TcpListener TcpSocket;
         #endregion
 
-        #region Events
-        public static event ServerEvents.OnServerAwake onServerAwake;
-        #endregion
-
         #region Constants
         public static int MAX_RECEIVE_MESSAGE_SIZE;
         public static int MAX_SEND_MESSAGE_SIZE;
@@ -33,19 +29,20 @@ namespace NeutronNetwork.Internal.Server
         public NeutronSafeDictionary<TcpClient, Player> PlayersBySocket = new NeutronSafeDictionary<TcpClient, Player>();
         public NeutronSafeDictionary<int, Player> PlayersById = new NeutronSafeDictionary<int, Player>();
         public NeutronSafeDictionary<int, Channel> ChannelsById = new NeutronSafeDictionary<int, Channel>();
+        public NeutronSafeDictionary<int, NeutronView> networkObjects = new NeutronSafeDictionary<int, NeutronView>();
         public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
         public NeutronQueue<Action> ActionsDispatcher = new NeutronQueue<Action>();
-        [SerializeField] private List<Channel> _Channels = new List<Channel>();
+        public List<Channel> _Channels = new List<Channel>();
         #endregion
 
         #region Physics
-        [SerializeField] private GameObject[] sharedObjects;
-        [SerializeField] private GameObject[] unsharedObjects;
-        [SerializeField] private bool ChannelPhysics;
-        [SerializeField] private bool RoomPhysics;
-        [SerializeField] private bool SharingOnChannels;
-        [SerializeField] private bool SharingOnRooms;
-        [SerializeField] private LocalPhysicsMode PhysicsMode = LocalPhysicsMode.None;
+        public GameObject[] sharedObjects;
+        public GameObject[] unsharedObjects;
+        public bool ChannelPhysics;
+        public bool RoomPhysics;
+        public bool SharingOnChannels;
+        public bool SharingOnRooms;
+        public LocalPhysicsMode PhysicsMode = LocalPhysicsMode.None;
         #endregion
         protected bool isReady;
 
@@ -57,32 +54,32 @@ namespace NeutronNetwork.Internal.Server
 #endif
 #if UNITY_SERVER || UNITY_EDITOR
             NeutronConfig.LoadSettings();
-            InitializeEvents();
-            CreateDefaultContainers();
-            if (NeutronConfig.GetConfig != null)
+            //CreateDefaultContainers();
+            if (NeutronConfig.Settings != null)
             {
                 try
                 {
-                    SetConstants(NeutronConfig.GetConfig);
-                    TcpSocket = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronConfig.GetConfig.serverPort)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                    TcpSocket.Start(NeutronConfig.GetConfig.backLog);
+                    SetConstants(NeutronConfig.Settings);
+                    TcpSocket = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronConfig.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                    TcpSocket.Start(NeutronConfig.Settings.ServerSettings.BackLog);
                     isReady = true;
                 }
                 catch (SocketException ex)
                 {
                     if (ex.ErrorCode == 10048)
-                        Utilities.LoggerError("This Server instance has been disabled, because another instance is in use.");
-                    else Utilities.LoggerError(ex.Message);
+                        NeutronUtils.LoggerError("This Server instance has been disabled, because another instance is in use.");
+                    else NeutronUtils.LoggerError(ex.Message);
                 }
             }
 #endif
 #else
-            Utilities.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
+            NeutronUtils.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
 #endif
         }
 
         private void CreateDefaultContainers()
         {
+            Utils.CreateContainer($"[Container] -> Server", false, false, null, null, PhysicsMode);
             for (int i = 0; i < _Channels.Count; i++)
             {
                 Channel channel = _Channels[i];
@@ -95,18 +92,12 @@ namespace NeutronNetwork.Internal.Server
             }
         }
 
-        private void InitializeEvents()
+        private void SetConstants(NeutronSettings NeutronSettings)
         {
-            GetComponent<NeutronEvents>().Initialize();
-            onServerAwake?.Invoke();
-        }
-
-        private void SetConstants(JsonData Data)
-        {
-            CheatsUtils.enabled = Data.antiCheat;
-            MAX_RECEIVE_MESSAGE_SIZE = Data.max_rec_msg;
-            MAX_SEND_MESSAGE_SIZE = Data.max_send_msg;
-            LIMIT_OF_CONNECTIONS_BY_IP = Data.limit_of_conn_by_ip;
+            CheatsUtils.enabled = NeutronSettings.ServerSettings.AntiCheat;
+            MAX_RECEIVE_MESSAGE_SIZE = NeutronSettings.MAX_REC_MSG;
+            MAX_SEND_MESSAGE_SIZE = NeutronSettings.MAX_SEND_MSG;
+            LIMIT_OF_CONNECTIONS_BY_IP = NeutronSettings.LIMIT_OF_CONN_BY_IP;
         }
     }
 }
