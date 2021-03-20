@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0f743d5b456616469a5f7cb20e0a4d3, type: 3}
+  m_Name: Neutron Settings
+  m_EditorClassIdentifier: 
+  GlobalSettings:
+    Address: 127.0.0.1
+    Port: 5055
+    Serialization: 1
+    Compression: 1
+    NoDelay: 1
+  ClientSettings:
+    FPS: 60
+    MonoChunkSize: 1
+  ServerSettings:
+    BackLog: 10
+    FPS: 60
+    MonoChunkSize: 1
+    PacketChunkSize: 1
+    ProcessChunkSize: 1
+    AntiCheat: 1
+  HandleSettings:
+    OnPlayerNicknameChanged:
+      sendTo: 0
+      broadcast: 1
+      protocol: 6
+    OnPlayerDisconnected:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerJoinedChannel:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerJoinedRoom:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerLeaveRoom:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerLeaveChannel:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerPropertiesChanged:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnRoomPropertiesChanged:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+    OnPlayerDestroyed:
+      sendTo: 0
+      broadcast: 6
+      protocol: 6
+  MAX_REC_MSG: 512
+  MAX_SEND_MSG: 512
+  LIMIT_OF_CONN_BY_IP: 3
