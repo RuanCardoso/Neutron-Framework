@@ -107,6 +107,7 @@ public class NeutronEditor : EditorWindow
                                 else isDuplicated = true;
                                 string duplicatedName = (isDuplicated) ? " - <color=red>[Duplicated]</color>" : string.Empty;
                                 EditorGUILayout.LabelField($"[<color=#c2c2c2>Method</color>]: <color=#f5c118>{viewer.Name}</color>(ID: <color=#f7382a>{value}</color>){duplicatedName}\r\n[Type]: <color=#26c7fc>{attrName}</color>\r\n[<color=#c2c2c2>Class</color>]: <color=#f5c118>{viewer.DeclaringType.Name}</color>", styleText, GUILayout.Height(50));
+                                EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
                             }
                         }
                     }
