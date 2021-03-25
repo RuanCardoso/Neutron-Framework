@@ -144,9 +144,9 @@ public class NeutronEditor : EditorWindow
             {
                 if (asmType.IsSubclassOf(typeof(MonoBehaviour)))
                 {
-                    if (asmType.IsSubclassOf(typeof(NeutronBehaviour)) || asmType.IsSubclassOf(typeof(NeutronStaticBehaviour)))
+                    if (asmType.IsSubclassOf(typeof(NeutronBehaviour)) || asmType.IsSubclassOf(typeof(NeutronNonDynamicBehaviour)))
                     {
-                        var mIs = asmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(x => x.GetCustomAttribute<RPC>() != null || x.GetCustomAttribute<APC>() != null || x.GetCustomAttribute<Static>() != null || x.GetCustomAttribute<Response>() != null).ToArray();
+                        var mIs = asmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(x => x.GetCustomAttribute<Dynamic>() != null || x.GetCustomAttribute<NonDynamic>() != null).ToArray();
                         if (!listOfMis.Contains(mIs)) listOfMis.Add(mIs);
                     }
                     else continue;

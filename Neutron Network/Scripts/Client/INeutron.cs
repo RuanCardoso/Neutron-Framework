@@ -11,7 +11,7 @@ using NeutronNetwork.Internal.Comms;
 using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Server;
-using NeutronNetwork.Internal.Client.InternalEvents;
+using NeutronNetwork.Internal.Client.Delegates;
 using NeutronNetwork.Internal.Attributes;
 using System.IO;
 using NeutronNetwork.Internal;
@@ -22,7 +22,8 @@ namespace NeutronNetwork
 {
     public class Neutron : NeutronClientFunctions
     {
-        public const int generateID = 27716848;
+        public const string CONTAINER_NAME = "[Container] -> Player[Main]";
+        public const int GENERATE_ID = 27716848;
         /// <summary>
         /// Returns instance of server
         /// </summary>
@@ -70,6 +71,8 @@ namespace NeutronNetwork
             get => _nickname;
             set => SetNickname(value);
         }
+        public Room currentRoom;
+        public Channel currentChannel;
         /// <summary>
         /// Time of server;
         /// </summary>
@@ -179,8 +182,8 @@ namespace NeutronNetwork
             //     Destroy(this);
             // }
 
-            Utils.ChunkDequeue(mainThreadActions, NeutronConfig.Settings.ClientSettings.MonoChunkSize);
-            Utils.ChunkDequeue(monoBehaviourRPCActions, NeutronConfig.Settings.ClientSettings.MonoChunkSize);
+            InternalUtils.ChunkDequeue(mainThreadActions, NeutronConfig.Settings.ClientSettings.MonoChunkSize);
+            InternalUtils.ChunkDequeue(monoBehaviourRPCActions, NeutronConfig.Settings.ClientSettings.MonoChunkSize);
         }
 
         /// <summary>
@@ -308,7 +311,7 @@ namespace NeutronNetwork
                 if (udpReceiveResult.Buffer.Length > 0)
                 {
                     ProcessClientData(udpReceiveResult.Buffer);
-                    Utils.UpdateStatistics(Statistics.ClientRec, udpReceiveResult.Buffer.Length);
+                    InternalUtils.UpdateStatistics(Statistics.ClientRec, udpReceiveResult.Buffer.Length);
                 }
                 Debug.Log("REC em UDP");
 
@@ -335,7 +338,7 @@ namespace NeutronNetwork
                                 using (NeutronReader messageReader = new NeutronReader(messageBuffer, 0, fixedLength))
                                 {
                                     ProcessClientData(messageReader.ToArray());
-                                    Utils.UpdateStatistics(Statistics.ClientRec, fixedLength);
+                                    InternalUtils.UpdateStatistics(Statistics.ClientRec, fixedLength);
                                     Debug.Log("REC em TCP");
                                 }
                             }
@@ -375,9 +378,14 @@ namespace NeutronNetwork
             PcktLoss = (packetLoss / pingAmount) * 100;
         }
 
-        public bool isLocalPlayer(Player mPlayer)
+        public bool IsMine(Player mPlayer)
         {
             return mPlayer.Equals(MyPlayer);
+        }
+
+        public bool IsMasterClient()
+        {
+            return currentRoom.Owner.Equals(MyPlayer);
         }
 
         private void ProcessClientData(byte[] buffer)
@@ -422,7 +430,7 @@ namespace NeutronNetwork
                                 new Action(() => OnMessageReceived?.Invoke(message, mSender, this)).ExecuteOnMainThread(this);
                             }
                             break;
-                        case Packet.RPC:
+                        case Packet.Dynamic:
                             {
                                 int playerID = mReader.ReadInt32();
                                 int rpcID = mReader.ReadInt32();
@@ -432,28 +440,13 @@ namespace NeutronNetwork
                                 HandleRPC(rpcID, playerID, parameters, player, infor);
                             }
                             break;
-                        case Packet.APC:
-                            {
-                                int ID = mReader.ReadInt32();
-                                int playerID = mReader.ReadInt32();
-                                byte[] Parameters = mReader.ReadExactly();
-                                HandleAPC(ID, Parameters, playerID);
-                            }
-                            break;
-                        case Packet.Static:
+                        case Packet.NonDynamic:
                             {
                                 int ID = mReader.ReadInt32();
                                 byte[] _array = mReader.ReadExactly();
                                 byte[] array_ = mReader.ReadExactly();
                                 Player mSender = _array.DeserializeObject<Player>();
                                 HandleRCC(ID, mSender, array_, false);
-                            }
-                            break;
-                        case Packet.Response:
-                            {
-                                int ID = mReader.ReadInt32();
-                                byte[] parameters = mReader.ReadExactly();
-                                HandleACC(ID, parameters);
                             }
                             break;
                         case Packet.GetChannels:
@@ -524,7 +517,7 @@ namespace NeutronNetwork
                         case Packet.Nickname:
                             {
                                 Player player = mReader.ReadExactly<Player>();
-                                new Action(() => OnPlayerNicknameChanged?.Invoke(player, isLocalPlayer(player), this)).ExecuteOnMainThread(this);
+                                new Action(() => OnPlayerNicknameChanged?.Invoke(player, IsMine(player), this)).ExecuteOnMainThread(this);
                             }
                             break;
                         case Packet.SetPlayerProperties:
@@ -686,7 +679,7 @@ namespace NeutronNetwork
         /// </summary>
         public void CreatePlayer(MonoBehaviour mThis, NeutronWriter options, SendTo sendTo, Broadcast broadcast)
         {
-            Static(mThis, 1001, options, true, sendTo, Protocol.Tcp, broadcast);
+            NonDynamic(1001, options, true, sendTo, broadcast, Protocol.Tcp);
         }
 
         public void DestroyPlayer()
@@ -698,17 +691,12 @@ namespace NeutronNetwork
             }
         }
 
-        public void Static(MonoBehaviour mThis, int RCCID, NeutronWriter writer, bool enableCache, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
+        public void NonDynamic(int RCCID, NeutronWriter writer, bool enableCache, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
-            InternalRCC(mThis, RCCID, writer.ToArray(), enableCache, sendTo, protocolType, broadcast);
+            InternalRCC(RCCID, writer.ToArray(), enableCache, sendTo, protocolType, broadcast);
         }
 
-        public void RPC(int RPCID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
-        {
-            InternalRPC(NeutronView, RPCID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
-        }
-
-        public void RPC(NeutronView neutronView, int RPCID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
+        public void Dynamic(NeutronView neutronView, int RPCID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
         {
             InternalRPC(neutronView, RPCID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
         }
@@ -792,6 +780,11 @@ namespace NeutronNetwork
             neutronInstance.InitializeClient(type);
             if (type == ClientType.MainPlayer) Client = neutronInstance;
             return neutronInstance;
+        }
+
+        public class UITools
+        {
+
         }
     }
 }

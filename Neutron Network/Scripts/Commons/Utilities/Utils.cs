@@ -1,17 +1,96 @@
-﻿using System.Collections;
-using System;
+﻿using System;
+using System.Collections;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using UnityEngine.SceneManagement;
-using UnityEngine;
-using NeutronNetwork.Internal.Wrappers;
-using NeutronNetwork.Internal.Server;
-using System.Linq;
 using System.Threading;
+using NeutronNetwork.Internal.Server;
+using NeutronNetwork.Internal.Wrappers;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace NeutronNetwork
+{
+    public class NeutronUtils
+    {
+        public static void Logger(object message)
+        {
+#if UNITY_SERVER
+        Console.WriteLine (message);
+#else
+            Debug.Log(message);
+#endif
+        }
+
+        public static bool Logger(object message, object obj)
+        {
+#if UNITY_SERVER
+        if (obj == null) { Console.WriteLine (message); return false; }
+        else return true;
+#else
+            if (obj != null) { Debug.Log(message); return true; }
+            else return false;
+#endif
+        }
+
+        public static bool LoggerError(object message)
+        {
+#if UNITY_SERVER
+            Console.WriteLine(message);
+#else
+            Debug.LogError(message);
+#endif
+            return false;
+        }
+
+        public static bool LoggerError(object message, object obj)
+        {
+#if UNITY_SERVER
+        if (obj == null) { Console.WriteLine (message); return false; }
+        else return true;
+#else
+            if (obj == null) { Debug.LogError(message); return false; }
+            else return true;
+#endif
+        }
+
+        public static void LoggerWarning(object message)
+        {
+#if UNITY_SERVER
+        Console.WriteLine (message);
+#else
+            Debug.LogWarning(message);
+#endif
+        }
+
+        public static bool LoggerWarning(object message, object obj)
+        {
+#if UNITY_SERVER
+        if (obj == null) { Console.WriteLine (message); return false; }
+        else return true;
+#else
+            if (obj == null) { Debug.LogWarning(message); return false; }
+            else return true;
+#endif
+        }
+
+        public static void StackTrace(Exception ex)
+        {
+            var st = new System.Diagnostics.StackTrace(ex, true);
+            // Get the top stack frame
+            var frame = st.GetFrame(0);
+            // Get the line number from the stack frame
+            var line = frame.GetFileLineNumber();
+            //print
+            LoggerError($"Exception ocurred in: {line}");
+            Debug.LogException(ex);
+        }
+    }
+}
 
 namespace NeutronNetwork.Internal
 {
-    public class Utils
+    public class InternalUtils
     {
         public static int GetUniqueID() => ++NeutronServer.uniqueID;
         public static void Enqueue(Action action, NeutronQueue<Action> cQueue) => cQueue.SafeEnqueue(action);
@@ -52,47 +131,39 @@ namespace NeutronNetwork.Internal
             }
         }
 
-        public static void CreateContainer(string name, bool enablePhysics = false, bool sharingObjects = false, GameObject[] sharedObjects = null, GameObject[] unsharedObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
+        public static void CreateContainer(string containerName, bool clientOnly = false, Player ownerNetworkObjects = null, bool enablePhysics = false, GameObject[] sceneObjects = null, LocalPhysicsMode localPhysicsMode = LocalPhysicsMode.None)
         {
-            Scene scene = SceneManager.CreateScene(name, new CreateSceneParameters(localPhysicsMode));
-
-            if (sharedObjects != null && sharingObjects)
+            Scene scene = SceneManager.CreateScene(containerName, new CreateSceneParameters(localPhysicsMode));
+            if (sceneObjects != null)
             {
-                foreach (GameObject @object in sharedObjects)
+                foreach (GameObject gameObject in sceneObjects)
                 {
-                    GameObject gameObject = MonoBehaviour.Instantiate(@object);
-#if UNITY_EDITOR
-                    gameObject.hideFlags = HideFlags.HideInHierarchy;
-                    LinkObject linked = gameObject.AddComponent<LinkObject>();
-                    linked.@object = @object;
-#endif
-                    MoveToContainer(gameObject, scene.name);
-                    Renderer[] renderer = gameObject.GetComponentsInChildren<Renderer>();
-                    if (renderer != null)
-                        renderer.ToList().ForEach(x => MonoBehaviour.Destroy(x));
+                    GameObject instObject = MonoBehaviour.Instantiate(gameObject);
+                    if (instObject != null)
+                    {
+                        var neutronViews = instObject.GetComponentsInChildren<NeutronView>();
+                        if (neutronViews != null)
+                        {
+                            foreach (NeutronView view in neutronViews)
+                            {
+                                NeutronRegister.RegisterSceneObject(ownerNetworkObjects, view, true);
+                            }
+                        }
+                    }
+                    MoveToContainer(instObject, scene.name);
 #if UNITY_SERVER
-                MonoBehaviour.Destroy(@object);
+                    if (clientOnly)
+                        MonoBehaviour.Destroy(gameObject);
 #endif
                 }
             }
-#if UNITY_SERVER
-        if(unsharedObjects != null)
-        {
-            foreach (GameObject @object in unsharedObjects)
+            if (enablePhysics)
             {
-                MonoBehaviour.Destroy(@object);
+                GameObject simulateObject = new GameObject("Simulate");
+                Simulate simulate = simulateObject.AddComponent<Simulate>();
+                simulate.physicsScene = scene.GetPhysicsScene();
+                MoveToContainer(simulateObject, scene.name);
             }
-        }
-#endif
-
-            if (!enablePhysics || localPhysicsMode == LocalPhysicsMode.None) return;
-            GameObject simulateObject = new GameObject("Simulate");
-#if UNITY_EDITOR
-            simulateObject.hideFlags = HideFlags.HideInHierarchy;
-#endif
-            MoveToContainer(simulateObject, scene.name);
-            Simulate simulate = simulateObject.AddComponent<Simulate>();
-            simulate.physicsScene = scene.GetPhysicsScene();
         }
 
         public static void MoveToContainer(GameObject obj, string name)

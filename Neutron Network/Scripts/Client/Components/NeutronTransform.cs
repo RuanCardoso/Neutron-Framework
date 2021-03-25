@@ -46,7 +46,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && IsMine)
+            if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && HasAuthority)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
         }
@@ -54,7 +54,7 @@ namespace NeutronNetwork.Components
         private void Start()
         {
 #if UNITY_SERVER || UNITY_EDITOR
-            if (IsServer && !IsMine && !IsClient && antiSpeedHack)
+            if (IsServer && !HasAuthority && !IsClient && antiSpeedHack)
                 StartCoroutine(PacketSpeed());
 #endif
         }
@@ -76,7 +76,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
-                        NeutronView._.RPC(10013, options, sendTo, false, broadcast, protocol);
+                        Dynamic(10013, options, sendTo, false, broadcast, protocol);
                     if (sendTo == SendTo.Others || sendTo == SendTo.Only)
                         ResetTransforms();
                 }
@@ -84,7 +84,7 @@ namespace NeutronNetwork.Components
             }
         }
 
-        [RPC(10013)]
+        [Dynamic(10013)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             onFirstPacket = true;
@@ -145,20 +145,21 @@ namespace NeutronNetwork.Components
         }
 
         //* Update is called once per frame
-        void Update()
+        private new void Update()
         {
-            if (!IsMine && !onFirstPacket) return;
-            if (!IsMine && synchronizeScale) transform.localScale = scale;
+            base.Update();
+            if (!HasAuthority && !onFirstPacket) return;
+            if (!HasAuthority && synchronizeScale) transform.localScale = scale;
             if (IsClient)
             {
-                if (!IsMine)
+                if (!HasAuthority)
                 {
                     SmoothMovement();
                 }
             }
             else if (IsServer)
             {
-                if (!IsMine)
+                if (!HasAuthority)
                 {
                     if (smoothOnServer)
                         SmoothMovement();

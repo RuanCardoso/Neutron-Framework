@@ -67,8 +67,9 @@ namespace NeutronNetwork
 #endif
         }
 
-        protected void Update()
+        protected new void Update()
         {
+            base.Update();
 #if UNITY_SERVER || UNITY_EDITOR
             if (IsServer && syncQueue.Count > 0)
                 syncQueue.Dequeue().Invoke();

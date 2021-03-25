@@ -1,7 +1,7 @@
 using NeutronNetwork;
 using NeutronNetwork.Internal.Comms;
 using NeutronNetwork.Internal.Extesions;
-using NeutronNetwork.Internal.Server.InternalEvents;
+using NeutronNetwork.Internal.Server.Delegates;
 using NeutronNetwork.Internal.Wrappers;
 using System;
 using System.IO;
@@ -27,14 +27,14 @@ namespace NeutronNetwork.Internal.Server
     {
         #region Events
         //* notifies you if the server has started.
-        public static event ServerEvents.OnServerStart onServerStart;
+        public static event Events.OnServerStart onServerStart;
         #endregion
 
         #region Variables
         //* Signals that the server has been started.
         public static bool Initialized;
         //* generate uniqueID.
-        public static int uniqueID = Neutron.generateID;
+        public static int uniqueID = Neutron.GENERATE_ID;
         //* Amounts of clients that have signed in since the server was started.
         //* This property is not reset and does not decrease its value.
         private static int totalAmountOfPlayers;
@@ -141,7 +141,7 @@ namespace NeutronNetwork.Internal.Server
                     // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
                     // TODO acceptedClient.SendTimeout = int.MaxValue;
                     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
-                    Player newPlayer = new Player(Utils.GetUniqueID(), acceptedClient, cancellationTokenSource);
+                    Player newPlayer = new Player(InternalUtils.GetUniqueID(), acceptedClient, cancellationTokenSource);
                     if (AddPlayer(newPlayer))
                     {
                         totalAmountOfPlayers++;
@@ -199,7 +199,7 @@ namespace NeutronNetwork.Internal.Server
                                             player.udpClient.Send(data.buffer, dataLength, player.rPEndPoint);
                                         break;
                                 }
-                                Utils.UpdateStatistics(Statistics.ServerSent, dataLength);
+                                InternalUtils.UpdateStatistics(Statistics.ServerSent, dataLength);
                             }
                         }
                     }
@@ -233,7 +233,7 @@ namespace NeutronNetwork.Internal.Server
                             if (await Communication.ReadAsyncBytes(netStream, message, 0, size, token))
                             {
                                 dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Tcp, message, player));
-                                Utils.UpdateStatistics(Statistics.ServerRec, size);
+                                InternalUtils.UpdateStatistics(Statistics.ServerRec, size);
                             }
                             else HandleDisconnect(player, player._cts);
                         }
@@ -247,7 +247,7 @@ namespace NeutronNetwork.Internal.Server
                     {
                         if (player.rPEndPoint == null) player.rPEndPoint = udpReceiveResult.RemoteEndPoint;
                         dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Udp, udpReceiveResult.Buffer, player));
-                        Utils.UpdateStatistics(Statistics.ServerRec, udpReceiveResult.Buffer.Length);
+                        InternalUtils.UpdateStatistics(Statistics.ServerRec, udpReceiveResult.Buffer.Length);
                     }
                 }
             }
@@ -275,11 +275,11 @@ namespace NeutronNetwork.Internal.Server
                         case Packet.SendChat:
                             HandleSendChat(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
                             break;
-                        case Packet.RPC:
-                            HandleRPC(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), isUDP);
+                        case Packet.Dynamic:
+                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), isUDP);
                             break;
-                        case Packet.Static:
-                            HandleStatic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), isUDP);
+                        case Packet.NonDynamic:
+                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), isUDP);
                             break;
                         case Packet.GetChannels:
                             HandleGetChannels(mSender, mCommand);
@@ -339,7 +339,7 @@ namespace NeutronNetwork.Internal.Server
             else
             {
                 DontDestroyOnLoad(gameObject.transform.root);
-                StartCoroutine(Utils.KeepFramerate(NeutronConfig.Settings.ServerSettings.FPS));
+                StartCoroutine(InternalUtils.KeepFramerate(NeutronConfig.Settings.ServerSettings.FPS));
                 InitilizeServer();
                 //NeutronRegister.RegisterSceneObject(null, true, null);
             }

@@ -10,7 +10,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Room : IEquatable<Room>, INeutronNotify, IEqualityComparer<Room>, INeutronSerializable
+    public class Room : IEquatable<Room>, INeutronNotify, INeutronOwner, IEqualityComparer<Room>, INeutronSerializable
     {
         private readonly object SyncPlayers = new object();
         /// <summary>
@@ -61,6 +61,10 @@ namespace NeutronNetwork
         ///* not serialized over the network
         /// </summary>
         [SerializeField] private List<Player> Players = new List<Player>();
+        /// <summary>
+        ///* Scene settings of room.
+        /// </summary>
+        public SceneSettings sceneSettings;
 
         public Room() { } //* the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 

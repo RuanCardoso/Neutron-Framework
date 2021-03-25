@@ -1,6 +1,6 @@
 ﻿using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Server.Cheats;
-using NeutronNetwork.Internal.Server.InternalEvents;
+using NeutronNetwork.Internal.Server.Delegates;
 using NeutronNetwork.Internal.Wrappers;
 using System;
 using System.Collections.Concurrent;
@@ -29,20 +29,14 @@ namespace NeutronNetwork.Internal.Server
         public NeutronSafeDictionary<TcpClient, Player> PlayersBySocket = new NeutronSafeDictionary<TcpClient, Player>();
         public NeutronSafeDictionary<int, Player> PlayersById = new NeutronSafeDictionary<int, Player>();
         public NeutronSafeDictionary<int, Channel> ChannelsById = new NeutronSafeDictionary<int, Channel>();
-        public NeutronSafeDictionary<int, NeutronView> networkObjects = new NeutronSafeDictionary<int, NeutronView>();
         public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
         public NeutronQueue<Action> ActionsDispatcher = new NeutronQueue<Action>();
         public List<Channel> _Channels = new List<Channel>();
         #endregion
 
         #region Physics
-        public GameObject[] sharedObjects;
         public GameObject[] unsharedObjects;
-        public bool ChannelPhysics;
-        public bool RoomPhysics;
-        public bool SharingOnChannels;
-        public bool SharingOnRooms;
-        public LocalPhysicsMode PhysicsMode = LocalPhysicsMode.None;
+        public LocalPhysicsMode PhysicsMode = LocalPhysicsMode.Physics3D;
         #endregion
         protected bool isReady;
 
@@ -54,7 +48,6 @@ namespace NeutronNetwork.Internal.Server
 #endif
 #if UNITY_SERVER || UNITY_EDITOR
             NeutronConfig.LoadSettings();
-            //CreateDefaultContainers();
             if (NeutronConfig.Settings != null)
             {
                 try
@@ -67,7 +60,7 @@ namespace NeutronNetwork.Internal.Server
                 catch (SocketException ex)
                 {
                     if (ex.ErrorCode == 10048)
-                        NeutronUtils.LoggerError("This Server instance has been disabled, because another instance is in use.");
+                        enabled = NeutronUtils.LoggerError("This Server instance has been disabled, because another instance is in use.");
                     else NeutronUtils.LoggerError(ex.Message);
                 }
             }
@@ -75,21 +68,6 @@ namespace NeutronNetwork.Internal.Server
 #else
             NeutronUtils.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.3.");
 #endif
-        }
-
-        private void CreateDefaultContainers()
-        {
-            Utils.CreateContainer($"[Container] -> Server", false, false, null, null, PhysicsMode);
-            for (int i = 0; i < _Channels.Count; i++)
-            {
-                Channel channel = _Channels[i];
-                if (ChannelsById.TryAdd(channel.ID, channel))
-                {
-                    Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", ChannelPhysics, SharingOnChannels, sharedObjects, unsharedObjects, PhysicsMode);
-                    foreach (Room room in channel.GetRooms())
-                        Utils.CreateContainer($"[Container] -> Room[{room.ID}]", RoomPhysics, SharingOnRooms, sharedObjects, unsharedObjects, PhysicsMode);
-                }
-            }
         }
 
         private void SetConstants(NeutronSettings NeutronSettings)

@@ -1,51 +1,53 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using NeutronNetwork;
+﻿using NeutronNetwork;
 using UnityEngine;
 
-public class NeutronComponents : NeutronBehaviour
+namespace NeutronNetwork.Components
 {
-    [SerializeField] private NeutronComponent[] neutronComponents;
-    private void Start() { }
-
-    public override void OnNeutronStart()
+    [AddComponentMenu("Neutron/Neutron Components")]
+    public class NeutronComponents : NeutronBehaviour
     {
-        base.OnNeutronStart();
-        DisallowComponents();
-    }
+        [SerializeField] private NeutronComponent[] neutronComponents;
+        private void Start() { }
 
-    private void DisallowComponents()
-    {
-        foreach (var component in neutronComponents)
+        public override void OnNeutronStart()
         {
-            const ComponentMode ComponentMode = default;
-            switch (component.componentMode)
-            {
-                case ComponentMode.IsMine:
-                    if (IsMine) { }
-                    else Destroy(component);
-                    break;
-                case ComponentMode.IsServer:
-                    if (IsServer) { }
-                    else Destroy(component);
-                    break;
-                case ComponentMode:
-                    Destroy(component);
-                    break;
-                default:
-                    if (IsServer) { }
-                    else if (!IsMine) Destroy(component);
-                    break;
-            }
+            base.OnNeutronStart();
+            DisallowComponents();
         }
-        Destroy(this);
-    }
 
-    private void Destroy(NeutronComponent component)
-    {
-        if (component.component != null)
-            Destroy(component.component);
-        if (component.gameObject != null)
-            Destroy(component.gameObject);
+        private void DisallowComponents()
+        {
+            foreach (var component in neutronComponents)
+            {
+                const ComponentMode ComponentMode = default;
+                switch (component.componentMode)
+                {
+                    case ComponentMode.IsMine:
+                        if (HasAuthority) { }
+                        else Destroy(component);
+                        break;
+                    case ComponentMode.IsServer:
+                        if (IsServer) { }
+                        else Destroy(component);
+                        break;
+                    case ComponentMode:
+                        Destroy(component);
+                        break;
+                    default:
+                        if (IsServer) { }
+                        else if (!HasAuthority) Destroy(component);
+                        break;
+                }
+            }
+            Destroy(this);
+        }
+
+        private void Destroy(NeutronComponent component)
+        {
+            if (component.component != null)
+                Destroy(component.component);
+            if (component.gameObject != null)
+                Destroy(component.gameObject);
+        }
     }
 }

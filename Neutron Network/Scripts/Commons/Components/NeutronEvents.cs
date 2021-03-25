@@ -1,8 +1,9 @@
 ﻿using System;
+using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Server.Cheats;
 using UnityEngine;
 
-namespace NeutronNetwork.Internal.Server.InternalEvents
+namespace NeutronNetwork.Internal.Server.Delegates
 {
     public class NeutronEvents : MonoBehaviour
     {
@@ -28,7 +29,8 @@ namespace NeutronNetwork.Internal.Server.InternalEvents
             NeutronUtils.Logger($"Hm detectei alguem safado -> {playerDetected.Nickname}");
         }
 
-        private void CreateDefaultContainer() => Utils.CreateContainer($"[Container] -> Server", false, false, null, null, Neutron.Server.PhysicsMode);
+        #region Internal
+        private void CreateDefaultContainer() => InternalUtils.CreateContainer($"[Container] -> Server");
         private void CreateDefaultChannelsContainer()
         {
             for (int i = 0; i < Neutron.Server._Channels.Count; i++)
@@ -36,16 +38,43 @@ namespace NeutronNetwork.Internal.Server.InternalEvents
                 Channel channel = Neutron.Server._Channels[i];
                 if (Neutron.Server.ChannelsById.TryAdd(channel.ID, channel))
                 {
-                    Utils.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server.ChannelPhysics, Neutron.Server.SharingOnChannels, Neutron.Server.sharedObjects, Neutron.Server.unsharedObjects, Neutron.Server.PhysicsMode);
+                    SetOwner(channel, channel.ID);
+                    InternalUtils.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.sceneSettings.clientOnly, channel.Owner, channel.sceneSettings.enablePhysics, channel.sceneSettings.sceneObjects, Neutron.Server.PhysicsMode);
                     CreateDefaultRoomsContainer(channel);
                 }
             }
         }
-
         private void CreateDefaultRoomsContainer(Channel channel)
         {
             foreach (Room room in channel.GetRooms())
-                Utils.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server.RoomPhysics, Neutron.Server.SharingOnRooms, Neutron.Server.sharedObjects, Neutron.Server.unsharedObjects, Neutron.Server.PhysicsMode);
+            {
+                SetOwner(room, channel.ID, room.ID);
+                InternalUtils.CreateContainer($"[Container] -> Room[{room.ID}]", room.sceneSettings.clientOnly, room.Owner, room.sceneSettings.enablePhysics, room.sceneSettings.sceneObjects, Neutron.Server.PhysicsMode);
+            }
         }
+        private void SetOwner<T>(T AmbientType, int currentChannel, int currentRoom = -1) where T : INeutronOwner
+        {
+            Type type = AmbientType.GetType();
+            if (AmbientType.Owner == null)
+            {
+                Player owner = new Player();
+                owner.isServer = true;
+                if (owner != null)
+                {
+                    owner.Nickname = "Server";
+                    if (type == typeof(Channel))
+                    {
+                        owner.CurrentChannel = currentChannel;
+                    }
+                    else if (type == typeof(Room))
+                    {
+                        owner.CurrentChannel = currentChannel;
+                        owner.CurrentRoom = currentRoom;
+                    }
+                }
+                AmbientType.Owner = owner;
+            }
+        }
+        #endregion
     }
 }

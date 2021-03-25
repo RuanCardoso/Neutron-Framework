@@ -21,10 +21,8 @@ public enum Packet : byte
     Connected,
     DisconnectedByReason,
     Login,
-    RPC,
-    APC,
-    Static,
-    Response,
+    Dynamic,
+    NonDynamic,
     JoinChannel,
     JoinRoom,
     LeaveRoom,
@@ -152,3 +150,4 @@ public enum ComponentMode : int
 }
 public enum SmoothMode : int { Lerp, MoveTowards }
 public enum ParameterMode : int { Sync, NonSync }
+public enum Ambient : int { Room, Channel }

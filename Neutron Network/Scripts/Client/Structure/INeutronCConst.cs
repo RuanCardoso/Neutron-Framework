@@ -44,8 +44,8 @@ namespace NeutronNetwork.Internal.Client
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------
-            _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Tcp)));
-            _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp)));
+            _TCPSocket = new TcpClient(new IPEndPoint(IPAddress.Any, InternalUtils.GetFreePort(Protocol.Tcp)));
+            _UDPSocket = new UdpClient(new IPEndPoint(IPAddress.Any, InternalUtils.GetFreePort(Protocol.Udp)));
             //-------------------------------------------------------------------------------------------------------------
             //-------------------------------------------------------------------------------------------------------------
             networkObjects = new ConcurrentDictionary<int, NeutronView>();

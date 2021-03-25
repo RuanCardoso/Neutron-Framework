@@ -1,7 +1,7 @@
 ﻿using NeutronNetwork;
 using UnityEngine;
 
-namespace NeutronNetwork.Internal.Client.InternalEvents
+namespace NeutronNetwork.Internal.Client.Delegates
 {
     public class Events
     {
@@ -72,9 +72,9 @@ namespace NeutronNetwork.Internal.Client.InternalEvents
     }
 }
 
-namespace NeutronNetwork.Internal.Server.InternalEvents
+namespace NeutronNetwork.Internal.Server.Delegates
 {
-    public class ServerEvents
+    public class Events
     {
         public delegate void OnPlayerDisconnected(Player playerDisconnected);
         public delegate void OnPlayerInstantiated(Player playerInstantiated);

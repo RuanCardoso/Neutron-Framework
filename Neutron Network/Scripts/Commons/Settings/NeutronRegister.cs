@@ -1,5 +1,6 @@
 ﻿using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Client;
+using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server;
 using System;
 using System.Linq;
@@ -25,7 +26,7 @@ namespace NeutronNetwork
                     if (!isServer)
                     {
                         neutronView._ = localInstance;
-                        if (localInstance.isLocalPlayer(mPlayer)) localInstance.NeutronView = neutronView;
+                        if (localInstance.IsMine(mPlayer)) localInstance.NeutronView = neutronView;
                         localInstance.networkObjects.TryAdd(mPlayer.ID, neutronView);
                     }
                     else if (isServer)
@@ -34,7 +35,7 @@ namespace NeutronNetwork
                         if (player != null)
                         {
                             player.NeutronView = neutronView;
-                            Utils.ChangeColor(neutronView);
+                            InternalUtils.ChangeColor(neutronView);
                         }
                         else NeutronUtils.LoggerError("Neutron View Object has been destroyed?");
                     }
@@ -48,44 +49,36 @@ namespace NeutronNetwork
             return objectInst;
         }
 
-        private static void RegisterSceneObject(Player mPlayer, GameObject objectToRegister, bool isServer, Neutron localInstance)
+        public static void RegisterSceneObject(Player mPlayer, NeutronView neutronView, bool isServer, Neutron localInstance = null)
         {
-            if (isServer) objectToRegister = MonoBehaviour.Instantiate(objectToRegister);
-            if (objectToRegister.TryGetComponent<NeutronView>(out NeutronView neutronView))
+            if (neutronView.ID > 0)
             {
-                if (neutronView.ID > 0)
+                neutronView.owner = mPlayer;
+                neutronView.isServer = isServer;
+                if (neutronView.enabled)
+                    neutronView.OnNeutronAwake();
+                if (!isServer && localInstance.networkObjects.TryAdd(neutronView.ID, neutronView))
+                    neutronView._ = localInstance;
+                else if (isServer)
                 {
-                    neutronView.owner = mPlayer;
-                    neutronView.isServer = isServer;
-                    if (neutronView.enabled)
-                        neutronView.OnNeutronAwake();
-                    if (!isServer)
+                    InternalUtils.ChangeColor(neutronView);
+                    if (mPlayer.IsInRoom())
                     {
-                        neutronView._ = localInstance;
-                        localInstance.networkObjects.TryAdd(neutronView.ID, neutronView);
+                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel]
+                             .GetRoom(mPlayer.CurrentRoom).sceneSettings.networkObjects
+                             .Add(neutronView.ID, neutronView);
                     }
-                    else if (isServer)
+                    else if (mPlayer.IsInChannel())
                     {
-                        Utils.MoveToContainer(objectToRegister, "[Container] -> Server");
-                        Neutron.Server.networkObjects.TryAdd(neutronView.ID, neutronView);
-                        Utils.ChangeColor(neutronView);
+                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel].sceneSettings.networkObjects
+                            .Add(neutronView.ID, neutronView);
                     }
-                    LoadNeutronBehaviours(neutronView);
+                    else NeutronUtils.LoggerError("Network scene objects, require a channel or room.");
                 }
-                else if (!NeutronUtils.LoggerError("Scene objects must have their ID at > 0."))
-                    MonoBehaviour.Destroy(objectToRegister);
+                LoadNeutronBehaviours(neutronView);
             }
-            else if (!NeutronUtils.LoggerError("\"Neutron View\" object not found, failed to register object in network."))
-                MonoBehaviour.Destroy(objectToRegister);
-        }
-
-        public static void RegisterSceneObject(Player mPlayer, bool isServer, Neutron localInstance)
-        {
-            NeutronView[] neutronViews = GameObject.FindObjectsOfType<NeutronView>().Where(x => x.ID > 0).ToArray();
-            foreach (NeutronView neutronView in neutronViews)
-            {
-                NeutronRegister.RegisterSceneObject(mPlayer, neutronView.gameObject, isServer, localInstance);
-            }
+            else if (!NeutronUtils.LoggerError("Scene objects must have their ID at > 0."))
+                MonoBehaviour.Destroy(neutronView.gameObject);
         }
 
         private static void LoadNeutronBehaviours(NeutronView neutronView)

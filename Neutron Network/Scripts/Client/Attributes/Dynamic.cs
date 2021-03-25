@@ -1,11 +1,10 @@
 ﻿using System;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public class Response : Attribute
+public class Dynamic : Attribute
 {
     public int ID;
-
-    public Response(int ID)
+    public Dynamic(int ID)
     {
         this.ID = ID;
     }

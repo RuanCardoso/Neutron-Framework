@@ -58,7 +58,7 @@ namespace NeutronNetwork.Internal.Client
                     SendUDP(buffer);
                     break;
             }
-            Utils.UpdateStatistics(Statistics.ClientSent, buffer.Length);
+            InternalUtils.UpdateStatistics(Statistics.ClientSent, buffer.Length);
         }
 
         protected async void SendTCP(byte[] buffer)
@@ -105,7 +105,7 @@ namespace NeutronNetwork.Internal.Client
             NeutronMessageInfo infor = _myPlayer.infor;
             using (NeutronWriter writer = new NeutronWriter())
             {
-                writer.WritePacket(Packet.RPC);
+                writer.WritePacket(Packet.Dynamic);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
                 writer.Write(neutronView.ID);
@@ -117,11 +117,11 @@ namespace NeutronNetwork.Internal.Client
             }
         }
 
-        protected void InternalRCC(MonoBehaviour mThis, int RCCID, byte[] parameters, bool enableCache, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRCC(int RCCID, byte[] parameters, bool enableCache, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                writer.WritePacket(Packet.Static);
+                writer.WritePacket(Packet.NonDynamic);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
                 writer.Write(RCCID);
@@ -139,7 +139,8 @@ namespace NeutronNetwork.Internal.Client
             _myPlayer = array.DeserializeObject<Player>();
             void RegisterSceneObjects()
             {
-                NeutronRegister.RegisterSceneObject(_myPlayer, false, _);
+                foreach (NeutronView nV in GameObject.FindObjectsOfType<NeutronView>().Where(x => x.IsSceneObject && !x.isServer))
+                    NeutronRegister.RegisterSceneObject(_myPlayer, nV, false, _);
             }
             new Action(() => RegisterSceneObjects()).ExecuteOnMainThread(_);
         }
@@ -150,7 +151,7 @@ namespace NeutronNetwork.Internal.Client
             new Action(() =>
             {
                 if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
-                    Communication.InitRPC(rpcID, parameters, sender, infor, neutronObject);
+                    Communication.Dynamic(rpcID, parameters, sender, infor, neutronObject);
             }).ExecuteOnMainThread(_);
         }
 
@@ -158,29 +159,7 @@ namespace NeutronNetwork.Internal.Client
         {
             new Action(() =>
             {
-                Communication.InitRCC(executeID, sender, parameters, isServer, _);
-            }).ExecuteOnMainThread(_);
-        }
-
-        protected void HandleACC(int executeID, byte[] pParams)
-        {
-            new Action(() =>
-            {
-                Communication.InitResponse(executeID, pParams);
-            }).ExecuteOnMainThread(_);
-        }
-
-        protected void HandleAPC(int executeid, byte[] parameters, int playerID)
-        {
-            //-----------------------------------------------------------------------------
-            if (_.IsBot) return;
-            //-----------------------------------------------------------------------------
-            new Action(() =>
-            {
-                if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
-                {
-                    Communication.InitAPC(executeid, parameters, neutronObject);
-                }
+                Communication.NonDynamic(executeID, sender, parameters, isServer, _);
             }).ExecuteOnMainThread(_);
         }
 
@@ -237,12 +216,12 @@ namespace NeutronNetwork.Internal.Client
         private void InitializeContainer()
         {
             if (!_isBot)
-                Utils.CreateContainer("[Container] -> Player[Main]");
+                InternalUtils.CreateContainer(Neutron.CONTAINER_NAME);
         }
 
         private void UpdateLocalPlayer(Player player)
         {
-            if (_.isLocalPlayer(player))
+            if (_.IsMine(player))
             {
                 _myPlayer = player;
             }

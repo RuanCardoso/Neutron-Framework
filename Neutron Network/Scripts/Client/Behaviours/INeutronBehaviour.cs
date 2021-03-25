@@ -9,7 +9,9 @@ namespace NeutronNetwork
         ///* error messages.
         private const string ERROR_0X1 = "It was not possible to instantiate this object on a network";
         ///* Virtual Methods
-        public virtual void OnNeutronStart() { Initialized = true; }
+        public virtual void OnNeutronStart() => Initialized = true;
+        public virtual void OnNeutronUpdate() { }
+        public virtual void OnNeutronFixedUpdate() { }
         ///* Properties
         protected bool Initialized { get; set; }
         public NeutronView NeutronView { get; set; }
@@ -21,40 +23,31 @@ namespace NeutronNetwork
                 {
                     if (NeutronView != null)
                     {
+                        return Mine();
+                    }
+                    else return NeutronUtils.LoggerError(ERROR_0X1);
+                }
+                else return false;
+            }
+        }
+        protected bool HasAuthority
+        {
+            get
+            {
+                if (Initialized)
+                {
+                    if (NeutronView != null)
+                    {
                         if (NeutronView.authorityMode == AuthorityMode.Owner)
-                        {
-                            if (NeutronView._ != null)
-                            {
-                                return !IsServer && NeutronView._.isLocalPlayer(NeutronView.owner);
-                            }
-                            else return false;
-                        }
+                            return Mine();
                         else if (NeutronView.authorityMode == AuthorityMode.Server)
-                        {
-#if UNITY_SERVER
-                        return IsServer;
-#elif UNITY_EDITOR
-                            return true;
-#else
-                        return false;
-#endif
-                        }
+                            return IsServer;
                         else if (NeutronView.authorityMode == AuthorityMode.IgnoreExceptServer)
-                        {
-#if UNITY_SERVER
-                        return false;
-#else
-                            return true;
-#endif
-                        }
+                            return !IsServer;
                         else if (NeutronView.authorityMode == AuthorityMode.MasterClient)
-                        {
-                            return true;
-                        }
+                            return !IsServer && NeutronView._ != null && NeutronView._.IsMasterClient();
                         else if (NeutronView.authorityMode == AuthorityMode.Ignore)
-                        {
                             return true;
-                        }
                         else return false;
                     }
                     else return NeutronUtils.LoggerError(ERROR_0X1);
@@ -104,17 +97,35 @@ namespace NeutronNetwork
                 else return false;
             }
         }
-        ///* Reflection
-        public MethodInfo[] methods { get; private set; }
 
         public void Awake()
         {
-            GetMethods();
+
         }
 
-        private void GetMethods()
+        public void Update()
         {
-            methods = this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (Initialized)
+                OnNeutronUpdate();
+        }
+
+        public void FixedUpdate()
+        {
+            if (Initialized)
+                OnNeutronFixedUpdate();
+        }
+
+        private bool Mine()
+        {
+            return !IsServer && NeutronView._ != null && NeutronView._.IsMine(NeutronView.owner);
+        }
+
+        protected void Dynamic(int DynamicID, NeutronWriter parameters, SendTo sendTo, bool Cached, Broadcast broadcast, Protocol protocol)
+        {
+            if (IsClient)
+                NeutronView._.Dynamic(NeutronView, DynamicID, parameters, sendTo, Cached, broadcast, protocol);
+            else if (IsServer)
+                Neutron.Server.Dynamic(NeutronView, DynamicID, parameters, sendTo, Cached, broadcast, protocol);
         }
 
         protected int GetMaxPacketsPerSecond(float sInterval)

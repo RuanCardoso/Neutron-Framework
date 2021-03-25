@@ -13,20 +13,20 @@ MonoBehaviour:
   m_Name: Neutron Settings
   m_EditorClassIdentifier: 
   GlobalSettings:
-    Address: 127.0.0.1
+    Address: 192.168.91.104
     Port: 5055
     Serialization: 1
     Compression: 1
     NoDelay: 1
   ClientSettings:
     FPS: 60
-    MonoChunkSize: 1
+    MonoChunkSize: 30
   ServerSettings:
     BackLog: 10
     FPS: 60
-    MonoChunkSize: 1
-    PacketChunkSize: 1
-    ProcessChunkSize: 1
+    MonoChunkSize: 30
+    PacketChunkSize: 30
+    ProcessChunkSize: 30
     AntiCheat: 1
   HandleSettings:
     OnPlayerNicknameChanged:

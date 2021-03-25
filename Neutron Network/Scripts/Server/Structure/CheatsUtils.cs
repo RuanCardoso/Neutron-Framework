@@ -1,11 +1,11 @@
-﻿using NeutronNetwork.Internal.Server.InternalEvents;
+﻿using NeutronNetwork.Internal.Server.Delegates;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Server.Cheats
 {
     public class CheatsUtils
     {
-        public static event ServerEvents.OnCheatDetected onCheatDetected;
+        public static event Events.OnCheatDetected onCheatDetected;
         public static bool enabled = true;
 
         public static bool Teleport(Vector3 lagDistance, float tolerance, Player detectedPlayer)

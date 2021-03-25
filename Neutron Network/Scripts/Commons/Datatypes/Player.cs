@@ -20,12 +20,12 @@ namespace NeutronNetwork
         /// ID of player.
         /// </summary>
         public int ID { get => iD; set => iD = value; }
-        [SerializeField] private int iD;
+        [SerializeField] [ReadOnly] private int iD;
         /// <summary>
         /// Nickname of player.
         /// </summary>
         public string Nickname { get => nickname; set => nickname = value; }
-        [SerializeField, ReadOnly] private string nickname = string.Empty;
+        [SerializeField] [ReadOnly] private string nickname = string.Empty;
         /// <summary>
         /// Current channel of player.
         /// </summary>
@@ -59,6 +59,10 @@ namespace NeutronNetwork
         /// Properties of player.
         /// </summary>
         public Dictionary<string, object> Get { get; set; }
+        /// <summary>
+        /// Check if this player is a server Player.
+        /// </summary>
+        public bool isServer { get; set; }
         /// <summary>
         /// queue of data TCP.
         /// returns null on the client.
@@ -103,7 +107,7 @@ namespace NeutronNetwork
         public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
         {
             string randomNickname = $"Unk#{new System.Random().Next(0, 10000)}";
-            IPEndPoint localIPEndPoint = new IPEndPoint(IPAddress.Any, Utils.GetFreePort(Protocol.Udp));
+            IPEndPoint localIPEndPoint = new IPEndPoint(IPAddress.Any, InternalUtils.GetFreePort(Protocol.Udp));
             this.ID = ID;
             this.Nickname = randomNickname;
             this.tcpClient = tcpClient;

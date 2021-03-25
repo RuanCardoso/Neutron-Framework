@@ -37,10 +37,10 @@ public class NeutronStatistics : MonoBehaviour
     {
         while (true)
         {
-            _BytesSent = $"{Utils.SizeSuffix(clientBytesSent)} | [{Utils.SizeSuffixMB(clientBytesSent)}]";
-            _BytesRec = $"{Utils.SizeSuffix(clientBytesRec)} | [{Utils.SizeSuffixMB(clientBytesRec)}]";
-            BytesSent = $"{Utils.SizeSuffix(serverBytesSent)} | [{Utils.SizeSuffixMB(serverBytesSent)}]";
-            BytesRec = $"{Utils.SizeSuffix(serverBytesRec)} | [{Utils.SizeSuffixMB(serverBytesRec)}]";
+            _BytesSent = $"{InternalUtils.SizeSuffix(clientBytesSent)} | [{InternalUtils.SizeSuffixMB(clientBytesSent)}]";
+            _BytesRec = $"{InternalUtils.SizeSuffix(clientBytesRec)} | [{InternalUtils.SizeSuffixMB(clientBytesRec)}]";
+            BytesSent = $"{InternalUtils.SizeSuffix(serverBytesSent)} | [{InternalUtils.SizeSuffixMB(serverBytesSent)}]";
+            BytesRec = $"{InternalUtils.SizeSuffix(serverBytesRec)} | [{InternalUtils.SizeSuffixMB(serverBytesRec)}]";
             yield return new WaitForSeconds(perSeconds);
         }
     }

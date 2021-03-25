@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using NeutronNetwork.Internal.Extesions;
 using UnityEngine;
 
@@ -7,8 +8,11 @@ namespace NeutronNetwork
     public class NeutronWriter : BinaryWriter
     {
         public NeutronWriter() : base(new MemoryStream()) { }
-
         public NeutronWriter(MemoryStream newStream) : base(newStream) { }
+        public MemoryStream GetStream()
+        {
+            return (MemoryStream)base.BaseStream;
+        }
 
         public void Write(Color writable)
         {
@@ -46,6 +50,14 @@ namespace NeutronNetwork
             Write(writable.w);
         }
 
+        public void Write(float[] writable)
+        {
+            byte[] buffer = new byte[writable.Length * sizeof(float)];
+            Buffer.BlockCopy(writable, 0, buffer, 0, buffer.Length);
+            buffer = buffer.Compress(NeutronConfig.Settings.GlobalSettings.Compression);
+            WriteExactly(buffer);
+        }
+
         public void WritePacket<T>(T packet)
         {
             Write((byte)(object)packet);
@@ -59,8 +71,7 @@ namespace NeutronNetwork
         public void WriteExactly<T>(T objectToSerialize)
         {
             byte[] serializedBytes = objectToSerialize.Serialize();
-            WriteFixedLength(serializedBytes.Length);
-            Write(serializedBytes);
+            WriteExactly(serializedBytes);
         }
 
         public void WriteExactly(byte[] serializedBytes)
@@ -69,19 +80,14 @@ namespace NeutronNetwork
             Write(serializedBytes);
         }
 
-        public MemoryStream GetStream()
+        public byte[] ToArray()
         {
-            return (MemoryStream)base.BaseStream;
+            return GetStream().ToArray();
         }
 
         public void SetPosition(int pos)
         {
             GetStream().Position = pos;
-        }
-
-        public byte[] ToArray()
-        {
-            return GetStream().ToArray();
         }
 
         public new void Dispose()
@@ -94,8 +100,11 @@ namespace NeutronNetwork
     {
         public NeutronReader(byte[] buffer) : base(new MemoryStream(buffer)) { }
         public NeutronReader(byte[] buffer, int index, int count) : base(new MemoryStream(buffer, index, count)) { }
-
         public NeutronReader(MemoryStream newStream) : base(newStream) { }
+        public MemoryStream GetStream()
+        {
+            return (MemoryStream)base.BaseStream;
+        }
 
         public Color ReadColor()
         {
@@ -138,6 +147,15 @@ namespace NeutronNetwork
             return new Quaternion(x, y, z, w);
         }
 
+        public float[] ReadFloatArray()
+        {
+            byte[] buffer = ReadExactly();
+            buffer = buffer.Decompress(NeutronConfig.Settings.GlobalSettings.Compression);
+            float[] data = new float[buffer.Length / sizeof(float)];
+            Buffer.BlockCopy(buffer, 0, data, 0, buffer.Length);
+            return data;
+        }
+
         public T ReadPacket<T>()
         {
             return (T)(object)ReadByte();
@@ -151,8 +169,7 @@ namespace NeutronNetwork
 
         public T ReadExactly<T>()
         {
-            int len = ReadInt32();
-            return ReadBytes(len).DeserializeObject<T>();
+            return ReadExactly().DeserializeObject<T>();
         }
 
         public byte[] ReadExactly()
@@ -161,19 +178,14 @@ namespace NeutronNetwork
             return ReadBytes(len);
         }
 
-        public MemoryStream GetStream()
+        public byte[] ToArray()
         {
-            return (MemoryStream)base.BaseStream;
+            return GetStream().ToArray();
         }
 
         public void SetPosition(int pos)
         {
             GetStream().Position = pos;
-        }
-
-        public byte[] ToArray()
-        {
-            return GetStream().ToArray();
         }
 
         public new void Dispose()

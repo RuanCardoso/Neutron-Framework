@@ -1,10 +1,5 @@
 ﻿using NeutronNetwork.Internal.Attributes;
-using NeutronNetwork.Internal.Extesions;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
@@ -30,7 +25,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && IsMine)
+            if (IsClient && HasAuthority)
                 StartCoroutine(Synchronize());
         }
 
@@ -59,13 +54,13 @@ namespace NeutronNetwork.Components
                                 break;
                         }
                     }
-                    NeutronView._.RPC(10018, options, sendTo, false, broadcast, protocol);
+                    Dynamic(10018, options, sendTo, false, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
         }
 
-        [RPC(10018)]
+        [Dynamic(10018)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             using (options)

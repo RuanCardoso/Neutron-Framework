@@ -10,7 +10,7 @@ using System.Linq;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Channel : IEquatable<Channel>, INeutronNotify, IEqualityComparer<Channel>, INeutronSerializable
+    public class Channel : IEquatable<Channel>, INeutronNotify, INeutronOwner, IEqualityComparer<Channel>, INeutronSerializable
     {
         private readonly object SyncBuffer = new object();
         private readonly object SyncRooms = new object();
@@ -69,6 +69,10 @@ namespace NeutronNetwork
         public string _ { get => props; set => props = value; }
         [SerializeField, TextArea] private string props = string.Empty;
         /// <summary>
+        ///* Owner of room.
+        /// </summary>
+        public Player Owner { get; set; }
+        /// <summary>
         /// Properties of channel.
         /// </summary>
         public Dictionary<string, object> Get { get; set; }
@@ -77,6 +81,10 @@ namespace NeutronNetwork
         /// not serialized over the network
         /// </summary>
         private Dictionary<int, CachedBuffer> CachedPackets = new Dictionary<int, CachedBuffer>(); // not thread safe, requires locking.
+        /// <summary>
+        ///* Scene settings of room.
+        /// </summary>
+        public SceneSettings sceneSettings;
         /// <summary>
         /// list of players.
         /// returns null on the client.

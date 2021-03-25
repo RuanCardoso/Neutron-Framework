@@ -7,7 +7,7 @@ using System.Threading;
 using NeutronNetwork.Internal.Comms;
 using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork;
-using NeutronNetwork.Internal.Server.InternalEvents;
+using NeutronNetwork.Internal.Server.Delegates;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -20,14 +20,14 @@ namespace NeutronNetwork.Internal.Server
         #endregion
 
         #region Events
-        public static event ServerEvents.OnServerAwake onServerAwake;
-        public static event ServerEvents.OnPlayerDisconnected onPlayerDisconnected;
-        public static event ServerEvents.OnPlayerDestroyed onPlayerDestroyed;
-        public static event ServerEvents.OnPlayerJoinedChannel onPlayerJoinedChannel;
-        public static event ServerEvents.OnPlayerLeaveChannel onPlayerLeaveChannel;
-        public static event ServerEvents.OnPlayerJoinedRoom onPlayerJoinedRoom;
-        public static event ServerEvents.OnPlayerLeaveRoom onPlayerLeaveRoom;
-        public static event ServerEvents.OnPlayerPropertiesChanged onPlayerPropertiesChanged;
+        public static event Events.OnServerAwake onServerAwake;
+        public static event Events.OnPlayerDisconnected onPlayerDisconnected;
+        public static event Events.OnPlayerDestroyed onPlayerDestroyed;
+        public static event Events.OnPlayerJoinedChannel onPlayerJoinedChannel;
+        public static event Events.OnPlayerLeaveChannel onPlayerLeaveChannel;
+        public static event Events.OnPlayerJoinedRoom onPlayerJoinedRoom;
+        public static event Events.OnPlayerLeaveRoom onPlayerLeaveRoom;
+        public static event Events.OnPlayerPropertiesChanged onPlayerPropertiesChanged;
         #endregion
 
         #region Variables
@@ -38,18 +38,21 @@ namespace NeutronNetwork.Internal.Server
         public new void Awake()
         {
             base.Awake();
-            void Initialize() => GetComponent<NeutronEvents>().Initialize();
-            void WakeUpEvent() => onServerAwake?.Invoke();
-            _ = this; //* set this instance.
-            Initialize();
-            WakeUpEvent();
+            if (isReady)
+            {
+                void Initialize() => GetComponent<NeutronEvents>().Initialize();
+                void WakeUpEvent() => onServerAwake?.Invoke();
+                _ = this; //* set this instance.
+                Initialize();
+                WakeUpEvent();
+            }
         }
 
 #if UNITY_SERVER || UNITY_EDITOR
         private void Update()
         {
             CurrentTime = Time.timeAsDouble;
-            Utils.ChunkDequeue(ActionsDispatcher, NeutronConfig.Settings.ServerSettings.MonoChunkSize); // process de server data. // [Thread-Safe]
+            InternalUtils.ChunkDequeue(ActionsDispatcher, NeutronConfig.Settings.ServerSettings.MonoChunkSize); // process de server data. // [Thread-Safe]
         }
 #endif
         #endregion
@@ -141,31 +144,40 @@ namespace NeutronNetwork.Internal.Server
         /// </summary>
         /// <param name="mSender">TcpClient of player</param>
         /// <param name="buffer">Message stream</param>
-        public static void SocketProtocol(Player mSender, SendTo sendTo, byte[] buffer, Player[] ToSend, bool isUDP) // [Thread-Safe]
+        public static void SocketProtocol(Player mSender, SendTo sendTo, byte[] buffer, Player[] ToSend, bool isUDP)
         {
-            if (ToSend == null) sendTo = SendTo.Only;
             Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
             DataBuffer dataBuffer = new DataBuffer(protocol, buffer);
             switch (sendTo)
             {
                 case SendTo.Only:
-                    mSender.qData.SafeEnqueue(dataBuffer);
+                    if (!mSender.isServer)
+                        mSender.qData.SafeEnqueue(dataBuffer);
+                    else NeutronUtils.LoggerError("The Server cannot transmit data to itself.");
                     break;
                 case SendTo.All:
-                    for (int i = 0; i < ToSend.Length; i++)
+                    if (ToSend != null)
                     {
-                        if (mSender.IsBot)
-                            if (!ToSend[i].Equals(mSender) && ToSend[i].IsBot) continue;
-                        ToSend[i].qData.SafeEnqueue(dataBuffer);
+                        for (int i = 0; i < ToSend.Length; i++)
+                        {
+                            if (mSender.IsBot)
+                                if (!ToSend[i].Equals(mSender) && ToSend[i].IsBot) continue;
+                            ToSend[i].qData.SafeEnqueue(dataBuffer);
+                        }
                     }
+                    else NeutronUtils.LoggerError("The Server cannot transmit all data to nothing.");
                     break;
                 case SendTo.Others:
-                    for (int i = 0; i < ToSend.Length; i++)
+                    if (ToSend != null)
                     {
-                        if (ToSend[i].Equals(mSender)) continue;
-                        else if (mSender.IsBot && ToSend[i].IsBot) continue;
-                        ToSend[i].qData.SafeEnqueue(dataBuffer);
+                        for (int i = 0; i < ToSend.Length; i++)
+                        {
+                            if (ToSend[i].Equals(mSender)) continue;
+                            else if (mSender.IsBot && ToSend[i].IsBot) continue;
+                            ToSend[i].qData.SafeEnqueue(dataBuffer);
+                        }
                     }
+                    else NeutronUtils.LoggerError("The Server cannot transmit others data to nothing.");
                     break;
             }
         }
@@ -223,16 +235,16 @@ namespace NeutronNetwork.Internal.Server
             }
         }
         // [Thread-Safe]
-        protected void HandleRPC(Player mSender, Broadcast broadcast, SendTo sendMode, int networkObjectId, int rpcID, bool cacheEnabled, byte[] parameters, byte[] infor, bool isUDP = false)
+        protected void HandleDynamic(Player mSender, Broadcast broadcast, SendTo sendMode, int networkObjectId, int dynamicID, bool cacheEnabled, byte[] parameters, byte[] infor, bool isUDP = false)
         {
             NeutronMessageInfo MessageInfo = infor.DeserializeObject<NeutronMessageInfo>();
             void Send()
             {
                 using (NeutronWriter writer = new NeutronWriter())
                 {
-                    writer.WritePacket(Packet.RPC);
+                    writer.WritePacket(Packet.Dynamic);
                     writer.Write(networkObjectId);
-                    writer.Write(rpcID);
+                    writer.Write(dynamicID);
                     writer.WriteExactly(parameters);
                     writer.WriteExactly(mSender.Serialize());
                     writer.WriteExactly(MessageInfo.Serialize());
@@ -240,7 +252,7 @@ namespace NeutronNetwork.Internal.Server
                     Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
                     mSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
 
-                    if (cacheEnabled) Cache(rpcID, mSender, writer.ToArray(), CachedPacket.RPC);
+                    if (cacheEnabled) Cache(dynamicID, mSender, writer.ToArray(), CachedPacket.RPC);
                 }
             }
 
@@ -248,13 +260,13 @@ namespace NeutronNetwork.Internal.Server
             {
                 new Action(() =>
                 {
-                    if (networkObjectId > 0 && networkObjectId < Neutron.generateID)
+                    if (networkObjectId > 0 && networkObjectId < Neutron.GENERATE_ID)
                     {
-                        Send();
-                        return;
+                        Player findPlayer = mSender;
+                        var networkObjects = findPlayer.IsInRoom() ? ChannelsById[findPlayer.CurrentChannel].GetRoom(findPlayer.CurrentRoom).sceneSettings.networkObjects : ChannelsById[findPlayer.CurrentChannel].sceneSettings.networkObjects;
                         NeutronView neutronView = networkObjects[networkObjectId];
                         if (neutronView == null) Send();
-                        if (Communication.InitRPC(rpcID, parameters, mSender, MessageInfo, neutronView))
+                        if (Communication.Dynamic(dynamicID, parameters, mSender, MessageInfo, neutronView))
                         {
                             Send();
                         }
@@ -267,7 +279,7 @@ namespace NeutronNetwork.Internal.Server
                             if (findPlayer.NeutronView == null) Send();
                             else
                             {
-                                if (Communication.InitRPC(rpcID, parameters, mSender, MessageInfo, findPlayer.NeutronView))
+                                if (Communication.Dynamic(dynamicID, parameters, mSender, MessageInfo, findPlayer.NeutronView))
                                 {
                                     Send();
                                 }
@@ -279,25 +291,25 @@ namespace NeutronNetwork.Internal.Server
             else SendErrorMessage(mSender, Packet.SendChat, "ERROR: You are not on a channel/room.");
         }
         // [Thread-Safe]
-        protected void HandleStatic(Player mSender, Broadcast broadcast, SendTo sendMode, int executeID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
+        protected void HandleNonDynamic(Player mSender, Broadcast broadcast, SendTo sendMode, int nonDynamicID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
         {
             new Action(() =>
             {
-                if (Communication.InitRCC(executeID, mSender, parameters, true, null))
+                if (Communication.NonDynamic(nonDynamicID, mSender, parameters, true, null))
                 {
                     using (NeutronWriter writer = new NeutronWriter())
                     {
                         byte[] array = mSender.Serialize();
 
-                        writer.WritePacket(Packet.Static); // packet name
-                        writer.Write(executeID);
+                        writer.WritePacket(Packet.NonDynamic); // packet name
+                        writer.Write(nonDynamicID);
                         writer.WriteExactly(array);
                         writer.WriteExactly(parameters);
 
                         Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
                         mSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
 
-                        if (cacheEnabled) Cache(executeID, mSender, writer.ToArray(), CachedPacket.Static);
+                        if (cacheEnabled) Cache(nonDynamicID, mSender, writer.ToArray(), CachedPacket.Static);
                     }
                 }
             }).ExecuteOnMainThread();

@@ -1,4 +1,5 @@
-﻿using NeutronNetwork.Internal.Client;
+﻿using NeutronNetwork;
+using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server;
 using Newtonsoft.Json;
 using System;
@@ -10,15 +11,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using UnityEngine;
 
 namespace NeutronNetwork.Internal.Extesions
 {
     public static class Extesions
     {
-        public static void ExecuteOnMainThread(this Action action) => Utils.Enqueue(action, Neutron.Server.ActionsDispatcher);
-        public static void ExecuteOnMainThread(this Action action, Neutron _) => Utils.Enqueue(action, _.mainThreadActions);
+        public static void ExecuteOnMainThread(this Action action) => InternalUtils.Enqueue(action, Neutron.Server.ActionsDispatcher);
+        public static void ExecuteOnMainThread(this Action action, Neutron _) => InternalUtils.Enqueue(action, _.mainThreadActions);
         public static byte[] Serialize(this object message)
         {
             try
@@ -140,15 +139,6 @@ namespace NeutronNetwork.Internal.Extesions
             else return data;
         }
 
-        public static byte[] StringToByteArray(this String hex)
-        {
-            int NumberChars = hex.Length;
-            byte[] bytes = new byte[NumberChars / 2];
-            for (int i = 0; i < NumberChars; i += 2)
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            return bytes;
-        }
-
         public static bool IsConnected(this TcpClient socket)
         {
             try
@@ -163,17 +153,17 @@ namespace NeutronNetwork.Internal.Extesions
             switch (protocolType)
             {
                 case Protocol.Tcp:
-                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), false);
+                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, Ext.Broadcast(mSender, broadcast), false);
                     break;
                 case Protocol.Udp:
-                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, SendBroadcast(mSender, broadcast), true);
+                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, Ext.Broadcast(mSender, broadcast), true);
                     break;
             }
         }
 
         public static void Send(this Player mSender, byte[] buffer)
         {
-            NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, SendBroadcast(mSender, Broadcast.Only), false);
+            NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, Ext.Broadcast(mSender, global::Broadcast.Only), false);
         }
 
         public static bool IsInChannel(this Player _player)
@@ -212,145 +202,48 @@ namespace NeutronNetwork.Internal.Extesions
                 return formatter.Deserialize(stream);
             }
         }
+    }
+}
 
-        public static IEnumerable<byte[]> Split(this byte[] bArray, int intBufforLengt)
+public class Ext
+{
+    public static Player[] Broadcast(Player mPlayer, Broadcast broadcast)
+    {
+        switch (broadcast)
         {
-            int bArrayLenght = bArray.Length;
-            byte[] bReturn;
-
-            int i = 0;
-            for (; bArrayLenght > (i + 1) * intBufforLengt; i++)
-            {
-                bReturn = new byte[intBufforLengt];
-                Buffer.BlockCopy(bArray, i * intBufforLengt, bReturn, 0, intBufforLengt);
-                yield return bReturn;
-            }
-
-            int intBufforLeft = bArrayLenght - i * intBufforLengt;
-            if (intBufforLeft > 0)
-            {
-                bReturn = new byte[intBufforLeft];
-                Buffer.BlockCopy(bArray, i * intBufforLengt, bReturn, 0, intBufforLeft);
-                yield return bReturn;
-            }
-        }
-
-        public static MethodInfo HasRPC(this NeutronBehaviour mThis, int executeID, out string Error)
-        {
-            MethodInfo[] infor = mThis.methods;
-            if (infor != null)
-            {
-                for (int i = 0; i < infor.Length; i++)
+            case global::Broadcast.Server:
                 {
-                    RPC RPC = infor[i].GetCustomAttribute<RPC>();
-                    if (RPC != null)
-                    {
-                        if (RPC.ID == executeID)
-                        {
-                            ParameterInfo[] pInfor = infor[i].GetParameters();
-                            if (pInfor.Length == 3)
-                            {
-                                if (pInfor[0].ParameterType != typeof(NeutronReader)/* || pInfor[1].ParameterType != typeof(bool)*/)
-                                {
-                                    Error = $"The scope of the RPC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
-                                    return null;
-                                }
-                                else
-                                {
-                                    Error = null;
-                                    return infor[i];
-                                }
-                            }
-                            else
-                            {
-                                Error = $"The scope of the RPC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
-                                return null;
-                            }
-                        }
-                    }
-                    else continue;
+                    return Neutron.Server.PlayersBySocket.Values.ToArray();
                 }
-            }
-            else NeutronUtils.LoggerError($"Could not find a reference, check if \"base.Awake\" has been implemented in \"{mThis.GetType().Name}\" class.");
-            Error = string.Empty;
-            return null;
-        }
-
-        public static MethodInfo HasAPC(this NeutronBehaviour mThis, int executeID, out string Error)
-        {
-            MethodInfo[] infor = mThis.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            for (int i = 0; i < infor.Length; i++)
-            {
-                APC APC = infor[i].GetCustomAttribute<APC>();
-                if (APC != null)
+            case global::Broadcast.Channel:
                 {
-                    if (APC.ID == executeID)
-                    {
-                        ParameterInfo[] pInfor = infor[i].GetParameters();
-                        if (pInfor.Length == 1)
-                        {
-                            if (pInfor[0].ParameterType != typeof(NeutronReader))
-                            {
-                                Error = $"The scope of the APC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
-                                return null;
-                            }
-                            else
-                            {
-                                Error = null;
-                                return infor[i];
-                            }
-                        }
-                        else
-                        {
-                            Error = $"The scope of the APC({executeID}:{mThis.GetType().Name}) is incorrect. Fix to \"void function (NeutronReader reader)\"";
-                            return null;
-                        }
-                    }
+                    return Neutron.Server.ChannelsById[mPlayer.CurrentChannel].GetPlayers();
                 }
-                else continue;
-            }
-            Error = string.Empty;
-            return null;
-        }
-
-        private static Player[] SendBroadcast(Player mPlayer, Broadcast broadcast)
-        {
-            switch (broadcast)
-            {
-                case Broadcast.Server:
-                    {
-                        return Neutron.Server.PlayersBySocket.Values.ToArray();
-                    }
-                case Broadcast.Channel:
-                    {
-                        return Neutron.Server.ChannelsById[mPlayer.CurrentChannel].GetPlayers();
-                    }
-                case Broadcast.Room:
-                    {
-                        Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
-                        return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
-                    }
-                case Broadcast.AutoInstantiated:
+            case global::Broadcast.Room:
+                {
+                    Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
+                    return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
+                }
+            case global::Broadcast.AutoInstantiated:
+                {
+                    Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
+                    if (mPlayer.IsInRoom())
+                        return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers().Where(x => x.NeutronView != null).ToArray();
+                    else return Channel.GetPlayers().Where(x => x.NeutronView != null).ToArray();
+                }
+            case global::Broadcast.Auto:
+                {
+                    if (Neutron.Server.ChannelsById.ContainsKey(mPlayer.CurrentChannel))
                     {
                         Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
                         if (mPlayer.IsInRoom())
-                            return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers().Where(x => x.NeutronView != null).ToArray();
-                        else return Channel.GetPlayers().Where(x => x.NeutronView != null).ToArray();
+                            return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
+                        else return Channel.GetPlayers();
                     }
-                case Broadcast.Auto:
-                    {
-                        if (Neutron.Server.ChannelsById.ContainsKey(mPlayer.CurrentChannel))
-                        {
-                            Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
-                            if (mPlayer.IsInRoom())
-                                return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
-                            else return Channel.GetPlayers();
-                        }
-                        else return Neutron.Server.PlayersBySocket.Values.ToArray();
-                    }
-                default:
-                    return null;
-            }
+                    else return Neutron.Server.PlayersBySocket.Values.ToArray();
+                }
+            default:
+                return null;
         }
     }
 }

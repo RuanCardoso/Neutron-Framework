@@ -56,7 +56,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && (synchronizeVelocity || synchronizeRotation) && IsMine)
+            if (IsClient && (synchronizeVelocity || synchronizeRotation) && HasAuthority)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
         }
@@ -64,7 +64,7 @@ namespace NeutronNetwork.Components
         private void Start()
         {
 #if UNITY_SERVER || UNITY_EDITOR
-            if (IsServer && !IsMine && !IsClient && antiSpeedHack)
+            if (IsServer && !HasAuthority && !IsClient && antiSpeedHack)
                 StartCoroutine(PacketSpeed());
 #endif
         }
@@ -80,13 +80,13 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(neutronRigidbody.rotation);
                     if (synchronizeAngularVelocity) options.Write(neutronRigidbody.angularVelocity);
                     if (neutronRigidbody.velocity != Vector3.zero && synchronizeVelocity || neutronRigidbody.angularVelocity != Vector3.zero && synchronizeAngularVelocity)
-                        NeutronView._.RPC(10012, options, sendTo, false, broadcast, protocol);
+                        Dynamic(10012, options, sendTo, false, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
         }
 
-        [RPC(10012)]
+        [Dynamic(10012)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             onFirstPacket = true;
@@ -147,19 +147,20 @@ namespace NeutronNetwork.Components
             }
         }
 
-        private void FixedUpdate()
+        private new void FixedUpdate()
         {
-            if (!IsMine && !onFirstPacket) return;
+            base.FixedUpdate();
+            if (!HasAuthority && !onFirstPacket) return;
             if (IsClient)
             {
-                if (!IsMine)
+                if (!HasAuthority)
                 {
                     SmoothMovement();
                 }
             }
             else if (IsServer)
             {
-                if (!IsMine)
+                if (!HasAuthority)
                 {
                     if (smoothOnServer)
                         SmoothMovement();
