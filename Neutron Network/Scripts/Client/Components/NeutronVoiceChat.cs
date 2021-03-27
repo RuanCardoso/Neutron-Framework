@@ -29,7 +29,7 @@ namespace NeutronNetwork.Components
         [SerializeField] private bool realtimeSamples = false;
 
         [Header("[Component]")]
-        public AudioSource audioSource;
+        [ReadOnly] public AudioSource audioSource;
 
         [Header("[General Settings]")]
         [SerializeField] [Range(0, 5)] private float synchronizeInterval = 1f;
@@ -52,7 +52,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronStart();
         }
 
-        public override void OnNeutronUpdate()
+        protected override void OnNeutronUpdate()
         {
             base.OnNeutronUpdate();
             SetIntervals();
@@ -118,7 +118,7 @@ namespace NeutronNetwork.Components
                             options.Write(Frequency);
                             options.Write(audioClip.channels);
                             options.Write(samples);
-                            Dynamic(10021, options, sendTo, false, broadcast, protocol);
+                            Dynamic(10021, false, options, sendTo, broadcast, protocol);
                         }
                         tSyncInterval = 0;
                     }

@@ -23,7 +23,7 @@ namespace NeutronNetwork
     public class Neutron : NeutronClientFunctions
     {
         public const string CONTAINER_NAME = "[Container] -> Player[Main]";
-        public const int GENERATE_ID = 27716848;
+        public const int GENERATE_PLAYER_ID = 27716848;
         /// <summary>
         /// Returns instance of server
         /// </summary>
@@ -507,13 +507,6 @@ namespace NeutronNetwork
                                 HandlePlayerDisconnected(player);
                             }
                             break;
-                        case Packet.SyncBehaviour:
-                            {
-                                int ID = mReader.ReadInt32();
-                                string props = mReader.ReadString();
-                                HandleJsonProperties(ID, props);
-                            }
-                            break;
                         case Packet.Nickname:
                             {
                                 Player player = mReader.ReadExactly<Player>();
@@ -691,14 +684,14 @@ namespace NeutronNetwork
             }
         }
 
-        public void NonDynamic(int RCCID, NeutronWriter writer, bool enableCache, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
+        public void NonDynamic(int nID, NeutronWriter writer, bool enableCache, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
-            InternalRCC(RCCID, writer.ToArray(), enableCache, sendTo, protocolType, broadcast);
+            InternalRCC(nID, writer.ToArray(), enableCache, sendTo, protocolType, broadcast);
         }
 
-        public void Dynamic(NeutronView neutronView, int RPCID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
+        public void Dynamic(int nID, int dynamicID, NeutronWriter parametersStream, SendTo sendTo, bool enableCache, Broadcast broadcast, Protocol protocolType = Protocol.Tcp)
         {
-            InternalRPC(neutronView, RPCID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
+            InternalRPC(nID, dynamicID, parametersStream.ToArray(), sendTo, enableCache, protocolType, broadcast);
         }
 
         /// <summary>

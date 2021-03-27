@@ -58,8 +58,34 @@ namespace NeutronNetwork.Internal.Server
         #endregion
 
         #region Functions
-        public Player GetPlayer(TcpClient mSocket) => PlayersBySocket[mSocket];
-        public Player GetPlayer(int ID) => PlayersById[ID];
+        public bool GetPlayer(TcpClient nSocket, out Player nPlayer)
+        {
+            return PlayersBySocket.TryGetValue(nSocket, out nPlayer);
+        }
+
+        public bool GetPlayer(int nID, out Player nPlayer)
+        {
+            return PlayersById.TryGetValue(nID, out nPlayer);
+        }
+
+        public bool GetNetworkObject(int nID, Player nPlayer, out NeutronView nView)
+        {
+            nView = null;
+            if (ChannelsById.TryGetValue(nPlayer.CurrentChannel, out Channel nChannel))
+            {
+                if (nPlayer.IsInRoom())
+                {
+                    Room Room = nChannel.GetRoom(nPlayer.CurrentRoom);
+                    if (Room != null)
+                        return Room.sceneSettings.networkObjects.TryGetValue(nID, out nView);
+                    else return false;
+                }
+                else if (nPlayer.IsInChannel())
+                    return nChannel.sceneSettings.networkObjects.TryGetValue(nID, out nView);
+                else return false;
+            }
+            else return false;
+        }
 
         private void DestroyPlayer(Player mPlayer)
         {
@@ -90,10 +116,8 @@ namespace NeutronNetwork.Internal.Server
             }
             return tryRemove;
         }
-
         protected void DisposeAllClients() => PlayersBySocket.ToList().ForEach(x => x.Value?.Dispose());
         protected void DisposeServerSocket() => TcpSocket.Stop();
-
         private void Cache(int ID, Player owner, byte[] buffer, CachedPacket packet)
         {
             CachedBuffer keyBuffer = new CachedBuffer();
@@ -234,11 +258,11 @@ namespace NeutronNetwork.Internal.Server
                 mSender.Send(SendTo.All, writer.ToArray(), broadcast, Protocol.Tcp); // send the message. [Thread-Safe]
             }
         }
-        // [Thread-Safe]
-        protected void HandleDynamic(Player mSender, Broadcast broadcast, SendTo sendMode, int networkObjectId, int dynamicID, bool cacheEnabled, byte[] parameters, byte[] infor, bool isUDP = false)
+
+        protected void HandleDynamic(Player nSender, Broadcast broadcast, SendTo sendMode, int networkObjectId, int dynamicID, bool isCached, byte[] parameters, byte[] infor, Protocol protocol)
         {
-            NeutronMessageInfo MessageInfo = infor.DeserializeObject<NeutronMessageInfo>();
-            void Send()
+            NeutronMessageInfo NeutronMessageInfo = infor.DeserializeObject<NeutronMessageInfo>();
+            void Broadcast()
             {
                 using (NeutronWriter writer = new NeutronWriter())
                 {
@@ -246,71 +270,93 @@ namespace NeutronNetwork.Internal.Server
                     writer.Write(networkObjectId);
                     writer.Write(dynamicID);
                     writer.WriteExactly(parameters);
-                    writer.WriteExactly(mSender.Serialize());
-                    writer.WriteExactly(MessageInfo.Serialize());
-
-                    Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
-                    mSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
-
-                    if (cacheEnabled) Cache(dynamicID, mSender, writer.ToArray(), CachedPacket.RPC);
+                    writer.WriteExactly<Player>(nSender);
+                    writer.WriteExactly<NeutronMessageInfo>(NeutronMessageInfo);
+                    nSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
+                    if (isCached) Cache(dynamicID, nSender, writer.ToArray(), CachedPacket.RPC);
                 }
             }
 
-            if (mSender.IsInChannel())
+            bool DynamicPlayer(Player nPlayer) => Communication.Dynamic(dynamicID, parameters, nSender, NeutronMessageInfo, nPlayer.NeutronView);
+            bool DynamicObject(Player nPlayer, NeutronView nView) => Communication.Dynamic(dynamicID, parameters, nSender, NeutronMessageInfo, nView);
+
+            if (nSender.IsInChannel() || nSender.IsInRoom())
             {
-                new Action(() =>
+                bool immediateSend = NeutronConfig.Settings.GlobalSettings.SendOnPostProcessing;
+                if (InternalUtils.IsSceneObject(networkObjectId))
                 {
-                    if (networkObjectId > 0 && networkObjectId < Neutron.GENERATE_ID)
+                    if (GetNetworkObject(networkObjectId, nSender, out NeutronView nView))
                     {
-                        Player findPlayer = mSender;
-                        var networkObjects = findPlayer.IsInRoom() ? ChannelsById[findPlayer.CurrentChannel].GetRoom(findPlayer.CurrentRoom).sceneSettings.networkObjects : ChannelsById[findPlayer.CurrentChannel].sceneSettings.networkObjects;
-                        NeutronView neutronView = networkObjects[networkObjectId];
-                        if (neutronView == null) Send();
-                        if (Communication.Dynamic(dynamicID, parameters, mSender, MessageInfo, neutronView))
+                        new Action(() =>
                         {
-                            Send();
-                        }
-                    }
-                    else
-                    {
-                        Player findPlayer = GetPlayer(networkObjectId);
-                        //if (GetPlayer(playerID, out Player findPlayer))
-                        {
-                            if (findPlayer.NeutronView == null) Send();
-                            else
+                            if (!immediateSend)
                             {
-                                if (Communication.Dynamic(dynamicID, parameters, mSender, MessageInfo, findPlayer.NeutronView))
-                                {
-                                    Send();
-                                }
+                                Broadcast();
+                                DynamicObject(nSender, nView);
                             }
-                        }
-                    };
-                }).ExecuteOnMainThread();
+                            else if (nView != null)
+                                if (DynamicObject(nSender, nView))
+                                    Broadcast();
+                                else return;
+                            else Broadcast();
+                        }).ExecuteOnMainThread();
+                    }
+                    else Broadcast();
+                }
+                else
+                {
+                    if (GetPlayer(networkObjectId, out Player nPlayer))
+                    {
+                        new Action(() =>
+                        {
+                            if (!immediateSend)
+                            {
+                                Broadcast();
+                                DynamicPlayer(nPlayer);
+                            }
+                            else if (nPlayer.NeutronView != null)
+                                if (DynamicPlayer(nPlayer))
+                                    Broadcast();
+                                else return;
+                            else Broadcast();
+                        }).ExecuteOnMainThread();
+                    }
+                    else NeutronUtils.LoggerError("Invalid Network ID, a player with this ID could not be found.");
+                }
             }
-            else SendErrorMessage(mSender, Packet.SendChat, "ERROR: You are not on a channel/room.");
+            else SendErrorMessage(nSender, Packet.SendChat, "ERROR: You are not on a channel/room.");
         }
-        // [Thread-Safe]
-        protected void HandleNonDynamic(Player mSender, Broadcast broadcast, SendTo sendMode, int nonDynamicID, bool cacheEnabled, byte[] parameters, bool isUDP = false)
+
+        protected void HandleNonDynamic(Player mSender, Broadcast broadcast, SendTo sendMode, int nonDynamicID, bool isCached, byte[] parameters, Protocol protocol)
         {
+            void Broadcast()
+            {
+                using (NeutronWriter writer = new NeutronWriter())
+                {
+                    byte[] array = mSender.Serialize();
+
+                    writer.WritePacket(Packet.NonDynamic); // packet name
+                    writer.Write(nonDynamicID);
+                    writer.WriteExactly(array);
+                    writer.WriteExactly(parameters);
+                    mSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
+                    if (isCached) Cache(nonDynamicID, mSender, writer.ToArray(), CachedPacket.Static);
+                }
+            }
+
+            bool NonDynamic() => Communication.NonDynamic(nonDynamicID, mSender, parameters, true);
+
             new Action(() =>
             {
-                if (Communication.NonDynamic(nonDynamicID, mSender, parameters, true, null))
+                bool immediateSend = NeutronConfig.Settings.GlobalSettings.SendOnPostProcessing;
+                if (immediateSend)
+                    if (NonDynamic())
+                        Broadcast();
+                    else return;
+                else
                 {
-                    using (NeutronWriter writer = new NeutronWriter())
-                    {
-                        byte[] array = mSender.Serialize();
-
-                        writer.WritePacket(Packet.NonDynamic); // packet name
-                        writer.Write(nonDynamicID);
-                        writer.WriteExactly(array);
-                        writer.WriteExactly(parameters);
-
-                        Protocol protocol = (isUDP) ? Protocol.Udp : Protocol.Tcp;
-                        mSender.Send(sendMode, writer.ToArray(), broadcast, protocol);
-
-                        if (cacheEnabled) Cache(nonDynamicID, mSender, writer.ToArray(), CachedPacket.Static);
-                    }
+                    Broadcast();
+                    NonDynamic();
                 }
             }).ExecuteOnMainThread();
         }

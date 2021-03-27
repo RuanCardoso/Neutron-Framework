@@ -9,6 +9,7 @@ public class NeutronGlobalSettings
     public Serialization Serialization = Serialization.Json;
     public Compression Compression = Compression.Deflate;
     public bool NoDelay = true;
+    public bool SendOnPostProcessing = true;
 }
 
 [Serializable]

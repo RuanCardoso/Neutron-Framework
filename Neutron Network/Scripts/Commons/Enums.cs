@@ -36,7 +36,6 @@ public enum Packet : byte
     DestroyPlayer,
     VoiceChat,
     Disconnected,
-    SyncBehaviour,
     Nickname,
     SetPlayerProperties,
     SetRoomProperties,
@@ -150,4 +149,4 @@ public enum ComponentMode : int
 }
 public enum SmoothMode : int { Lerp, MoveTowards }
 public enum ParameterMode : int { Sync, NonSync }
-public enum Ambient : int { Room, Channel }
+public enum Ambient : int { Room, Channel, Both }

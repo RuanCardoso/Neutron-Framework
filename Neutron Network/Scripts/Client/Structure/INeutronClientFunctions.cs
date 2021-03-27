@@ -100,7 +100,7 @@ namespace NeutronNetwork.Internal.Client
             }
         }
 
-        protected void InternalRPC(NeutronView neutronView, int RPCID, byte[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRPC(int nID, int dynamicID, byte[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
         {
             NeutronMessageInfo infor = _myPlayer.infor;
             using (NeutronWriter writer = new NeutronWriter())
@@ -108,8 +108,8 @@ namespace NeutronNetwork.Internal.Client
                 writer.WritePacket(Packet.Dynamic);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
-                writer.Write(neutronView.ID);
-                writer.Write(RPCID);
+                writer.Write(nID);
+                writer.Write(dynamicID);
                 writer.Write(cached);
                 writer.WriteExactly(parameters);
                 writer.WriteExactly(infor.Serialize());
@@ -189,27 +189,6 @@ namespace NeutronNetwork.Internal.Client
                 }).ExecuteOnMainThread(_);
                 //------------------------------------------------------------------------------------
                 networkObjects.TryRemove(player.ID, out NeutronView objRemoved);
-            }
-        }
-        protected void HandleJsonProperties(int ownerID, string properties)
-        {
-            //----------------------------------------------------------------------------------
-            if (_.IsBot) return;
-            //----------------------------------------------------------------------------------
-            if (networkObjects.TryGetValue(ownerID, out NeutronView neutronObject))
-            {
-                NeutronView obj = neutronObject;
-                //-----------------------------------------------------------------------------------------------------------\\
-                if (obj.neutronSyncBehaviour != null)
-                {
-                    var sync = obj.neutronSyncBehaviour;
-                    JsonConvert.PopulateObject(properties, sync, new JsonSerializerSettings()
-                    {
-                        ObjectCreationHandling = ObjectCreationHandling.Replace
-                    });
-                    JsonUtility.FromJsonOverwrite(properties, sync);
-                }
-                else NeutronUtils.LoggerError("It was not possible to find a class that inherits from Neutron Sync Behavior.");
             }
         }
 

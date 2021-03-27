@@ -1,107 +1,60 @@
-﻿using System;
-using System.Reflection;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace NeutronNetwork
 {
     public class NeutronBehaviour : MonoBehaviour
     {
-        ///* error messages.
-        private const string ERROR_0X1 = "It was not possible to instantiate this object on a network";
-        ///* Virtual Methods
-        public virtual void OnNeutronStart() => Initialized = true;
-        public virtual void OnNeutronUpdate() { }
-        public virtual void OnNeutronFixedUpdate() { }
-        ///* Properties
+        #region ID
+        [Header("[Identity]")]
+        [Separator] public int ID;
+        #endregion
+
+        #region Properties
         protected bool Initialized { get; set; }
         public NeutronView NeutronView { get; set; }
-        protected bool IsMine
-        {
-            get
-            {
-                if (Initialized)
-                {
-                    if (NeutronView != null)
-                    {
-                        return Mine();
-                    }
-                    else return NeutronUtils.LoggerError(ERROR_0X1);
-                }
-                else return false;
-            }
-        }
+        #endregion
+
+        #region Virtual Methods
+        public virtual void OnNeutronStart() => Initialized = true;
+        protected virtual void OnNeutronUpdate() { }
+        protected virtual void OnNeutronFixedUpdate() { }
+        #endregion
+
+        #region Extended Properties
+        protected bool IsMine => Initialized && Mine();
+        protected bool IsBot => Initialized && NeutronView.owner.IsBot;
+        protected bool IsServer => Initialized && NeutronView.isServer;
+        protected bool IsClient => Initialized && !NeutronView.isServer;
         protected bool HasAuthority
         {
             get
             {
-                if (Initialized)
+                if (NeutronView != null)
                 {
-                    if (NeutronView != null)
+                    switch (NeutronView.authorityMode)
                     {
-                        if (NeutronView.authorityMode == AuthorityMode.Owner)
-                            return Mine();
-                        else if (NeutronView.authorityMode == AuthorityMode.Server)
+                        case AuthorityMode.Owner:
+                            return IsMine;
+                        case AuthorityMode.Server:
                             return IsServer;
-                        else if (NeutronView.authorityMode == AuthorityMode.IgnoreExceptServer)
+                        case AuthorityMode.IgnoreExceptServer:
                             return !IsServer;
-                        else if (NeutronView.authorityMode == AuthorityMode.MasterClient)
-                            return !IsServer && NeutronView._ != null && NeutronView._.IsMasterClient();
-                        else if (NeutronView.authorityMode == AuthorityMode.Ignore)
+                        case AuthorityMode.MasterClient:
+                            return MasterClient();
+                        case AuthorityMode.Ignore:
                             return true;
-                        else return false;
+                        default:
+                            return false;
                     }
-                    else return NeutronUtils.LoggerError(ERROR_0X1);
                 }
-                else return false;
+                else return NeutronUtils.LoggerError("Unable to find Neutron View");
             }
         }
-        protected bool IsBot
-        {
-            get
-            {
-                if (Initialized)
-                {
-                    if (NeutronView != null)
-                        return NeutronView.owner.IsBot;
-                    else
-                        return NeutronUtils.LoggerError(ERROR_0X1);
-                }
-                else return false;
-            }
-        }
-        protected bool IsServer
-        {
-            get
-            {
-                if (Initialized)
-                {
-                    if (NeutronView != null)
-                        return NeutronView.isServer;
-                    else
-                        return NeutronUtils.LoggerError(ERROR_0X1);
-                }
-                else return false;
-            }
-        }
-        protected bool IsClient
-        {
-            get
-            {
-                if (Initialized)
-                {
-                    if (NeutronView != null)
-                        return !NeutronView.isServer;
-                    else
-                        return NeutronUtils.LoggerError(ERROR_0X1);
-                }
-                else return false;
-            }
-        }
+        #endregion
 
+        #region MonoBehaviour
         public void Awake()
-        {
-
-        }
+        { }
 
         public void Update()
         {
@@ -114,31 +67,36 @@ namespace NeutronNetwork
             if (Initialized)
                 OnNeutronFixedUpdate();
         }
+        #endregion
 
+        #region Neutron
         private bool Mine()
         {
-            return !IsServer && NeutronView._ != null && NeutronView._.IsMine(NeutronView.owner);
+            return !IsServer && NeutronView._.IsMine(NeutronView.owner);
         }
 
-        protected void Dynamic(int DynamicID, NeutronWriter parameters, SendTo sendTo, bool Cached, Broadcast broadcast, Protocol protocol)
+        private bool MasterClient()
         {
+            return !IsServer && NeutronView._.IsMasterClient();
+        }
+
+        protected void Dynamic(int DynamicID, bool IsCached, NeutronWriter parameters, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        {
+            int uniqueID = DynamicID ^ ID;
             if (IsClient)
-                NeutronView._.Dynamic(NeutronView, DynamicID, parameters, sendTo, Cached, broadcast, protocol);
+                NeutronView._.Dynamic(NeutronView.ID, uniqueID, parameters, sendTo, IsCached, broadcast, protocol);
             else if (IsServer)
-                Neutron.Server.Dynamic(NeutronView, DynamicID, parameters, sendTo, Cached, broadcast, protocol);
+                Neutron.Server.Dynamic(NeutronView.ID, uniqueID, parameters, NeutronView.owner, sendTo, IsCached, broadcast, protocol);
         }
 
-        protected int GetMaxPacketsPerSecond(float sInterval)
+        protected void Dynamic(int networkID, int DynamicID, bool IsCached, NeutronWriter parameters, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
-#if UNITY_SERVER || UNITY_EDITOR
-            int currentFPS = NeutronConfig.Settings.ServerSettings.FPS;
-            if (sInterval == 0) return currentFPS;
-            float interval = (sInterval * currentFPS);
-            float MPPS = currentFPS / interval;
-            return (int)MPPS;
-#else
-            return 0;
-#endif
+            int uniqueID = DynamicID ^ ID;
+            if (IsClient)
+                NeutronView._.Dynamic(networkID, uniqueID, parameters, sendTo, IsCached, broadcast, protocol);
+            else if (IsServer)
+                Neutron.Server.Dynamic(networkID, uniqueID, parameters, NeutronView.owner, sendTo, IsCached, broadcast, protocol);
         }
+        #endregion
     }
 }

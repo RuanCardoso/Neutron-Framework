@@ -54,7 +54,7 @@ namespace NeutronNetwork.Components
                                 break;
                         }
                     }
-                    Dynamic(10018, options, sendTo, false, broadcast, protocol);
+                    Dynamic(10018, false, options, sendTo, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }

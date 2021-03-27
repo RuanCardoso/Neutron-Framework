@@ -9,18 +9,14 @@ public class ViewConfig : MonoBehaviour
 {
     #region Primitives
     public int ID;
-    public bool IsSceneObject { get => (ID > 0 && ID < Neutron.GENERATE_ID); }
+    public bool IsSceneObject { get => (ID > 0 && ID < Neutron.GENERATE_PLAYER_ID); }
     [NonSerialized] public bool isServer;
     #endregion
 
     #region Register
-    public AuthorityMode authorityMode;
+    public AuthorityMode authorityMode = AuthorityMode.Owner;
     [ReadOnly] public Player owner;
     [NonSerialized] public Neutron _;
-    #endregion
-
-    #region FindInstances
-    [NonSerialized] public NeutronSyncBehaviour neutronSyncBehaviour;
     #endregion
 
     #region Collection
@@ -32,26 +28,15 @@ public class ViewConfig : MonoBehaviour
     public Vector3 lastRotation { get; set; }
     #endregion
 
-    public void Awake()
-    {
-        GetSyncBehaviour();
-        GetAttributes();
-    }
+    public void Awake() => GetAttributes();
 
-    public void Start()
-    {
-
-    }
+    public void Start() { }
 
     public virtual void OnNeutronStart()
-    {
-
-    }
+    { }
 
     public virtual void OnNeutronAwake()
-    {
-
-    }
+    { }
 
     public void Update()
     {
@@ -77,7 +62,12 @@ public class ViewConfig : MonoBehaviour
                         if (NeutronDynamicAttr != null)
                         {
                             RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y]);
-                            Dynamics.Add(NeutronDynamicAttr.ID, remoteProceduralCall);
+                            int uniqueID = NeutronDynamicAttr.ID ^ mInstance.ID;
+                            if (!Dynamics.ContainsKey(uniqueID))
+                                Dynamics.Add(uniqueID, remoteProceduralCall);
+                            else Debug.LogError($"You cannot have the same classes({mInstance.GetType().Name}) with the same ID.");
+                            if (mInfos[y].ReturnType == typeof(bool) && !NeutronConfig.Settings.GlobalSettings.SendOnPostProcessing)
+                                NeutronUtils.LoggerError($"Boolean return in Dynamic -> {remoteProceduralCall.method.Name} : [{NeutronDynamicAttr.ID}] is useless when \"SendOnPostProcessing\" is disabled, switch to void instead of bool");
                         }
                         else continue;
                     }
@@ -86,10 +76,5 @@ public class ViewConfig : MonoBehaviour
             }
         }
         else NeutronUtils.Logger("Could not find any implementation of \"NeutronBehaviour\"");
-    }
-
-    private void GetSyncBehaviour()
-    {
-        neutronSyncBehaviour = GetComponent<NeutronSyncBehaviour>();
     }
 }

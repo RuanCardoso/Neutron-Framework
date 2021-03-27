@@ -18,6 +18,7 @@ MonoBehaviour:
     Serialization: 1
     Compression: 1
     NoDelay: 1
+    SendOnPostProcessing: 1
   ClientSettings:
     FPS: 60
     MonoChunkSize: 30

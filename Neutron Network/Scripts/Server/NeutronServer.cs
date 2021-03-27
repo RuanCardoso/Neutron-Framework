@@ -34,7 +34,7 @@ namespace NeutronNetwork.Internal.Server
         //* Signals that the server has been started.
         public static bool Initialized;
         //* generate uniqueID.
-        public static int uniqueID = Neutron.GENERATE_ID;
+        public static int uniqueID = Neutron.GENERATE_PLAYER_ID;
         //* Amounts of clients that have signed in since the server was started.
         //* This property is not reset and does not decrease its value.
         private static int totalAmountOfPlayers;
@@ -99,8 +99,7 @@ namespace NeutronNetwork.Internal.Server
                     for (int i = 0; i < NeutronConfig.Settings.ServerSettings.PacketChunkSize && dataForProcessing.SafeCount > 0; i++)
                     {
                         var data = dataForProcessing.SafeDequeue();
-                        bool isUDP = (data.protocol == Protocol.Udp) ? true : false;
-                        PacketProcessing(data.player, data.buffer, isUDP);
+                        PacketProcessing(data.player, data.buffer, data.protocol);
                     }
                 }
                 dataForProcessing.mEvent.WaitOne(); //* Blocks the current thread until the current WaitHandle receives a signal.
@@ -255,7 +254,7 @@ namespace NeutronNetwork.Internal.Server
         #endregion
 
         #region Packets
-        void PacketProcessing(Player mSender, byte[] buffer, bool isUDP) //* process packets received from clients.
+        void PacketProcessing(Player mSender, byte[] buffer, Protocol protocol) //* process packets received from clients.
         {
 #if UNITY_SERVER || UNITY_EDITOR
             int length = buffer.Length;
@@ -276,10 +275,10 @@ namespace NeutronNetwork.Internal.Server
                             HandleSendChat(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
                             break;
                         case Packet.Dynamic:
-                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), isUDP);
+                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), protocol);
                             break;
                         case Packet.NonDynamic:
-                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), isUDP);
+                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), protocol);
                             break;
                         case Packet.GetChannels:
                             HandleGetChannels(mSender, mCommand);
@@ -334,11 +333,11 @@ namespace NeutronNetwork.Internal.Server
         {
 #if !NET_STANDARD_2_0
 #if !DEVELOPMENT_BUILD
+            DontDestroyOnLoad(gameObject.transform.root);
             if (!isReady)
                 NeutronUtils.LoggerError("The server could not be initialized):");
             else
             {
-                DontDestroyOnLoad(gameObject.transform.root);
                 StartCoroutine(InternalUtils.KeepFramerate(NeutronConfig.Settings.ServerSettings.FPS));
                 InitilizeServer();
                 //NeutronRegister.RegisterSceneObject(null, true, null);

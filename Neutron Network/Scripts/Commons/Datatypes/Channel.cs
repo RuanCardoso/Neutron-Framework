@@ -227,7 +227,8 @@ namespace NeutronNetwork
             {
                 foreach (var room in Rooms.ToArray())
                 {
-                    if (room.ID == index) return room;
+                    if (room.ID == index)
+                        return room;
                     else continue;
                 }
                 return null;

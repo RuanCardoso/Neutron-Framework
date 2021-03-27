@@ -13,6 +13,19 @@ namespace NeutronNetwork
 {
     public class NeutronUtils
     {
+        public static int GetMaxPacketsPerSecond(float sInterval)
+        {
+#if UNITY_SERVER || UNITY_EDITOR
+            int currentFPS = NeutronConfig.Settings.ServerSettings.FPS;
+            if (sInterval == 0) return currentFPS;
+            float interval = (sInterval * currentFPS);
+            float MPPS = currentFPS / interval;
+            return (int)MPPS;
+#else
+            return 0;
+#endif
+        }
+
         public static void Logger(object message)
         {
 #if UNITY_SERVER
@@ -164,6 +177,11 @@ namespace NeutronNetwork.Internal
                 simulate.physicsScene = scene.GetPhysicsScene();
                 MoveToContainer(simulateObject, scene.name);
             }
+        }
+
+        public static bool IsSceneObject(int networkObjectId)
+        {
+            return networkObjectId > 0 && networkObjectId < Neutron.GENERATE_PLAYER_ID;
         }
 
         public static void MoveToContainer(GameObject obj, string name)

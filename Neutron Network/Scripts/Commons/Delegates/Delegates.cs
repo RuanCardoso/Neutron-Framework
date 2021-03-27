@@ -84,7 +84,7 @@ namespace NeutronNetwork.Internal.Server.Delegates
         public delegate void OnPlayerJoinedRoom(Player playerJoined);
         public delegate void OnPlayerLeaveRoom(Player playerLeave);
         public delegate void OnCheatDetected(Player playerDetected, string cheatName);
-        public delegate void OnPlayerPropertiesChanged(Player player, NeutronSyncBehaviour properties, string propertieName, Broadcast broadcast);
+        public delegate void OnPlayerPropertiesChanged(Player player, NeutronSynchronizeBehaviour properties, string propertieName, Broadcast broadcast);
         public delegate void OnPlayerCollision(Player player, Collision coll, string type);
         public delegate void OnPlayerTrigger(Player player, Collider coll, string type);
         public delegate void OnServerAwake();

@@ -31,10 +31,9 @@ namespace NeutronNetwork
                     }
                     else if (isServer)
                     {
-                        Player player = Neutron.Server.GetPlayer(mPlayer.tcpClient);
-                        if (player != null)
+                        if (Neutron.Server.GetPlayer(mPlayer.tcpClient, out Player nPlayer))
                         {
-                            player.NeutronView = neutronView;
+                            nPlayer.NeutronView = neutronView;
                             InternalUtils.ChangeColor(neutronView);
                         }
                         else NeutronUtils.LoggerError("Neutron View Object has been destroyed?");

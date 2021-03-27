@@ -48,7 +48,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronStart();
             if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && HasAuthority)
                 StartCoroutine(Synchronize());
-            else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
+            else if (IsServer) maxPacketsPerSecond = NeutronUtils.GetMaxPacketsPerSecond(synchronizeInterval);
         }
 
         private void Start()
@@ -76,7 +76,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
-                        Dynamic(10013, options, sendTo, false, broadcast, protocol);
+                        Dynamic(10013, false, options, sendTo, broadcast, protocol);
                     if (sendTo == SendTo.Others || sendTo == SendTo.Only)
                         ResetTransforms();
                 }

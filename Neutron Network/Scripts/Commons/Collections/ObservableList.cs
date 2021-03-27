@@ -10,6 +10,8 @@ namespace NeutronNetwork.Wrappers
     {
         private event ObserverDelegates.OnChanged onChanged;
         private string fieldName;
+        public ObservableList() { }
+
         public ObservableList(string fieldName)
         {
             this.fieldName = fieldName;

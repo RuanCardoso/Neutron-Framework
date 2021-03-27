@@ -58,7 +58,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronStart();
             if (IsClient && (synchronizeVelocity || synchronizeRotation) && HasAuthority)
                 StartCoroutine(Synchronize());
-            else if (IsServer) maxPacketsPerSecond = GetMaxPacketsPerSecond(synchronizeInterval);
+            else if (IsServer) maxPacketsPerSecond = NeutronUtils.GetMaxPacketsPerSecond(synchronizeInterval);
         }
 
         private void Start()
@@ -80,7 +80,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(neutronRigidbody.rotation);
                     if (synchronizeAngularVelocity) options.Write(neutronRigidbody.angularVelocity);
                     if (neutronRigidbody.velocity != Vector3.zero && synchronizeVelocity || neutronRigidbody.angularVelocity != Vector3.zero && synchronizeAngularVelocity)
-                        Dynamic(10012, options, sendTo, false, broadcast, protocol);
+                        Dynamic(10012, false, options, sendTo, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public class Dynamic : Attribute
 {
     public int ID;

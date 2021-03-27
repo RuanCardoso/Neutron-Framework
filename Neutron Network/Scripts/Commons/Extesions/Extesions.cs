@@ -181,6 +181,11 @@ namespace NeutronNetwork.Internal.Extesions
             return (IPEndPoint)socket.tcpClient.Client.RemoteEndPoint;
         }
 
+        public static IList<T> Clone<T>(this IList<T> listToClone) where T : ICloneable
+        {
+            return listToClone.Select(item => (T)item.Clone()).ToList();
+        }
+
         public static T DeepClone<T>(this object obj)
         {
             using (MemoryStream stream = new MemoryStream())
