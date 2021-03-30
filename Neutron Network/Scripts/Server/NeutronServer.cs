@@ -23,6 +23,7 @@ namespace NeutronNetwork.Internal.Server
     [RequireComponent(typeof(NeutronConfig))]
     [RequireComponent(typeof(NeutronEvents))]
     [RequireComponent(typeof(NeutronStatistics))]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_SERVER_ORDER)]
     public class NeutronServer : NeutronServerPublicFunctions
     {
         #region Events

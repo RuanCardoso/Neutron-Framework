@@ -25,7 +25,7 @@ namespace NeutronNetwork
         /// Nickname of player.
         /// </summary>
         public string Nickname { get => nickname; set => nickname = value; }
-        [SerializeField] [ReadOnly] private string nickname = string.Empty;
+        [SerializeField] private string nickname = string.Empty;
         /// <summary>
         /// Current channel of player.
         /// </summary>

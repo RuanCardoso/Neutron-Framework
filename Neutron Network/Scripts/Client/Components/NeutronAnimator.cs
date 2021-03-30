@@ -25,7 +25,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && HasAuthority)
+            if (HasAuthority)
                 StartCoroutine(Synchronize());
         }
 
@@ -63,6 +63,7 @@ namespace NeutronNetwork.Components
         [Dynamic(10018)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
+            Debug.LogError("Received");
             using (options)
             {
                 for (int i = 0; i < parameters.Length; i++)

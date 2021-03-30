@@ -137,6 +137,7 @@ public enum AuthorityMode : int
 {
     Server,
     Owner,
+    OwnerAndServer,
     MasterClient,
     IgnoreExceptServer,
     Ignore,
@@ -149,4 +150,4 @@ public enum ComponentMode : int
 }
 public enum SmoothMode : int { Lerp, MoveTowards }
 public enum ParameterMode : int { Sync, NonSync }
-public enum Ambient : int { Room, Channel, Both }
+public enum Ambient : int { Server, Client, Both }

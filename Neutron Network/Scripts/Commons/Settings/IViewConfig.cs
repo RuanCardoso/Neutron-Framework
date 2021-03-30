@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using NeutronNetwork;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using UnityEngine;
 
@@ -9,12 +10,15 @@ public class ViewConfig : MonoBehaviour
 {
     #region Primitives
     public int ID;
-    public bool IsSceneObject { get => (ID > 0 && ID < Neutron.GENERATE_PLAYER_ID); }
-    [NonSerialized] public bool isServer;
+    public Ambient ambient = Ambient.Both;
+    [ReadOnly] public bool isServer;
+    #endregion
+
+    #region Properties
+    public bool IsSceneObject => InternalUtils.IsSceneObject(ID);
     #endregion
 
     #region Register
-    public AuthorityMode authorityMode = AuthorityMode.Owner;
     [ReadOnly] public Player owner;
     [NonSerialized] public Neutron _;
     #endregion

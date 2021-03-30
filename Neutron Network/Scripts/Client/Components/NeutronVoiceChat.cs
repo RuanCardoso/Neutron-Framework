@@ -56,7 +56,7 @@ namespace NeutronNetwork.Components
         {
             base.OnNeutronUpdate();
             SetIntervals();
-            if (IsClient && HasAuthority)
+            if (HasAuthority)
                 Init();
         }
 

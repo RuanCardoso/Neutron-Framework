@@ -10,10 +10,10 @@ namespace NeutronNetwork
 {
     public class NeutronRegister
     {
-        public static GameObject RegisterPlayer(Player mPlayer, GameObject objectInst, bool isServer, Neutron localInstance)
+        public static void RegisterPlayer(Player mPlayer, NeutronView neutronView, bool isServer, Neutron localInstance)
         {
             string clientContainerType = isServer ? "Server" : "Client";
-            if (objectInst.TryGetComponent<NeutronView>(out NeutronView neutronView))
+            if (neutronView != null)
             {
                 if (neutronView.ID == 0)
                 {
@@ -41,11 +41,10 @@ namespace NeutronNetwork
                     LoadNeutronBehaviours(neutronView);
                 }
                 else if (!NeutronUtils.LoggerError("Dynamically instantiated objects must have their ID at 0."))
-                    MonoBehaviour.Destroy(objectInst);
+                    MonoBehaviour.Destroy(neutronView);
             }
             else if (!NeutronUtils.LoggerError("\"Neutron View\" object not found, failed to instantiate in network."))
-                MonoBehaviour.Destroy(objectInst);
-            return objectInst;
+                MonoBehaviour.Destroy(neutronView);
         }
 
         public static void RegisterSceneObject(Player mPlayer, NeutronView neutronView, bool isServer, Neutron localInstance = null)

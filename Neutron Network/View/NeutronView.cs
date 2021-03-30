@@ -3,6 +3,7 @@
 namespace NeutronNetwork
 {
     [AddComponentMenu("Neutron/Neutron View")]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_VIEW_ORDER)]
     public class NeutronView : ViewConfig
     {
         private new void Awake()

@@ -47,7 +47,6 @@ namespace NeutronNetwork.Internal.Server
         Console.Clear();
 #endif
 #if UNITY_SERVER || UNITY_EDITOR
-            NeutronConfig.LoadSettings();
             if (NeutronConfig.Settings != null)
             {
                 try

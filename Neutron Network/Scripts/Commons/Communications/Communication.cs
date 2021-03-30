@@ -20,6 +20,7 @@ namespace NeutronNetwork.Internal.Comms
                     Type objType = obj.GetType();
                     if (objType == typeof(bool))
                         return (bool)obj;
+                    else NeutronUtils.LoggerError("Type not supported");
                 }
             }
             else NeutronUtils.LoggerError("Invalid Dynamic ID, there is no attribute with this ID in the target object.");
@@ -34,21 +35,22 @@ namespace NeutronNetwork.Internal.Comms
                 if (obj != null)
                 {
                     Type objType = obj.GetType();
-                    if (objType == typeof(GameObject))
+                    if (objType == typeof(NeutronView))
                     {
-                        GameObject objectToInst = (GameObject)obj;
-                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
+                        NeutronView objectToInst = (NeutronView)obj;
                         if (!isServer)
-                            InternalUtils.MoveToContainer(objectToInst, "[Container] -> Player[Main]");
+                            InternalUtils.MoveToContainer(objectToInst.gameObject, "[Container] -> Player[Main]");
                         else
                         {
                             if (!sender.IsInRoom())
-                                InternalUtils.MoveToContainer(objectToInst, $"[Container] -> Channel[{sender.CurrentChannel}]");
-                            else if (sender.IsInChannel()) InternalUtils.MoveToContainer(objectToInst, $"[Container] -> Room[{sender.CurrentRoom}]");
+                                InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Channel[{sender.CurrentChannel}]");
+                            else if (sender.IsInChannel()) InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Room[{sender.CurrentRoom}]");
                         }
+                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
                     }
                     else if (objType == typeof(bool))
                         return (bool)obj;
+                    else NeutronUtils.LoggerError("Type not supported");
                 }
             }
             else NeutronUtils.LoggerError("Invalid NonDynamic ID, there is no attribute with this ID.");

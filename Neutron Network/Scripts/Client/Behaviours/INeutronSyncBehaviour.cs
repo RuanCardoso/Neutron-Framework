@@ -39,7 +39,7 @@ namespace NeutronNetwork
         protected override void OnNeutronUpdate()
         {
             base.OnNeutronUpdate();
-            if (IsServer && !Synchronizing)
+            if (HasAuthority && !Synchronizing)
                 GetFields();
         }
 
@@ -81,13 +81,11 @@ namespace NeutronNetwork
 
         private void Broadcast(string jsonString)
         {
-#if UNITY_SERVER || UNITY_EDITOR
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.Write(jsonString);
                 Dynamic(24, false, writer, sendTo, broadcast, protocol);
             }
-#endif
         }
 
         [Dynamic(24)]
@@ -95,7 +93,7 @@ namespace NeutronNetwork
         {
             using (options)
             {
-                if (IsClient)
+                if (IsClient || Authority != AuthorityMode.Server)
                 {
                     string jsonString = options.ReadString();
                     JsonConvert.PopulateObject(jsonString, this, new JsonSerializerSettings() { ObjectCreationHandling = ObjectCreationHandling.Replace });

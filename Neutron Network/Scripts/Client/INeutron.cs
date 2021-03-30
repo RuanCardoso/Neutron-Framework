@@ -20,6 +20,7 @@ using System.Collections;
 
 namespace NeutronNetwork
 {
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CLIENT_ORDER)]
     public class Neutron : NeutronClientFunctions
     {
         public const string CONTAINER_NAME = "[Container] -> Player[Main]";
@@ -773,6 +774,30 @@ namespace NeutronNetwork
             neutronInstance.InitializeClient(type);
             if (type == ClientType.MainPlayer) Client = neutronInstance;
             return neutronInstance;
+        }
+
+        public static NeutronView Spawn(bool IsServer, GameObject prefab, Vector3 position, Quaternion rotation)
+        {
+            NeutronView Spawn() => Instantiate(prefab, position, rotation).GetComponent<NeutronView>();
+            if (prefab.TryGetComponent<NeutronView>(out NeutronView neutronView))
+            {
+                switch (neutronView.ambient)
+                {
+                    case Ambient.Both:
+                        return Spawn();
+                    case Ambient.Server:
+                        if (IsServer)
+                            return Spawn();
+                        else return null;
+                    case Ambient.Client:
+                        if (!IsServer)
+                            return Spawn();
+                        else return null;
+                    default:
+                        return null;
+                }
+            }
+            else return null;
         }
 
         public class UITools

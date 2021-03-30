@@ -5,9 +5,10 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Server.Delegates
 {
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_EVENTS_ORDER)]
     public class NeutronEvents : MonoBehaviour
     {
-        public void Initialize()
+        public void OnEnable()
         {
             #region Common Events
             NeutronServer.onServerAwake += OnServerAwake;
@@ -15,6 +16,17 @@ namespace NeutronNetwork.Internal.Server.Delegates
 
             #region Cheat Events
             CheatsUtils.onCheatDetected += OnCheatDetected;
+            #endregion
+        }
+
+        public void OnDisable()
+        {
+            #region Common Events
+            NeutronServer.onServerAwake -= OnServerAwake;
+            #endregion
+
+            #region Cheat Events
+            CheatsUtils.onCheatDetected -= OnCheatDetected;
             #endregion
         }
 
