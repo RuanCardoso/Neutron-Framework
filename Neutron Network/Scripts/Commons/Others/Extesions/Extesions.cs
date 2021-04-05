@@ -16,8 +16,6 @@ namespace NeutronNetwork.Internal.Extesions
 {
     public static class Extesions
     {
-        public static void ExecuteOnMainThread(this Action action) => InternalUtils.Enqueue(action, Neutron.Server.ActionsDispatcher);
-        public static void ExecuteOnMainThread(this Action action, Neutron _) => InternalUtils.Enqueue(action, _.mainThreadActions);
         public static byte[] Serialize(this object message)
         {
             try
@@ -148,22 +146,19 @@ namespace NeutronNetwork.Internal.Extesions
             catch (SocketException) { return false; }
         }
 
-        public static void Send(this Player mSender, SendTo sendTo, byte[] buffer, Broadcast broadcast, Protocol protocolType)
+        public static void Send(this Player mSender, NeutronWriter writer, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
-            switch (protocolType)
-            {
-                case Protocol.Tcp:
-                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, Ext.Broadcast(mSender, broadcast), false);
-                    break;
-                case Protocol.Udp:
-                    NeutronServerFunctions.SocketProtocol(mSender, sendTo, buffer, Ext.Broadcast(mSender, broadcast), true);
-                    break;
-            }
+            SocketHelper.Redirect(mSender, protocolType, sendTo, writer.ToArray(), Ext.Broadcast(mSender, broadcast));
         }
 
-        public static void Send(this Player mSender, byte[] buffer)
+        public static void Send(this Player mSender, NeutronWriter writer, Handle handle)
         {
-            NeutronServerFunctions.SocketProtocol(mSender, SendTo.Only, buffer, Ext.Broadcast(mSender, global::Broadcast.Only), false);
+            SocketHelper.Redirect(mSender, handle.protocol, handle.sendTo, writer.ToArray(), Ext.Broadcast(mSender, handle.broadcast));
+        }
+
+        public static void Send(this Player mSender, NeutronWriter writer)
+        {
+            SocketHelper.Redirect(mSender, Protocol.Tcp, SendTo.Only, writer.ToArray(), Ext.Broadcast(mSender, global::Broadcast.Only));
         }
 
         public static bool IsInChannel(this Player _player)
@@ -214,37 +209,32 @@ public class Ext
 {
     public static Player[] Broadcast(Player mPlayer, Broadcast broadcast)
     {
+        INeutronMatchmaking matchmaking = MatchmakingHelper.Matchmaking(mPlayer);
         switch (broadcast)
         {
             case global::Broadcast.Server:
-                {
-                    return Neutron.Server.PlayersBySocket.Values.ToArray();
-                }
+                return Neutron.Server.PlayersBySocket.Values.ToArray();
             case global::Broadcast.Channel:
                 {
-                    return Neutron.Server.ChannelsById[mPlayer.CurrentChannel].GetPlayers();
+                    if (Neutron.Server.ChannelsById.TryGetValue(mPlayer.CurrentChannel, out Channel l_Channel))
+                        return l_Channel.GetPlayers();
+                    else return null;
                 }
             case global::Broadcast.Room:
                 {
-                    Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
-                    return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
-                }
-            case global::Broadcast.AutoInstantiated:
-                {
-                    Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
-                    if (mPlayer.IsInRoom())
-                        return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers().Where(x => x.NeutronView != null).ToArray();
-                    else return Channel.GetPlayers().Where(x => x.NeutronView != null).ToArray();
+                    if (Neutron.Server.ChannelsById.TryGetValue(mPlayer.CurrentChannel, out Channel l_Channel))
+                    {
+                        Room l_Room = l_Channel.GetRoom(mPlayer.CurrentRoom);
+                        if (l_Room != null)
+                            return l_Room.GetPlayers();
+                        else return null;
+                    }
+                    else return null;
                 }
             case global::Broadcast.Auto:
                 {
-                    if (Neutron.Server.ChannelsById.ContainsKey(mPlayer.CurrentChannel))
-                    {
-                        Channel Channel = Neutron.Server.ChannelsById[mPlayer.CurrentChannel];
-                        if (mPlayer.IsInRoom())
-                            return Channel.GetRoom(mPlayer.CurrentRoom).GetPlayers();
-                        else return Channel.GetPlayers();
-                    }
+                    if (matchmaking != null)
+                        return matchmaking.GetPlayers();
                     else return Neutron.Server.PlayersBySocket.Values.ToArray();
                 }
             default:

@@ -9,7 +9,7 @@ using UnityEngine;
 public class ViewConfig : MonoBehaviour
 {
     #region Primitives
-    public int ID;
+    [ID] [DisableField] public int ID;
     public Ambient ambient = Ambient.Both;
     [ReadOnly] public bool isServer;
     #endregion
@@ -46,6 +46,18 @@ public class ViewConfig : MonoBehaviour
     {
         lastPosition = transform.position;
         lastRotation = transform.eulerAngles;
+    }
+
+    private void OnValidate()
+    {
+        if (gameObject.activeInHierarchy)
+        {
+            foreach (Transform tr in transform)
+            {
+                if (tr.TryGetComponent<NeutronView>(out NeutronView _))
+                    Debug.LogError("Child objects cannot have a Neutron View if their root or parent already has one.");
+            }
+        }
     }
 
     private void GetAttributes()

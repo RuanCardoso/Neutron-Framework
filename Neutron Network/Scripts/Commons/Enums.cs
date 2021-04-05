@@ -35,7 +35,7 @@ public enum Packet : byte
     Fail,
     DestroyPlayer,
     VoiceChat,
-    Disconnected,
+    PlayerDisconnected,
     Nickname,
     SetPlayerProperties,
     SetRoomProperties,
@@ -48,10 +48,8 @@ public enum Packet : byte
 
 public enum CachedPacket : byte
 {
-    Static = 121,
-    RPC = 122,
-    APC = 123,
-    Response = 124,
+    NonDynamic = 121,
+    Dynamic = 122,
     //======================================================
     // - CUSTOM PACKETS ADD HERE
     //======================================================
@@ -91,11 +89,6 @@ public enum Broadcast : byte
     /// Broadcast data on the room.
     /// </summary>
     Room,
-    /// <summary>
-    /// Broadcast data on the room, except for those in the lobby/waiting room.
-    /// that is only for players who are instantiated and in the same room/channel.
-    /// </summary>
-    AutoInstantiated,
     /// <summary>
     /// Broadcast data on the same group.
     /// </summary>
@@ -141,6 +134,11 @@ public enum AuthorityMode : int
     MasterClient,
     IgnoreExceptServer,
     Ignore,
+}
+
+public enum CacheMode : byte
+{
+    None, Overwrite, Append
 }
 
 [Flags]

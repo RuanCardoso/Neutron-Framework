@@ -14,7 +14,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Player : IEquatable<Player>, INeutronNotify, IEqualityComparer<Player>, IDisposable, INeutronSerializable
+    public class Player : INeutronNotify, INeutronSerializable, IDisposable, IEquatable<Player>, IEqualityComparer<Player>
     {
         /// <summary>
         /// ID of player.
@@ -44,8 +44,8 @@ namespace NeutronNetwork
         /// <summary>
         /// Properties of player.
         /// </summary>
-        public string _ { get => props; set => props = value; }
-        [SerializeField, TextArea] private string props = string.Empty;
+        public string _ { get => m_Properties; set => m_Properties = value; }
+        [SerializeField] private string m_Properties = "{\"Neutron\":\"Neutron\"}";
         /// <summary>
         /// ID of database.
         /// </summary>

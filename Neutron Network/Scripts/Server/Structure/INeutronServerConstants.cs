@@ -16,7 +16,7 @@ namespace NeutronNetwork.Internal.Server
     public class NeutronServerConstants : MonoBehaviour
     {
         #region Socket
-        protected static TcpListener TcpSocket;
+        public TcpListener TcpSocket;
         #endregion
 
         #region Constants
@@ -26,12 +26,11 @@ namespace NeutronNetwork.Internal.Server
         #endregion
 
         #region Collections
+        public ChannelDictionary ChannelsById = new ChannelDictionary();
         public NeutronSafeDictionary<TcpClient, Player> PlayersBySocket = new NeutronSafeDictionary<TcpClient, Player>();
         public NeutronSafeDictionary<int, Player> PlayersById = new NeutronSafeDictionary<int, Player>();
-        public NeutronSafeDictionary<int, Channel> ChannelsById = new NeutronSafeDictionary<int, Channel>();
         public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
         public NeutronQueue<Action> ActionsDispatcher = new NeutronQueue<Action>();
-        public List<Channel> _Channels = new List<Channel>();
         #endregion
 
         #region Physics
@@ -71,7 +70,7 @@ namespace NeutronNetwork.Internal.Server
 
         private void SetConstants(NeutronSettings NeutronSettings)
         {
-            CheatsUtils.enabled = NeutronSettings.ServerSettings.AntiCheat;
+            CheatsUtils.enabled = NeutronSettings.ServerSettings.NeutronAntiCheat;
             MAX_RECEIVE_MESSAGE_SIZE = NeutronSettings.MAX_REC_MSG;
             MAX_SEND_MESSAGE_SIZE = NeutronSettings.MAX_SEND_MSG;
             LIMIT_OF_CONNECTIONS_BY_IP = NeutronSettings.LIMIT_OF_CONN_BY_IP;

@@ -8,6 +8,9 @@ public class NeutronSettings : ScriptableObject
     [Header("[Server & Client]")]
     public NeutronGlobalSettings GlobalSettings;
 
+    [Header("[Editor]")]
+    public NeutronEditorSettings EditorSettings;
+
     [Header("[Client]")]
     public NeutronClientSettings ClientSettings;
 

@@ -2,7 +2,6 @@
 using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server;
 using NeutronNetwork.Internal.Wrappers;
-using NeutronNetwork.Wrappers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -84,7 +83,7 @@ namespace NeutronNetwork
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.Write(jsonString);
-                Dynamic(24, false, writer, sendTo, broadcast, protocol);
+                Dynamic(24, writer, CacheMode.Overwrite, sendTo, broadcast, protocol);
             }
         }
 

@@ -100,7 +100,7 @@ namespace NeutronNetwork.Internal.Client
             }
         }
 
-        protected void InternalRPC(int nID, int dynamicID, byte[] parameters, SendTo sendTo, bool cached, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRPC(int nID, int dynamicID, byte[] parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
             NeutronMessageInfo infor = _myPlayer.infor;
             using (NeutronWriter writer = new NeutronWriter())
@@ -108,24 +108,24 @@ namespace NeutronNetwork.Internal.Client
                 writer.WritePacket(Packet.Dynamic);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
+                writer.WritePacket(cacheMode);
                 writer.Write(nID);
                 writer.Write(dynamicID);
-                writer.Write(cached);
                 writer.WriteExactly(parameters);
                 writer.WriteExactly(infor.Serialize());
                 Send(writer.ToArray(), protocolType);
             }
         }
 
-        protected void InternalRCC(int RCCID, byte[] parameters, bool enableCache, SendTo sendTo, Protocol protocolType, Broadcast broadcast)
+        protected void InternalRCC(int RCCID, byte[] parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.WritePacket(Packet.NonDynamic);
                 writer.WritePacket(broadcast);
                 writer.WritePacket(sendTo);
+                writer.WritePacket(cacheMode);
                 writer.Write(RCCID);
-                writer.Write(enableCache);
                 writer.WriteExactly(parameters);
                 //---------------------------------------------------------------------------------------------------------------------
                 Send(writer.ToArray(), protocolType);
@@ -142,7 +142,7 @@ namespace NeutronNetwork.Internal.Client
                 foreach (NeutronView nV in GameObject.FindObjectsOfType<NeutronView>().Where(x => x.IsSceneObject && !x.isServer))
                     NeutronRegister.RegisterSceneObject(_myPlayer, nV, false, _);
             }
-            new Action(() => RegisterSceneObjects()).ExecuteOnMainThread(_);
+            new Action(() => RegisterSceneObjects()).DispatchOnMainThread();
         }
 
         protected void HandleRPC(int rpcID, int playerID, byte[] parameters, Player sender, NeutronMessageInfo infor)
@@ -152,7 +152,7 @@ namespace NeutronNetwork.Internal.Client
             {
                 if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
                     Communication.Dynamic(rpcID, parameters, sender, infor, neutronObject);
-            }).ExecuteOnMainThread(_);
+            }).DispatchOnMainThread();
         }
 
         protected void HandleRCC(int executeID, Player sender, byte[] parameters, bool isServer)
@@ -160,7 +160,7 @@ namespace NeutronNetwork.Internal.Client
             new Action(() =>
             {
                 Communication.NonDynamic(executeID, sender, parameters, isServer, _);
-            }).ExecuteOnMainThread(_);
+            }).DispatchOnMainThread();
         }
 
         //protected void HandleDatabase(Packet packet, object[] response)
@@ -186,7 +186,7 @@ namespace NeutronNetwork.Internal.Client
                 new Action(() =>
                 {
                     MonoBehaviour.Destroy(obj.gameObject);
-                }).ExecuteOnMainThread(_);
+                }).DispatchOnMainThread();
                 //------------------------------------------------------------------------------------
                 networkObjects.TryRemove(player.ID, out NeutronView objRemoved);
             }

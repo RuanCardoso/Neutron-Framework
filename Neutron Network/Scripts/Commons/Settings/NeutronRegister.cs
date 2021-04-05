@@ -31,7 +31,7 @@ namespace NeutronNetwork
                     }
                     else if (isServer)
                     {
-                        if (Neutron.Server.GetPlayer(mPlayer.tcpClient, out Player nPlayer))
+                        if (SocketHelper.GetPlayer(mPlayer.tcpClient, out Player nPlayer))
                         {
                             nPlayer.NeutronView = neutronView;
                             InternalUtils.ChangeColor(neutronView);
@@ -44,6 +44,39 @@ namespace NeutronNetwork
                     MonoBehaviour.Destroy(neutronView);
             }
             else if (!NeutronUtils.LoggerError("\"Neutron View\" object not found, failed to instantiate in network."))
+                MonoBehaviour.Destroy(neutronView);
+        }
+
+        public static void RegisterObject(Player mPlayer, NeutronView neutronView, int uniqueID, bool isServer, Neutron localInstance)
+        {
+            if (neutronView.ID == 0)
+            {
+                neutronView.owner = mPlayer;
+                neutronView.isServer = isServer;
+                neutronView.ID = uniqueID;
+                if (neutronView.enabled)
+                    neutronView.OnNeutronAwake();
+                if (!isServer && localInstance.networkObjects.TryAdd(neutronView.ID, neutronView))
+                    neutronView._ = localInstance;
+                else if (isServer)
+                {
+                    InternalUtils.ChangeColor(neutronView);
+                    if (mPlayer.IsInRoom())
+                    {
+                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel]
+                             .GetRoom(mPlayer.CurrentRoom).SceneSettings.networkObjects
+                             .Add(neutronView.ID, neutronView);
+                    }
+                    else if (mPlayer.IsInChannel())
+                    {
+                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel].SceneSettings.networkObjects
+                            .Add(neutronView.ID, neutronView);
+                    }
+                    else NeutronUtils.LoggerError("Network scene objects, require a channel or room.");
+                }
+                LoadNeutronBehaviours(neutronView);
+            }
+            else if (!NeutronUtils.LoggerError("Dynamically instantiated objects must have their ID at 0."))
                 MonoBehaviour.Destroy(neutronView);
         }
 
@@ -63,12 +96,12 @@ namespace NeutronNetwork
                     if (mPlayer.IsInRoom())
                     {
                         Neutron.Server.ChannelsById[mPlayer.CurrentChannel]
-                             .GetRoom(mPlayer.CurrentRoom).sceneSettings.networkObjects
+                             .GetRoom(mPlayer.CurrentRoom).SceneSettings.networkObjects
                              .Add(neutronView.ID, neutronView);
                     }
                     else if (mPlayer.IsInChannel())
                     {
-                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel].sceneSettings.networkObjects
+                        Neutron.Server.ChannelsById[mPlayer.CurrentChannel].SceneSettings.networkObjects
                             .Add(neutronView.ID, neutronView);
                     }
                     else NeutronUtils.LoggerError("Network scene objects, require a channel or room.");

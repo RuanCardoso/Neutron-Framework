@@ -13,58 +13,62 @@ MonoBehaviour:
   m_Name: Neutron Settings
   m_EditorClassIdentifier: 
   GlobalSettings:
-    Address: 192.168.91.104
+    Address: 127.0.0.1
     Port: 5055
     Serialization: 1
     Compression: 1
+    Lan: 0
     NoDelay: 1
     SendOnPostProcessing: 1
+  EditorSettings:
+    FPS: 60
+    DispatcherChunkSize: 60
   ClientSettings:
     FPS: 60
-    MonoChunkSize: 30
+    DispatcherChunkSize: 1
   ServerSettings:
     BackLog: 10
     FPS: 60
-    MonoChunkSize: 30
-    PacketChunkSize: 30
-    ProcessChunkSize: 30
-    AntiCheat: 1
+    DispatcherChunkSize: 1
+    PacketChunkSize: 1
+    ProcessChunkSize: 1
+    NeutronAntiCheat: 1
   HandleSettings:
     OnPlayerNicknameChanged:
       sendTo: 0
-      broadcast: 1
+      broadcast: 5
       protocol: 6
     OnPlayerDisconnected:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnPlayerJoinedChannel:
       sendTo: 0
-      broadcast: 6
+      broadcast: 2
       protocol: 6
     OnPlayerJoinedRoom:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnPlayerLeaveRoom:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnPlayerLeaveChannel:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnPlayerPropertiesChanged:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnRoomPropertiesChanged:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
     OnPlayerDestroyed:
       sendTo: 0
-      broadcast: 6
+      broadcast: 5
       protocol: 6
   MAX_REC_MSG: 512
   MAX_SEND_MSG: 512

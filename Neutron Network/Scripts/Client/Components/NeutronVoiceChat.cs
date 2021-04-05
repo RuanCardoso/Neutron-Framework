@@ -118,7 +118,7 @@ namespace NeutronNetwork.Components
                             options.Write(Frequency);
                             options.Write(audioClip.channels);
                             options.Write(samples);
-                            Dynamic(10021, false, options, sendTo, broadcast, protocol);
+                            Dynamic(10021, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                         }
                         tSyncInterval = 0;
                     }

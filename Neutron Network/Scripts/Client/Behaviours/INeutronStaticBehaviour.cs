@@ -18,11 +18,33 @@ namespace NeutronNetwork
         #endregion
 
         #region Neutron
-        protected void NonDynamic(int nonDynamicID, bool isCached, bool isServer, NeutronWriter parameters, Player sender, SendTo sendTo, Broadcast broadcast, Protocol protocol, Neutron instance)
+        /// <summary>
+        /// server side.
+        /// </summary>
+        /// <param name="nonDynamicID"></param>
+        /// <param name="parameters"></param>
+        /// <param name="sender"></param>
+        /// <param name="cacheMode"></param>
+        /// <param name="sendTo"></param>
+        /// <param name="broadcast"></param>
+        /// <param name="protocol"></param>
+        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Player sender, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
-            if (isServer)
-                Neutron.Server.NonDynamic(sender, nonDynamicID, isCached, parameters, sendTo, broadcast, protocol);
-            else instance.NonDynamic(nonDynamicID, parameters, isCached, sendTo, broadcast, protocol);
+            Neutron.Server.NonDynamic(sender, nonDynamicID, parameters, cacheMode, sendTo, broadcast, protocol);
+        }
+        /// <summary>
+        /// client side.
+        /// </summary>
+        /// <param name="nonDynamicID"></param>
+        /// <param name="parameters"></param>
+        /// <param name="cacheMode"></param>
+        /// <param name="sendTo"></param>
+        /// <param name="broadcast"></param>
+        /// <param name="protocol"></param>
+        /// <param name="instance"></param>
+        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol, Neutron instance)
+        {
+            instance.NonDynamic(nonDynamicID, parameters, cacheMode, sendTo, broadcast, protocol);
         }
         #endregion
 

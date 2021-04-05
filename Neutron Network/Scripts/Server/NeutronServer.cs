@@ -4,13 +4,13 @@ using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server.Delegates;
 using NeutronNetwork.Internal.Wrappers;
 using System;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Created by: Ruan Cardoso
@@ -21,6 +21,7 @@ using UnityEngine;
 namespace NeutronNetwork.Internal.Server
 {
     [RequireComponent(typeof(NeutronConfig))]
+    [RequireComponent(typeof(NeutronDispatcher))]
     [RequireComponent(typeof(NeutronEvents))]
     [RequireComponent(typeof(NeutronStatistics))]
     [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_SERVER_ORDER)]
@@ -51,6 +52,10 @@ namespace NeutronNetwork.Internal.Server
         //* Thread pool will join them with other threads that are already processing other methods. causing loss of performance, these must be unique.
         #endregion
 
+        #region Threading
+        CancellationTokenSource cts = new CancellationTokenSource();
+        #endregion
+
         #region Functions
         private void InitilizeServer()
         {
@@ -63,8 +68,7 @@ namespace NeutronNetwork.Internal.Server
             acptTh.IsBackground = true;
             acptTh.Start();
             //* This thread processes data received from clients.
-            Thread dataForProcessingTh = new Thread((e) =>
-            ServerDataProcessingStack());
+            Thread dataForProcessingTh = new Thread((e) => ServerDataProcessingStack());
             dataForProcessingTh.Priority = System.Threading.ThreadPriority.Highest; //* set the max priority.
             dataForProcessingTh.IsBackground = true;
             dataForProcessingTh.Start();
@@ -77,26 +81,33 @@ namespace NeutronNetwork.Internal.Server
             onServerStart?.Invoke();
         }
         //* initiates client acceptance.
-        private void OnAcceptedClient()
+        private async void OnAcceptedClient()
         {
             try
             {
-                while (Initialized)
+                CancellationToken token = cts.Token;
+                while (Initialized && !token.IsCancellationRequested)
                 {
-                    TcpClient tcpClient = TcpSocket.AcceptTcpClient();
+                    if (token.IsCancellationRequested) return;
+                    TcpClient tcpClient = await TcpSocket.AcceptTcpClientAsync();
                     acceptedClients.SafeEnqueue(tcpClient); //* [Thread-Safe]. adds the client to the queue.
                 }
             }
-            catch (SocketException) { }
+            catch (ObjectDisposedException) { }
+            catch (ThreadAbortException) { }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
         }
         //* start server data processing.
         private void ServerDataProcessingStack()
         {
-            while (Initialized) //* infinite loop to keep data processing active.
+            CancellationToken token = cts.Token;
+            while (Initialized && !token.IsCancellationRequested) //* infinite loop to keep data processing active.
             {
+                if (token.IsCancellationRequested) return;
                 dataForProcessing.mEvent.Reset(); //* Sets the state of the event to nonsignaled, which causes threads to block.
                 while (dataForProcessing.SafeCount > 0) //* thread-safe - loop to process all data in the queue, before blocking the thread.
                 {
+                    if (token.IsCancellationRequested) return;
                     for (int i = 0; i < NeutronConfig.Settings.ServerSettings.PacketChunkSize && dataForProcessing.SafeCount > 0; i++)
                     {
                         var data = dataForProcessing.SafeDequeue();
@@ -109,6 +120,7 @@ namespace NeutronNetwork.Internal.Server
         //* processes the queue clients. [Multiples Thread - ThreadPool for best perfomance.]
         private void AcceptedConnectionsProcessingStack()
         {
+            CancellationToken token = cts.Token;
             bool SYNCheck(TcpClient synClient)
             {
                 string addr = ((IPEndPoint)synClient.Client.RemoteEndPoint).Address.ToString();
@@ -130,11 +142,13 @@ namespace NeutronNetwork.Internal.Server
                 else return RegisteredConnectionsByIp.TryAdd(addr, 1);
             }
 
-            while (Initialized)
+            while (Initialized && !token.IsCancellationRequested)
             {
+                if (token.IsCancellationRequested) return;
                 acceptedClients.mEvent.Reset(); //* Sets the state of the event to nonsignaled, which causes threads to block.
                 while (acceptedClients.SafeCount > 0)
                 {
+                    if (token.IsCancellationRequested) return;
                     var acceptedClient = acceptedClients.SafeDequeue();
                     if (!SYNCheck(acceptedClient)) continue;
                     acceptedClient.NoDelay = NeutronConfig.Settings.GlobalSettings.NoDelay;
@@ -142,7 +156,7 @@ namespace NeutronNetwork.Internal.Server
                     // TODO acceptedClient.SendTimeout = int.MaxValue;
                     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
                     Player newPlayer = new Player(InternalUtils.GetUniqueID(), acceptedClient, cancellationTokenSource);
-                    if (AddPlayer(newPlayer))
+                    if (SocketHelper.AddPlayer(newPlayer))
                     {
                         totalAmountOfPlayers++;
                         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,9 +189,11 @@ namespace NeutronNetwork.Internal.Server
 
                 while (Initialized && !token.IsCancellationRequested)
                 {
+                    if (token.IsCancellationRequested) return;
                     manualResetEvent.Reset();
                     while (queueData.SafeCount > 0)
                     {
+                        if (token.IsCancellationRequested) return;
                         for (int i = 0; i < NeutronConfig.Settings.ServerSettings.ProcessChunkSize && queueData.SafeCount > 0; i++)
                         {
                             var data = queueData.SafeDequeue();
@@ -206,6 +222,7 @@ namespace NeutronNetwork.Internal.Server
                     manualResetEvent.WaitOne();
                 }
             }
+            catch (ObjectDisposedException) { }
             catch (ThreadAbortException) { }
             catch (Exception ex) { NeutronUtils.StackTrace(ex); }
         }
@@ -217,40 +234,46 @@ namespace NeutronNetwork.Internal.Server
             byte[] header = new byte[sizeof(int)];
             byte[] message;
 
-            var netStream = player.tcpClient.GetStream();
-
-            while (Initialized && !token.IsCancellationRequested)
+            try
             {
-                if (protocol == Protocol.Tcp)
+                var netStream = player.tcpClient.GetStream();
+                while (Initialized && !token.IsCancellationRequested)
                 {
-                    if (await Communication.ReadAsyncBytes(netStream, header, 0, sizeof(int), token))
+                    if (token.IsCancellationRequested) return;
+                    if (protocol == Protocol.Tcp)
                     {
-                        int size = BitConverter.ToInt32(header, 0);
-                        if (size > MAX_RECEIVE_MESSAGE_SIZE || size <= 0) HandleDisconnect(player, player._cts);
-                        else
+                        if (await Communication.ReadAsyncBytes(netStream, header, 0, sizeof(int), token))
                         {
-                            message = new byte[size];
-                            if (await Communication.ReadAsyncBytes(netStream, message, 0, size, token))
+                            int size = BitConverter.ToInt32(header, 0);
+                            if (size > MAX_RECEIVE_MESSAGE_SIZE || size <= 0) DisconnectHandle(player);
+                            else
                             {
-                                dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Tcp, message, player));
-                                InternalUtils.UpdateStatistics(Statistics.ServerRec, size);
+                                message = new byte[size];
+                                if (await Communication.ReadAsyncBytes(netStream, message, 0, size, token))
+                                {
+                                    dataForProcessing.SafeEnqueue(new DataBuffer(message, player, Protocol.Tcp));
+                                    InternalUtils.UpdateStatistics(Statistics.ServerRec, size);
+                                }
+                                else DisconnectHandle(player);
                             }
-                            else HandleDisconnect(player, player._cts);
                         }
+                        else DisconnectHandle(player);
                     }
-                    else HandleDisconnect(player, player._cts);
-                }
-                else if (protocol == Protocol.Udp)
-                {
-                    var udpReceiveResult = await player.udpClient.ReceiveAsync();
-                    if (udpReceiveResult.Buffer.Length > 0)
+                    else if (protocol == Protocol.Udp)
                     {
-                        if (player.rPEndPoint == null) player.rPEndPoint = udpReceiveResult.RemoteEndPoint;
-                        dataForProcessing.SafeEnqueue(new DataBuffer(Protocol.Udp, udpReceiveResult.Buffer, player));
-                        InternalUtils.UpdateStatistics(Statistics.ServerRec, udpReceiveResult.Buffer.Length);
+                        var udpReceiveResult = await player.udpClient.ReceiveAsync();
+                        if (udpReceiveResult.Buffer.Length > 0)
+                        {
+                            if (player.rPEndPoint == null) player.rPEndPoint = udpReceiveResult.RemoteEndPoint;
+                            dataForProcessing.SafeEnqueue(new DataBuffer(udpReceiveResult.Buffer, player, Protocol.Udp));
+                            InternalUtils.UpdateStatistics(Statistics.ServerRec, udpReceiveResult.Buffer.Length);
+                        }
                     }
                 }
             }
+            catch (ObjectDisposedException) { }
+            catch (ThreadAbortException) { }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
         }
         #endregion
 
@@ -276,10 +299,10 @@ namespace NeutronNetwork.Internal.Server
                             HandleSendChat(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
                             break;
                         case Packet.Dynamic:
-                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), protocol);
+                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadPacket<CacheMode>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), protocol);
                             break;
                         case Packet.NonDynamic:
-                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean(), parametersReader.ReadExactly(), protocol);
+                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadPacket<CacheMode>(), parametersReader.ReadInt32(), parametersReader.ReadExactly(), protocol);
                             break;
                         case Packet.GetChannels:
                             HandleGetChannels(mSender, mCommand);
@@ -288,7 +311,7 @@ namespace NeutronNetwork.Internal.Server
                             HandleJoinChannel(mSender, mCommand, parametersReader.ReadInt32());
                             break;
                         case Packet.GetChached:
-                            HandleGetCached(mSender, parametersReader.ReadPacket<CachedPacket>(), parametersReader.ReadInt32());
+                            HandleGetCached(mSender, parametersReader.ReadPacket<CachedPacket>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean());
                             break;
                         case Packet.CreateRoom:
                             HandleCreateRoom(mSender, mCommand, parametersReader.ReadString(), parametersReader.ReadInt32(), parametersReader.ReadString(), parametersReader.ReadBoolean(), parametersReader.ReadBoolean(), parametersReader.ReadString());
@@ -320,47 +343,48 @@ namespace NeutronNetwork.Internal.Server
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                NeutronUtils.StackTrace(ex);
-            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
 #endif
         }
         #endregion
 
         #region MonoBehaviour
-#if UNITY_SERVER || UNITY_EDITOR
         private void Start()
         {
-#if !NET_STANDARD_2_0
-#if !DEVELOPMENT_BUILD
-            DontDestroyOnLoad(gameObject.transform.root);
-            if (!isReady)
-                NeutronUtils.LoggerError("The server could not be initialized):");
-            else
-            {
-                StartCoroutine(InternalUtils.KeepFramerate(NeutronConfig.Settings.ServerSettings.FPS));
-                InitilizeServer();
-                //NeutronRegister.RegisterSceneObject(null, true, null);
-            }
-#elif DEVELOPMENT_BUILD
+#if UNITY_SERVER
             Console.Clear();
-            NeutronUtils.LoggerError("Development build is not supported on the Server.");
 #endif
-#elif NET_STANDARD_2_0
-        Console.Clear();
-        NeutronUtils.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
+#if UNITY_EDITOR
+            var targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
+            var Api = PlayerSettings.GetApiCompatibilityLevel(targetGroup);
+            if (Api != ApiCompatibilityLevel.NET_Standard_2_0)
+                Init();
+            else NeutronUtils.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
+#else
+#if !NET_STANDARD_2_0
+            Init();
+#else
+NeutronUtils.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
 #endif
+#endif
+            void Init()
+            {
+                if (!isReady)
+                    NeutronUtils.LoggerError("The server could not be initialized ):");
+                else InitilizeServer();
+            }
         }
-#endif
+
         private void OnApplicationQuit()
         {
-            Initialized = false; //* Disable server(disable all loop and kill all threads).
-            DisposeAllClients(); //* Dispose all client sockets.
-            DisposeServerSocket();
-            ///////////////////////////////////////////////////////////////
-            NeutronUtils.Logger("Server: All resources have been released!!");
-            ///////////////////////////////////////////////////////////////
+            using (cts)
+            {
+                //* Disable server(disable all loop and kill all threads).
+                cts.Cancel();
+                Initialized = false;
+                SocketHelper.Dispose();
+            }
         }
         #endregion
     }

@@ -54,7 +54,7 @@ namespace NeutronNetwork.Components
                                 break;
                         }
                     }
-                    Dynamic(10018, false, options, sendTo, broadcast, protocol);
+                    Dynamic(10018, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
@@ -63,7 +63,6 @@ namespace NeutronNetwork.Components
         [Dynamic(10018)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
-            Debug.LogError("Received");
             using (options)
             {
                 for (int i = 0; i < parameters.Length; i++)

@@ -46,7 +46,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && (synchronizePosition || synchronizeRotation || synchronizeScale) && HasAuthority)
+            if ((synchronizePosition || synchronizeRotation || synchronizeScale) && HasAuthority)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = NeutronUtils.GetMaxPacketsPerSecond(synchronizeInterval);
         }
@@ -76,7 +76,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
-                        Dynamic(10013, false, options, sendTo, broadcast, protocol);
+                        Dynamic(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                     if (sendTo == SendTo.Others || sendTo == SendTo.Only)
                         ResetTransforms();
                 }
@@ -145,9 +145,9 @@ namespace NeutronNetwork.Components
         }
 
         //* Update is called once per frame
-        private new void Update()
+        protected override void OnNeutronUpdate()
         {
-            base.Update();
+            base.OnNeutronUpdate();
             if (!HasAuthority && !onFirstPacket) return;
             if (!HasAuthority && synchronizeScale) transform.localScale = scale;
             if (IsClient)

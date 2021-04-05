@@ -46,7 +46,17 @@ namespace NeutronNetwork.Internal.Comms
                                 InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Channel[{sender.CurrentChannel}]");
                             else if (sender.IsInChannel()) InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Room[{sender.CurrentRoom}]");
                         }
-                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
+                        if (nonDynamicID == 1001)
+                            NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
+                        else if (nonDynamicID == 1002)
+                        {
+                            using (NeutronReader defaultOptions = new NeutronReader(parameters))
+                            {
+                                defaultOptions.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
+                                NeutronRegister.RegisterObject(sender, objectToInst, defaultOptions.ReadInt32(), isServer, localInstance);
+                            }
+                        }
+                        else return true;
                     }
                     else if (objType == typeof(bool))
                         return (bool)obj;

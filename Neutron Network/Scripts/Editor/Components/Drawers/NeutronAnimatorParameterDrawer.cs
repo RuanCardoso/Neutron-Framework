@@ -11,6 +11,6 @@ public class NeutronAnimatorParameterDrawer : PropertyDrawer
         SerializedProperty parameterType = property.FindPropertyRelative("parameterType");
         int indexEnumValue = parameterType.intValue;
         AnimatorControllerParameterType paramaterTypeName = (AnimatorControllerParameterType)indexEnumValue;
-        EditorGUI.PropertyField(new Rect(position.x, position.y, position.width, position.height), parameterMode, new GUIContent($"n: {parameterName.stringValue} | t: {paramaterTypeName.ToString()}"));
+        EditorGUI.PropertyField(position, parameterMode, new GUIContent($"n: {parameterName.stringValue} | t: {paramaterTypeName.ToString()}"));
     }
 }

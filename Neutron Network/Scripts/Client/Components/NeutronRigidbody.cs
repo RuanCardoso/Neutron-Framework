@@ -56,7 +56,7 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            if (IsClient && (synchronizeVelocity || synchronizeRotation) && HasAuthority)
+            if ((synchronizeVelocity || synchronizeRotation) && HasAuthority)
                 StartCoroutine(Synchronize());
             else if (IsServer) maxPacketsPerSecond = NeutronUtils.GetMaxPacketsPerSecond(synchronizeInterval);
         }
@@ -73,6 +73,7 @@ namespace NeutronNetwork.Components
         {
             while (true)
             {
+                Debug.LogError("rigibodyyy");
                 using (NeutronWriter options = new NeutronWriter())
                 {
                     if (synchronizePosition) options.Write(neutronRigidbody.position);
@@ -80,7 +81,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(neutronRigidbody.rotation);
                     if (synchronizeAngularVelocity) options.Write(neutronRigidbody.angularVelocity);
                     if (neutronRigidbody.velocity != Vector3.zero && synchronizeVelocity || neutronRigidbody.angularVelocity != Vector3.zero && synchronizeAngularVelocity)
-                        Dynamic(10012, false, options, sendTo, broadcast, protocol);
+                        Dynamic(10012, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
@@ -147,9 +148,9 @@ namespace NeutronNetwork.Components
             }
         }
 
-        private new void FixedUpdate()
+        protected override void OnNeutronFixedUpdate()
         {
-            base.FixedUpdate();
+            base.OnNeutronFixedUpdate();
             if (!HasAuthority && !onFirstPacket) return;
             if (IsClient)
             {

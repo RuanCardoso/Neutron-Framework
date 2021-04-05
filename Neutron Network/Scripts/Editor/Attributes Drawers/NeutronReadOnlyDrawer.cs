@@ -3,15 +3,17 @@ using UnityEditor;
 using UnityEngine;
 
 [CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
-public class ReadOnlyDrawer : DecoratorDrawer
+public class ReadOnlyDrawer : PropertyDrawer
 {
-    public override void OnGUI(Rect position)
+    public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
-        GUI.enabled = false;
+        return EditorGUI.GetPropertyHeight(property, label, true);
     }
 
-    public override float GetHeight()
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
-        return 0;
+        GUI.enabled = false;
+        EditorGUI.PropertyField(position, property, label, true);
+        GUI.enabled = true;
     }
 }

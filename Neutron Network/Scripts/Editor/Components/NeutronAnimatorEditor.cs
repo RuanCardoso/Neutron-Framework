@@ -1,6 +1,8 @@
 ﻿using System.Linq;
+using System.Reflection;
 using NeutronNetwork.Components;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 [CustomEditor(typeof(NeutronAnimator))]
@@ -18,25 +20,14 @@ public class NeutronAnimatorEditor : Editor
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
-        int parametersCount = neutronAnimatorTarget.animator.parameterCount;
-        if (parametersCount == 0 && neutronAnimatorTarget.animator.isActiveAndEnabled)
-            AnimatorRefresh();
-        if (neutronAnimatorTarget.parameters != null)
+        if (neutronAnimatorTarget.animator != null)
         {
-            if (parametersCount > 0 && neutronAnimatorTarget.parameters.Length != parametersCount && neutronAnimatorTarget.animator.isActiveAndEnabled)
-                ParametersUpdate();
+            AnimatorController controller = (AnimatorController)neutronAnimatorTarget.animator.runtimeAnimatorController;
+            if (controller != null)
+            {
+                if (neutronAnimatorTarget.parameters.Length != controller.parameters.Length)
+                    neutronAnimatorTarget.parameters = controller.parameters.Select(x => new NeutronAnimatorParameter(x.name, x.type, ParameterMode.Sync)).ToArray();
+            }
         }
-        else ParametersUpdate();
-    }
-
-    private void AnimatorRefresh()
-    {
-        neutronAnimatorTarget.animator.enabled = false;
-        neutronAnimatorTarget.animator.enabled = true;
-    }
-
-    private void ParametersUpdate()
-    {
-        neutronAnimatorTarget.parameters = neutronAnimatorTarget.animator.parameters.Select(x => new NeutronAnimatorParameter(x.name, x.type, ParameterMode.Sync)).ToArray();
     }
 }

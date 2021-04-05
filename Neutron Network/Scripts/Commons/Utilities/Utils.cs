@@ -106,19 +106,6 @@ namespace NeutronNetwork.Internal
     public class InternalUtils
     {
         public static int GetUniqueID() => ++NeutronServer.uniqueID;
-        public static void Enqueue(Action action, NeutronQueue<Action> cQueue) => cQueue.SafeEnqueue(action);
-        public static void ChunkDequeue(NeutronQueue<Action> cQueue, int chunkSize)
-        {
-            try
-            {
-                for (int i = 0; i < chunkSize && cQueue.SafeCount > 0; i++)
-                {
-                    cQueue.SafeDequeue().Invoke();
-                }
-            }
-            catch (Exception ex) { NeutronUtils.StackTrace(ex); }
-        }
-
         public static int GetFreePort(Protocol type)
         {
             switch (type)
@@ -151,23 +138,26 @@ namespace NeutronNetwork.Internal
             {
                 foreach (GameObject gameObject in sceneObjects)
                 {
-                    GameObject instObject = MonoBehaviour.Instantiate(gameObject);
-                    if (instObject != null)
+                    if (gameObject != null)
                     {
-                        var neutronViews = instObject.GetComponentsInChildren<NeutronView>();
-                        if (neutronViews != null)
+                        GameObject instObject = MonoBehaviour.Instantiate(gameObject);
+                        if (instObject != null)
                         {
-                            foreach (NeutronView view in neutronViews)
+                            MoveToContainer(instObject, scene.name);
+                            var neutronViews = instObject.GetComponentsInChildren<NeutronView>();
+                            if (neutronViews != null)
                             {
-                                NeutronRegister.RegisterSceneObject(ownerNetworkObjects, view, true);
+                                foreach (NeutronView view in neutronViews)
+                                {
+                                    NeutronRegister.RegisterSceneObject(ownerNetworkObjects, view, true);
+                                }
                             }
                         }
-                    }
-                    MoveToContainer(instObject, scene.name);
 #if UNITY_SERVER
                     if (clientOnly)
                         MonoBehaviour.Destroy(gameObject);
 #endif
+                    }
                 }
             }
             if (enablePhysics)

@@ -8,7 +8,7 @@ namespace NeutronNetwork
     {
         #region Identity
         [Header("[Identity]")]
-        [SerializeField] [ID] [ReadOnly] private int iD;
+        [SerializeField] [ID] [DisableField] private int iD;
         [SerializeField] [Separator] private AuthorityMode authority = AuthorityMode.Owner;
         #endregion
 
@@ -157,7 +157,7 @@ namespace NeutronNetwork
         /// <para>PT: ID do método que será invocado.</para><br/>
         /// <para>EN: ID of the method that will be invoked.</para>
         /// </param>
-        /// <param name="IsCached">
+        /// <param name="cacheMode">
         /// <para>PT: Indica se o método será armazenado em cache para se possa obter depois.</para><br/>
         /// <para>EN: Indicates whether the method will be cached so that it can be obtained later.</para>
         /// </param>
@@ -177,31 +177,31 @@ namespace NeutronNetwork
         /// <para>PT: Qual protocolo será usado para enviar estes dados?</para><br/>
         /// <para>EN: Which protocol will be used to send this data?</para>
         /// </param>
-        protected void Dynamic(int DynamicID, bool IsCached, NeutronWriter parameters, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        protected void Dynamic(int DynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
             int uniqueID = DynamicID ^ ID;
             if (IsClient)
-                NeutronView._.Dynamic(NeutronView.ID, uniqueID, parameters, sendTo, IsCached, broadcast, protocol);
+                NeutronView._.Dynamic(NeutronView.ID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
             else if (IsServer)
-                Neutron.Server.Dynamic(NeutronView.ID, uniqueID, parameters, NeutronView.owner, sendTo, IsCached, broadcast, protocol);
+                Neutron.Server.Dynamic(NeutronView.ID, uniqueID, parameters, NeutronView.owner, cacheMode, sendTo, broadcast, protocol);
         }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="networkID"></param>
         /// <param name="DynamicID"></param>
-        /// <param name="IsCached"></param>
+        /// <param name="cacheMode"></param>
         /// <param name="parameters"></param>
         /// <param name="sendTo"></param>
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
-        protected void Dynamic(int networkID, int DynamicID, bool IsCached, NeutronWriter parameters, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        protected void Dynamic(int networkID, int DynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
             int uniqueID = DynamicID ^ ID;
             if (IsClient)
-                NeutronView._.Dynamic(networkID, uniqueID, parameters, sendTo, IsCached, broadcast, protocol);
+                NeutronView._.Dynamic(networkID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
             else if (IsServer)
-                Neutron.Server.Dynamic(networkID, uniqueID, parameters, NeutronView.owner, sendTo, IsCached, broadcast, protocol);
+                Neutron.Server.Dynamic(networkID, uniqueID, parameters, NeutronView.owner, cacheMode, sendTo, broadcast, protocol);
         }
         #endregion
     }

@@ -1,4 +1,5 @@
 using System;
+using NeutronNetwork.Internal.Attributes;
 using UnityEngine;
 
 [Serializable]
@@ -8,26 +9,34 @@ public class NeutronGlobalSettings
     public int Port = 5055;
     public Serialization Serialization = Serialization.Json;
     public Compression Compression = Compression.Deflate;
+    [ReadOnly] public bool Lan;
     public bool NoDelay = true;
     public bool SendOnPostProcessing = true;
+}
+
+[Serializable]
+public class NeutronEditorSettings
+{
+    public int FPS = 60;
+    public int DispatcherChunkSize = 60;
 }
 
 [Serializable]
 public class NeutronServerSettings
 {
     public int BackLog = 10;
-    [Range(1, 3600)] public int FPS = 60;
-    [Range(1, 500)] public int MonoChunkSize = 1;
-    [Range(1, 500)] public int PacketChunkSize = 1;
-    [Range(1, 500)] public int ProcessChunkSize = 1;
-    public bool AntiCheat = true;
+    public int FPS = 60;
+    public int DispatcherChunkSize = 1;
+    public int PacketChunkSize = 1;
+    public int ProcessChunkSize = 1;
+    [HideInInspector] public bool NeutronAntiCheat = true;
 }
 
 [Serializable]
 public class NeutronClientSettings
 {
-    [Range(1, 120)] public int FPS = 60;
-    [Range(1, 500)] public int MonoChunkSize = 1;
+    public int FPS = 60;
+    public int DispatcherChunkSize = 1;
 }
 
 [Serializable]

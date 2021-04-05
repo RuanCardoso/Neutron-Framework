@@ -89,11 +89,6 @@ namespace NeutronNetwork
         {
             GetStream().Position = pos;
         }
-
-        public new void Dispose()
-        {
-            base.Dispose();
-        }
     }
 
     public class NeutronReader : BinaryReader
@@ -186,11 +181,6 @@ namespace NeutronNetwork
         public void SetPosition(int pos)
         {
             GetStream().Position = pos;
-        }
-
-        public new void Dispose()
-        {
-            base.Dispose();
         }
     }
 }
