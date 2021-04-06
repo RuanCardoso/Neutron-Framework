@@ -4,6 +4,7 @@ using System.Reflection;
 using NeutronNetwork;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Internal.Extesions;
 using UnityEngine;
 
 public class ViewConfig : MonoBehaviour

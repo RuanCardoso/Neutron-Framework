@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
+using UnityEngine;
 
 namespace NeutronNetwork.Internal.Extesions
 {
@@ -202,6 +203,23 @@ namespace NeutronNetwork.Internal.Extesions
                 return formatter.Deserialize(stream);
             }
         }
+#if !UNITY_2019_2_OR_NEWER
+        public static bool TryGetComponent<T>(this MonoBehaviour monoBehaviour, out T component)
+        {
+            component = monoBehaviour.GetComponent<T>();
+            if (component != null)
+                return (component.ToString() != null && component.ToString() != "null");
+            else return false;
+        }
+
+        public static bool TryGetComponent<T>(this Transform monoBehaviour, out T component)
+        {
+            component = monoBehaviour.GetComponent<T>();
+            if (component != null)
+                return (component.ToString() != null && component.ToString() != "null");
+            else return false;
+        }
+#endif
     }
 }
 
