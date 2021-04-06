@@ -96,10 +96,10 @@ namespace NeutronNetwork.Components
                 return audioClip.GetData(samples, offset);
             }
 
-            void ResetTimeAndSetOffset(int pos)
+            void ResetTimeAndSetOffset(int rPos)
             {
                 tSamplesTime = 0;
-                offset = pos;
+                offset = rPos;
             }
 
             void Broadcast(float[] samples)

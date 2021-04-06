@@ -46,7 +46,7 @@ namespace NeutronNetwork.Internal.Server
 #if UNITY_SERVER || UNITY_EDITOR
         private void Update()
         {
-            CurrentTime = Time.unscaledTime;
+            CurrentTime = (double)Time.unscaledTime;
         }
 #endif
         #endregion

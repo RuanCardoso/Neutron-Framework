@@ -20,7 +20,7 @@ public class NeutronIDDrawer : PropertyDrawer
                 property.intValue = Mathf.Abs(targetObject.GetInstanceID());
             else if (type.IsAssignableFrom(typeof(NeutronView)))
             {
-                if (!PrefabStageUtility.GetCurrentPrefabStage())
+                if (PrefabStageUtility.GetCurrentPrefabStage() == null)
                 {
                     if (targetObject.gameObject.activeInHierarchy && property.intValue == 0)
                         property.intValue = Random.Range(1, (2771 - 1));

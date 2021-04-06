@@ -170,7 +170,7 @@ namespace NeutronNetwork
 
         private void Update()
         {
-            TimeAsDouble = Time.timeAsDouble;
+            TimeAsDouble = (double)Time.unscaledTime;
             if (!IsConnected) return;
 #if !UNITY_SERVER
             if (Server == null)
