@@ -204,7 +204,7 @@ namespace NeutronNetwork.Internal.Extesions
             }
         }
 #if !UNITY_2019_2_OR_NEWER
-        public static bool TryGetComponent<T>(this MonoBehaviour monoBehaviour, out T component)
+        public static bool TryGetComponent<T>(this GameObject monoBehaviour, out T component)
         {
             component = monoBehaviour.GetComponent<T>();
             if (component != null)
