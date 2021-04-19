@@ -78,7 +78,7 @@ public class ViewConfig : MonoBehaviour
                         Dynamic NeutronDynamicAttr = mInfos[y].GetCustomAttribute<Dynamic>();
                         if (NeutronDynamicAttr != null)
                         {
-                            RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y]);
+                            RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y], NeutronDynamicAttr);
                             int uniqueID = NeutronDynamicAttr.ID ^ mInstance.ID;
                             if (!Dynamics.ContainsKey(uniqueID))
                                 Dynamics.Add(uniqueID, remoteProceduralCall);

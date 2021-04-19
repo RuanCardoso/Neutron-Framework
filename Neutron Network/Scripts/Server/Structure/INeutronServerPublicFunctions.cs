@@ -11,12 +11,12 @@ namespace NeutronNetwork.Internal.Server
         {
             Player Sender = owner;
             NeutronMessageInfo infor = new NeutronMessageInfo(CurrentTime);
-            HandleDynamic(Sender, broadcast, sendTo, cacheMode, nID, DynamicID, options.ToArray(), infor.Serialize(), protocol);
+            DynamicHandler(Sender, broadcast, sendTo, cacheMode, nID, DynamicID, options.ToArray(), infor.Serialize(), protocol);
         }
 
-        public void NonDynamic(Player sender, int nonDynamicID, NeutronWriter options, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        public void NonDynamic(Player sender, int nonDynamicID, NeutronWriter options)
         {
-            HandleNonDynamic(sender, broadcast, sendTo, cacheMode, nonDynamicID, options.ToArray(), protocol);
+            NonDynamicHandler(sender, nonDynamicID, options.ToArray());
         }
     }
 }

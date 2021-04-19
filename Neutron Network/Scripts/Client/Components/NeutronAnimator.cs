@@ -60,7 +60,7 @@ namespace NeutronNetwork.Components
             }
         }
 
-        [Dynamic(10018)]
+        [Dynamic(10018, true)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             using (options)

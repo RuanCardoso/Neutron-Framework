@@ -95,8 +95,9 @@ namespace NeutronNetwork
             // Get the line number from the stack frame
             var line = frame.GetFileLineNumber();
             //print
-            LoggerError($"Exception ocurred in: {line}");
             Debug.LogException(ex);
+            // extra print
+            LoggerError($"Exception occurred on the line: {line}, In the \"{frame.GetMethod().Name}\" method, In the \"{frame.GetMethod().DeclaringType.Name}\" class");
         }
     }
 }

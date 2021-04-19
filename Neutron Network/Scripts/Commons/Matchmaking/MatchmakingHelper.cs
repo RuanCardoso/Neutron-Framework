@@ -1,12 +1,18 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NeutronNetwork;
 using NeutronNetwork.Internal.Extesions;
+using NeutronNetwork.Internal.Server.Delegates;
 using UnityEngine;
 
 public static class MatchmakingHelper
 {
+    #region Events
+    public static event Events.OnCustomBroadcast m_OnCustomBroadcast;
+    #endregion
+
     public static bool GetPlayer(int nID, out Player nPlayer)
     {
         return Neutron.Server.PlayersById.TryGetValue(nID, out nPlayer);
@@ -62,6 +68,45 @@ public static class MatchmakingHelper
                 if (l_Cache != null)
                     neutronMatchmaking.AddCache(l_Cache);
             }
+        }
+    }
+
+    public static Player[] Broadcast(Player nPlayer, Broadcast broadcast)
+    {
+        INeutronMatchmaking matchmaking = MatchmakingHelper.Matchmaking(nPlayer);
+        switch (broadcast)
+        {
+            case global::Broadcast.Me:
+                return null;
+            case global::Broadcast.Server:
+                {
+                    return Neutron.Server.PlayersBySocket.Values.ToArray();
+                }
+            case global::Broadcast.Channel:
+                {
+                    if (Neutron.Server.ChannelsById.TryGetValue(nPlayer.CurrentChannel, out Channel l_Channel))
+                        return l_Channel.GetPlayers();
+                    else return null;
+                }
+            case global::Broadcast.Room:
+                {
+                    if (Neutron.Server.ChannelsById.TryGetValue(nPlayer.CurrentChannel, out Channel l_Channel))
+                    {
+                        Room l_Room = l_Channel.GetRoom(nPlayer.CurrentRoom);
+                        if (l_Room != null)
+                            return l_Room.GetPlayers();
+                        else return null;
+                    }
+                    else return null;
+                }
+            case global::Broadcast.Auto:
+                {
+                    if (matchmaking != null)
+                        return matchmaking.GetPlayers();
+                    else return Neutron.Server.PlayersBySocket.Values.ToArray();
+                }
+            default:
+                return m_OnCustomBroadcast?.Invoke(nPlayer, broadcast);
         }
     }
 }

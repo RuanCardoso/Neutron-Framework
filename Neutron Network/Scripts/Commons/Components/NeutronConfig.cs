@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-[DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CONFIG_ORDER)]
+[DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CONFIG)]
 public class NeutronConfig : MonoBehaviour
 {
     public static NeutronSettings Settings { get; private set; }

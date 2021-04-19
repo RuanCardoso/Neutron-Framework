@@ -90,5 +90,6 @@ namespace NeutronNetwork.Internal.Server.Delegates
         public delegate void OnPlayerTrigger(Player player, Collider coll, string type);
         public delegate void OnServerAwake();
         public delegate void OnServerStart();
+        public delegate Player[] OnCustomBroadcast(Player nSender, Broadcast broadcast);
     }
 }

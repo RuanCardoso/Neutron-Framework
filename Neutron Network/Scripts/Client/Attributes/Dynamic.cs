@@ -8,12 +8,16 @@
 public class Dynamic : Attribute
 {
     public int ID;
+    public bool DispatchOnMainThread;
+    public bool SendAfterProcessing;
     /// <summary>
     /// <para>PT: Marca o metódo com um ID, este ID será usado para invocar o metódo entre os clientes e servidor.</para>
     /// <para>EN: Marks the method with an ID, this ID will be used to invoke the method between the clients and the server.</para>
     /// </summary>
-    public Dynamic(int ID)
+    public Dynamic(int ID, bool DispatchOnMainThread = false, bool SendAfterProcessing = true)
     {
         this.ID = ID;
+        this.DispatchOnMainThread = DispatchOnMainThread;
+        this.SendAfterProcessing = SendAfterProcessing;
     }
 }

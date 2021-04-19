@@ -77,7 +77,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
                         Dynamic(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
-                    if (sendTo == SendTo.Others || sendTo == SendTo.Only)
+                    if (sendTo == SendTo.Others || sendTo == SendTo.Me)
                         ResetTransforms();
                 }
                 yield return new WaitForSeconds(synchronizeInterval);

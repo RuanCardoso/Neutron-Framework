@@ -76,7 +76,7 @@ public static class SocketHelper
         {
             switch (nSendTo)
             {
-                case SendTo.Only:
+                case SendTo.Me:
                     if (!nSender.isServer)
                         nSender.qData.SafeEnqueue(dataBuffer);
                     else NeutronUtils.LoggerError("The Server cannot transmit data to itself.");

@@ -117,15 +117,12 @@ namespace NeutronNetwork.Internal.Client
             }
         }
 
-        protected void InternalRCC(int RCCID, byte[] parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
+        protected void InternalRCC(int ID, byte[] parameters, Protocol protocolType)
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
                 writer.WritePacket(Packet.NonDynamic);
-                writer.WritePacket(broadcast);
-                writer.WritePacket(sendTo);
-                writer.WritePacket(cacheMode);
-                writer.Write(RCCID);
+                writer.Write(ID);
                 writer.WriteExactly(parameters);
                 //---------------------------------------------------------------------------------------------------------------------
                 Send(writer.ToArray(), protocolType);
@@ -151,7 +148,11 @@ namespace NeutronNetwork.Internal.Client
             new Action(() =>
             {
                 if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
-                    Communication.Dynamic(rpcID, parameters, sender, infor, neutronObject);
+                {
+                    if (neutronObject.Dynamics.TryGetValue(rpcID, out RemoteProceduralCall remoteProceduralCall))
+                        Communication.Dynamic(rpcID, parameters, remoteProceduralCall, sender, infor, neutronObject);
+                    else NeutronUtils.LoggerError("Invalid Dynamic ID, there is no attribute with this ID in the target object.");
+                }
             }).DispatchOnMainThread();
         }
 
@@ -159,7 +160,10 @@ namespace NeutronNetwork.Internal.Client
         {
             new Action(() =>
             {
-                Communication.NonDynamic(executeID, sender, parameters, isServer, _);
+                if (NeutronNonDynamicBehaviour.NonDynamics.TryGetValue(executeID, out RemoteProceduralCall remoteProceduralCall))
+                {
+                    Communication.NonDynamic(executeID, sender, parameters, remoteProceduralCall, isServer, _);
+                }
             }).DispatchOnMainThread();
         }
 

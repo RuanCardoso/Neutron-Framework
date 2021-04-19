@@ -9,5 +9,5 @@ public class SceneSettings
     public Dictionary<int, NeutronView> networkObjects = new Dictionary<int, NeutronView>();
     public GameObject[] sceneObjects;
     public bool enablePhysics;
-    public bool clientOnly = true;
+    [Separator] public bool clientOnly = true;
 }

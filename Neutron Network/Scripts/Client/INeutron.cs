@@ -20,7 +20,7 @@ using System.Collections;
 
 namespace NeutronNetwork
 {
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CLIENT_ORDER)]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CLIENT)]
     public class Neutron : NeutronClientFunctions
     {
         public const string CONTAINER_NAME = "[Container] -> Player[Main]";
@@ -399,7 +399,7 @@ namespace NeutronNetwork
                     {
                         case Packet.Heartbeat:
                             break;
-                        case Packet.Test:
+                        case Packet.CustomTest:
                             NeutronUtils.LoggerError("Teste do servidor...... recebido");
                             break;
                         case Packet.Connected:
@@ -422,7 +422,7 @@ namespace NeutronNetwork
                                 new Action(() => OnNeutronDisconnected?.Invoke(reason, this)).DispatchOnMainThread();
                             }
                             break;
-                        case Packet.SendChat:
+                        case Packet.Chat:
                             {
                                 string message = mReader.ReadString();
                                 byte[] array = mReader.ReadExactly();
@@ -562,7 +562,7 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = new NeutronWriter())
             {
-                writer.WritePacket(Packet.SendChat);
+                writer.WritePacket(Packet.Chat);
                 writer.WritePacket(broadcast);
                 writer.Write(mMessage);
                 Send(writer.ToArray());
@@ -671,14 +671,14 @@ namespace NeutronNetwork
         /// Static: Creates an instance of this player on the server.
         /// <para>Exclusive Static ID: 1001</para> 
         /// </summary>
-        public void CreatePlayer(MonoBehaviour mThis, NeutronWriter options, SendTo sendTo, Broadcast broadcast)
+        public void CreatePlayer(MonoBehaviour mThis, NeutronWriter options)
         {
-            NonDynamic(1001, options, CacheMode.Overwrite, sendTo, broadcast, Protocol.Tcp);
+            NonDynamic(1001, options, Protocol.Tcp);
         }
 
-        public void CreateObject(MonoBehaviour mThis, NeutronWriter options, SendTo sendTo, Broadcast broadcast)
+        public void CreateObject(MonoBehaviour mThis, NeutronWriter options)
         {
-            NonDynamic(1002, options, CacheMode.Overwrite, sendTo, broadcast, Protocol.Tcp);
+            NonDynamic(1002, options, Protocol.Tcp);
         }
 
         public void DestroyPlayer()
@@ -690,9 +690,9 @@ namespace NeutronNetwork
             }
         }
 
-        public void NonDynamic(int nID, NeutronWriter writer, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
+        public void NonDynamic(int nID, NeutronWriter writer, Protocol protocolType)
         {
-            InternalRCC(nID, writer.ToArray(), cacheMode, sendTo, broadcast, protocolType);
+            InternalRCC(nID, writer.ToArray(), protocolType);
         }
 
         public void Dynamic(int nID, int dynamicID, NeutronWriter parametersStream, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)

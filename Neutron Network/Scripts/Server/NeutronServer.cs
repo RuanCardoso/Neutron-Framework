@@ -24,7 +24,7 @@ namespace NeutronNetwork.Internal.Server
     [RequireComponent(typeof(NeutronDispatcher))]
     [RequireComponent(typeof(NeutronEvents))]
     [RequireComponent(typeof(NeutronStatistics))]
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_SERVER_ORDER)]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_SERVER)]
     public class NeutronServer : NeutronServerPublicFunctions
     {
         #region Events
@@ -245,7 +245,7 @@ namespace NeutronNetwork.Internal.Server
                         if (await Communication.ReadAsyncBytes(netStream, header, 0, sizeof(int), token))
                         {
                             int size = BitConverter.ToInt32(header, 0);
-                            if (size > MAX_RECEIVE_MESSAGE_SIZE || size <= 0) DisconnectHandle(player);
+                            if (size > MAX_RECEIVE_MESSAGE_SIZE || size <= 0) DisconnectHandler(player);
                             else
                             {
                                 message = new byte[size];
@@ -254,10 +254,10 @@ namespace NeutronNetwork.Internal.Server
                                     dataForProcessing.SafeEnqueue(new DataBuffer(message, player, Protocol.Tcp));
                                     InternalUtils.UpdateStatistics(Statistics.ServerRec, size);
                                 }
-                                else DisconnectHandle(player);
+                                else DisconnectHandler(player);
                             }
                         }
-                        else DisconnectHandle(player);
+                        else DisconnectHandler(player);
                     }
                     else if (protocol == Protocol.Udp)
                     {
@@ -290,55 +290,55 @@ namespace NeutronNetwork.Internal.Server
                     switch (mCommand)
                     {
                         case Packet.Connected:
-                            HandleConfirmation(mSender, parametersReader.ReadBoolean());
+                            HandshakeHandler(mSender, parametersReader.ReadBoolean());
                             break;
                         case Packet.Nickname:
-                            HandleNickname(mSender, parametersReader.ReadString());
+                            NicknameHandler(mSender, parametersReader.ReadString());
                             break;
-                        case Packet.SendChat:
-                            HandleSendChat(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
+                        case Packet.Chat:
+                            ChatHandler(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadString());
                             break;
                         case Packet.Dynamic:
-                            HandleDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadPacket<CacheMode>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), protocol);
+                            DynamicHandler(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadPacket<CacheMode>(), parametersReader.ReadInt32(), parametersReader.ReadInt32(), parametersReader.ReadExactly(), parametersReader.ReadExactly(), protocol);
                             break;
                         case Packet.NonDynamic:
-                            HandleNonDynamic(mSender, parametersReader.ReadPacket<Broadcast>(), parametersReader.ReadPacket<SendTo>(), parametersReader.ReadPacket<CacheMode>(), parametersReader.ReadInt32(), parametersReader.ReadExactly(), protocol);
+                            NonDynamicHandler(mSender, parametersReader.ReadInt32(), parametersReader.ReadExactly());
                             break;
                         case Packet.GetChannels:
-                            HandleGetChannels(mSender, mCommand);
+                            GetChannelsHandler(mSender, mCommand);
                             break;
                         case Packet.JoinChannel:
-                            HandleJoinChannel(mSender, mCommand, parametersReader.ReadInt32());
+                            JoinChannelHandler(mSender, mCommand, parametersReader.ReadInt32());
                             break;
                         case Packet.GetChached:
-                            HandleGetCached(mSender, parametersReader.ReadPacket<CachedPacket>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean());
+                            GetCacheHandler(mSender, parametersReader.ReadPacket<CachedPacket>(), parametersReader.ReadInt32(), parametersReader.ReadBoolean());
                             break;
                         case Packet.CreateRoom:
-                            HandleCreateRoom(mSender, mCommand, parametersReader.ReadString(), parametersReader.ReadInt32(), parametersReader.ReadString(), parametersReader.ReadBoolean(), parametersReader.ReadBoolean(), parametersReader.ReadString());
+                            CreateRoomHandler(mSender, mCommand, parametersReader.ReadString(), parametersReader.ReadInt32(), parametersReader.ReadString(), parametersReader.ReadBoolean(), parametersReader.ReadBoolean(), parametersReader.ReadString());
                             break;
                         case Packet.GetRooms:
-                            HandleGetRooms(mSender, mCommand);
+                            GetRoomsHandler(mSender, mCommand);
                             break;
                         case Packet.JoinRoom:
-                            HandleJoinRoom(mSender, mCommand, parametersReader.ReadInt32());
+                            JoinRoomHandler(mSender, mCommand, parametersReader.ReadInt32());
                             break;
                         case Packet.LeaveRoom:
-                            HandleLeaveRoom(mSender, mCommand);
+                            LeaveRoomHandler(mSender, mCommand);
                             break;
                         case Packet.LeaveChannel:
-                            HandleLeaveChannel(mSender, mCommand);
+                            LeaveChannelHandler(mSender, mCommand);
                             break;
                         case Packet.DestroyPlayer:
-                            HandleDestroyPlayer(mSender, mCommand);
+                            DestroyPlayerHandler(mSender, mCommand);
                             break;
                         case Packet.SetPlayerProperties:
-                            HandleSetPlayerProperties(mSender, parametersReader.ReadString());
+                            SetPlayerPropertiesHandler(mSender, parametersReader.ReadString());
                             break;
                         case Packet.SetRoomProperties:
-                            HandleSetRoomProperties(mSender, parametersReader.ReadString());
+                            SetRoomPropertiesHandler(mSender, parametersReader.ReadString());
                             break;
                         case Packet.Heartbeat:
-                            HandleHeartbeat(mSender, parametersReader.ReadDouble());
+                            HeartbeatHandler(mSender, parametersReader.ReadDouble());
                             break;
                     }
                 }

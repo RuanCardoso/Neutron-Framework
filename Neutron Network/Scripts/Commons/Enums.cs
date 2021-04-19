@@ -1,5 +1,9 @@
 ﻿using System;
+using System.ComponentModel;
 
+#region Byte
+
+[Network]
 public enum SendTo : byte
 {
     /// <summary>
@@ -9,13 +13,18 @@ public enum SendTo : byte
     /// <summary>
     /// Broadcast data only you.
     /// </summary>
-    Only,
+    Me,
     /// <summary>
     /// Broadcast data to all Players, except you.
     /// </summary>
     Others,
+    /// <summary>
+    /// Broadcast data to server.
+    /// </summary>
+    Server,
 }
 
+[Network]
 public enum Packet : byte
 {
     Connected,
@@ -28,7 +37,7 @@ public enum Packet : byte
     LeaveRoom,
     LeaveChannel,
     CreateRoom,
-    SendChat,
+    Chat,
     GetChannels,
     GetChached,
     GetRooms,
@@ -40,43 +49,26 @@ public enum Packet : byte
     SetPlayerProperties,
     SetRoomProperties,
     Heartbeat,
-    Test,
     //======================================================
-    // - CUSTOM PACKETS ADD HERE
+    // - CUSTOM PACKETS ADD HERE.
     //======================================================
+    [Obsolete("Do not use this packet, it is only for testing (:")] CustomTest,
 }
 
+[Network]
 public enum CachedPacket : byte
 {
     NonDynamic = 121,
     Dynamic = 122,
-    //======================================================
-    // - CUSTOM PACKETS ADD HERE
-    //======================================================
 }
 
-public enum Compression : int
-{
-    /// <summary>
-    /// Disable data compression.
-    /// </summary>
-    None,
-    /// <summary>
-    /// Compress data using deflate mode.
-    /// </summary>
-    Deflate,
-    /// <summary>
-    /// Compress data using GZip mode.
-    /// </summary>
-    Gzip,
-}
-
+[Network]
 public enum Broadcast : byte
 {
     /// <summary>
     /// None broadcast. Used to SendTo.Only.
     /// </summary>
-    Only,
+    Me,
     /// <summary>
     /// Broadcast data on the server.
     /// </summary>
@@ -97,6 +89,42 @@ public enum Broadcast : byte
     /// Broadcast data on the same room or channel.
     /// </summary>
     Auto,
+    //======================================================
+    // - CUSTOM PACKETS ADD HERE.
+    //======================================================
+    [Obsolete("Do not use this packet, it is only for testing (:")] CustomTest,
+}
+
+[Network]
+public enum Protocol : byte
+{
+    Tcp = 6,
+    Udp = 17,
+}
+
+[Network]
+public enum CacheMode : byte
+{
+    None, Overwrite, Append
+}
+#endregion
+
+#region Int
+
+public enum Compression : int
+{
+    /// <summary>
+    /// Disable data compression.
+    /// </summary>
+    None,
+    /// <summary>
+    /// Compress data using deflate mode.
+    /// </summary>
+    Deflate,
+    /// <summary>
+    /// Compress data using GZip mode.
+    /// </summary>
+    Gzip,
 }
 
 public enum ClientType : int
@@ -104,12 +132,6 @@ public enum ClientType : int
     MainPlayer,
     Bot,
     VirtualPlayer,
-}
-
-public enum Protocol : byte
-{
-    Tcp = 6,
-    Udp = 17,
 }
 
 public enum Serialization : int
@@ -136,11 +158,6 @@ public enum AuthorityMode : int
     Ignore,
 }
 
-public enum CacheMode : byte
-{
-    None, Overwrite, Append
-}
-
 [Flags]
 public enum ComponentMode : int
 {
@@ -149,3 +166,5 @@ public enum ComponentMode : int
 public enum SmoothMode : int { Lerp, MoveTowards }
 public enum ParameterMode : int { Sync, NonSync }
 public enum Ambient : int { Server, Client, Both }
+
+#endregion

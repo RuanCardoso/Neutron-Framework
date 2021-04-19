@@ -29,9 +29,9 @@ MonoBehaviour:
   ServerSettings:
     BackLog: 10
     FPS: 60
-    DispatcherChunkSize: 1
-    PacketChunkSize: 1
-    ProcessChunkSize: 1
+    DispatcherChunkSize: 60
+    PacketChunkSize: 60
+    ProcessChunkSize: 60
     NeutronAntiCheat: 1
   HandleSettings:
     OnPlayerNicknameChanged:

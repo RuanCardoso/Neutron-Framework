@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace NeutronNetwork
 {
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_BEHAVIOUR_ORDER)]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_BEHAVIOUR)]
     public class NeutronBehaviour : MonoBehaviour
     {
         #region Identity

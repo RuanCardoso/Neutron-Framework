@@ -39,7 +39,6 @@ namespace NeutronNetwork.Internal.Client
 
         public void Internal()
         {
-            DontDestroyOnLoad(gameObject.transform.root);
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------

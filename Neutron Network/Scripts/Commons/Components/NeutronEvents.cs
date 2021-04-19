@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Extesions;
 using NeutronNetwork.Internal.Server.Cheats;
@@ -9,9 +10,10 @@ namespace NeutronNetwork.Internal.Server.Delegates
     /// <summary>
     /// You can implement your code here, or create a new script and inherit from this class, if you inherit from this script don't forget to remove this script and add yours and call "base".
     /// </summary>
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_EVENTS_ORDER)]
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_EVENTS)]
     public class NeutronEvents : MonoBehaviour
     {
+        #region MonoBehaviour
         public void OnEnable()
         {
             #region Common Events
@@ -21,6 +23,10 @@ namespace NeutronNetwork.Internal.Server.Delegates
 
             #region Cheat Events
             CheatsUtils.onCheatDetected += OnCheatDetected;
+            #endregion
+
+            #region Other
+            MatchmakingHelper.m_OnCustomBroadcast += OnCustomBroadcast;
             #endregion
         }
 
@@ -40,7 +46,9 @@ namespace NeutronNetwork.Internal.Server.Delegates
             CreateDefaultContainer();
             CreateDefaultChannelsContainer();
         }
+        #endregion
 
+        #region Handlers
         public virtual void OnPlayerDisconnected(Player nPlayer)
         {
             NeutronUtils.Logger($"The Player [{nPlayer.RemoteEndPoint().ToString()}] Has been disconnected from server.");
@@ -50,6 +58,17 @@ namespace NeutronNetwork.Internal.Server.Delegates
         {
             NeutronUtils.Logger($"Usando hack porraaaaaaaa -> {nPlayer.Nickname}");
         }
+
+        public virtual Player[] OnCustomBroadcast(Player nPlayer, Broadcast broadcast)
+        {
+            switch (broadcast)
+            {
+                default:
+                    NeutronUtils.LoggerError("Broadcast Packet not implemented! " + broadcast);
+                    return null;
+            }
+        }
+        #endregion
 
         #region Internal
         private void CreateDefaultContainer() => InternalUtils.CreateContainer($"[Container] -> Server");

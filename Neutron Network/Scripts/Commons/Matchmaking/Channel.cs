@@ -25,7 +25,7 @@ namespace NeutronNetwork
         ///* Max rooms of channel.
         /// </summary>
         public int MaxRooms { get => m_MaxRooms; private set => m_MaxRooms = value; }
-        [SerializeField] private int m_MaxRooms;
+        [SerializeField] [Separator] private int m_MaxRooms;
         /// <summary>
         ///* list of rooms.
         /// </summary>

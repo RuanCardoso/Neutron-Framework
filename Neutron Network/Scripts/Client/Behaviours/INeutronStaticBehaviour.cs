@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace NeutronNetwork
 {
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CONNECTION)]
     public class NeutronNonDynamicBehaviour : MonoBehaviour
     {
         #region Collections
@@ -28,9 +29,9 @@ namespace NeutronNetwork
         /// <param name="sendTo"></param>
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
-        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Player sender, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Player sender)
         {
-            Neutron.Server.NonDynamic(sender, nonDynamicID, parameters, cacheMode, sendTo, broadcast, protocol);
+            Neutron.Server.NonDynamic(sender, nonDynamicID, parameters);
         }
         /// <summary>
         /// client side.
@@ -42,9 +43,9 @@ namespace NeutronNetwork
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
         /// <param name="instance"></param>
-        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol, Neutron instance)
+        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
         {
-            instance.NonDynamic(nonDynamicID, parameters, cacheMode, sendTo, broadcast, protocol);
+            instance.NonDynamic(nonDynamicID, parameters, protocol);
         }
         #endregion
 
@@ -61,7 +62,7 @@ namespace NeutronNetwork
                     NonDynamic NeutronNonDynamicAttr = mInfos[y].GetCustomAttribute<NonDynamic>();
                     if (NeutronNonDynamicAttr != null)
                     {
-                        RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y]);
+                        RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y], NeutronNonDynamicAttr);
                         NonDynamics.Add(NeutronNonDynamicAttr.ID, remoteProceduralCall);
                         if (mInfos[y].ReturnType == typeof(bool) && !NeutronConfig.Settings.GlobalSettings.SendOnPostProcessing)
                             NeutronUtils.LoggerError($"Boolean return in NonDynamic -> {remoteProceduralCall.method.Name} : [{NeutronNonDynamicAttr.ID}] is useless when \"SendOnPostProcessing\" is disabled, switch to void instead of bool");

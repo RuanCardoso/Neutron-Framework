@@ -10,60 +10,53 @@ namespace NeutronNetwork.Internal.Comms
     public class Communication
     {
         public const int BUFFER_SIZE = 1024;
-        public static bool Dynamic(int dynamicID, byte[] parameters, Player sender, NeutronMessageInfo infor, NeutronView neutronView)
+        public static bool Dynamic(int dynamicID, byte[] parameters, RemoteProceduralCall remoteProceduralCall, Player sender, NeutronMessageInfo infor, NeutronView neutronView)
         {
-            if (neutronView.Dynamics.TryGetValue(dynamicID, out RemoteProceduralCall remoteProceduralCall))
+            object obj = remoteProceduralCall.Invoke(new NeutronReader(parameters), sender, infor);
+            if (obj != null)
             {
-                object obj = remoteProceduralCall.Invoke(new NeutronReader(parameters), sender, infor);
-                if (obj != null)
-                {
-                    Type objType = obj.GetType();
-                    if (objType == typeof(bool))
-                        return (bool)obj;
-                    else NeutronUtils.LoggerError("Type not supported");
-                }
+                Type objType = obj.GetType();
+                if (objType == typeof(bool))
+                    return (bool)obj;
+                else NeutronUtils.LoggerError("Type not supported");
             }
-            else NeutronUtils.LoggerError("Invalid Dynamic ID, there is no attribute with this ID in the target object.");
             return true;
         }
 
-        public static bool NonDynamic(int nonDynamicID, Player sender, byte[] parameters, bool isServer, Neutron localInstance = null)
+        public static bool NonDynamic(int nonDynamicID, Player sender, byte[] parameters, RemoteProceduralCall remoteProceduralCall, bool isServer, Neutron localInstance = null)
         {
-            if (NeutronNonDynamicBehaviour.NonDynamics.TryGetValue(nonDynamicID, out RemoteProceduralCall remoteProceduralCall))
+            object obj = remoteProceduralCall.Invoke(new NeutronReader(parameters), isServer, sender, localInstance);
+            if (obj != null)
             {
-                object obj = remoteProceduralCall.Invoke(new NeutronReader(parameters), isServer, sender, localInstance);
-                if (obj != null)
+                Type objType = obj.GetType();
+                if (objType == typeof(NeutronView))
                 {
-                    Type objType = obj.GetType();
-                    if (objType == typeof(NeutronView))
+                    NeutronView objectToInst = (NeutronView)obj;
+                    if (!isServer)
+                        InternalUtils.MoveToContainer(objectToInst.gameObject, "[Container] -> Player[Main]");
+                    else
                     {
-                        NeutronView objectToInst = (NeutronView)obj;
-                        if (!isServer)
-                            InternalUtils.MoveToContainer(objectToInst.gameObject, "[Container] -> Player[Main]");
-                        else
-                        {
-                            if (!sender.IsInRoom())
-                                InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Channel[{sender.CurrentChannel}]");
-                            else if (sender.IsInChannel()) InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Room[{sender.CurrentRoom}]");
-                        }
-                        if (nonDynamicID == 1001)
-                            NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
-                        else if (nonDynamicID == 1002)
-                        {
-                            using (NeutronReader defaultOptions = new NeutronReader(parameters))
-                            {
-                                defaultOptions.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
-                                NeutronRegister.RegisterObject(sender, objectToInst, defaultOptions.ReadInt32(), isServer, localInstance);
-                            }
-                        }
-                        else return true;
+                        if (!sender.IsInRoom())
+                            InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Channel[{sender.CurrentChannel}]");
+                        else if (sender.IsInChannel()) InternalUtils.MoveToContainer(objectToInst.gameObject, $"[Container] -> Room[{sender.CurrentRoom}]");
                     }
-                    else if (objType == typeof(bool))
-                        return (bool)obj;
-                    else NeutronUtils.LoggerError("Type not supported");
+                    if (nonDynamicID == 1001)
+                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
+                    else if (nonDynamicID == 1002)
+                    {
+                        using (NeutronReader defaultOptions = new NeutronReader(parameters))
+                        {
+                            defaultOptions.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
+                            NeutronRegister.RegisterObject(sender, objectToInst, defaultOptions.ReadInt32(), isServer, localInstance);
+                        }
+                    }
+                    else return true;
                 }
+                else if (objType == typeof(bool))
+                    return (bool)obj;
+                else NeutronUtils.LoggerError("Type not supported");
             }
-            else NeutronUtils.LoggerError("Invalid NonDynamic ID, there is no attribute with this ID.");
+            //else NeutronUtils.LoggerError("Invalid NonDynamic ID, there is no attribute with this ID.");
             return true;
         }
 

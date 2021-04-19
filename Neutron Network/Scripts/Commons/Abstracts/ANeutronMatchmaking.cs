@@ -8,7 +8,7 @@ using UnityEngine;
 public abstract class ANeutronMatchmaking : INeutronMatchmaking
 {
     private int m_UniqueBufferID = 0;
-    [SerializeField] protected int m_ID;
+    [SerializeField] [ReadOnly] protected int m_ID;
     /// <summary>
     ///* Name of channel.
     /// </summary>
@@ -28,7 +28,7 @@ public abstract class ANeutronMatchmaking : INeutronMatchmaking
     ///* Properties of channel(JSON).
     /// </summary>
     public string _ { get => m_Properties; set => m_Properties = value; }
-    [SerializeField] private string m_Properties = "{\"Neutron\":\"Neutron\"}";
+    [SerializeField] [Separator] private string m_Properties = "{\"Neutron\":\"Neutron\"}";
     /// <summary>
     ///* Owner of room.
     /// </summary>
@@ -51,7 +51,7 @@ public abstract class ANeutronMatchmaking : INeutronMatchmaking
     ///* Scene settings.
     /// </summary>
     public SceneSettings SceneSettings { get => m_SceneSettings; set => m_SceneSettings = value; }
-    [SerializeField] private SceneSettings m_SceneSettings;
+    [SerializeField] [Separator] private SceneSettings m_SceneSettings;
 
     public bool AddPlayer(Player player)
     {
