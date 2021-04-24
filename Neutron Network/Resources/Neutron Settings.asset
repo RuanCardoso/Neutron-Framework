@@ -15,6 +15,7 @@ MonoBehaviour:
   GlobalSettings:
     Address: 127.0.0.1
     Port: 5055
+    MaxPlayers: 2
     Serialization: 1
     Compression: 1
     Lan: 0
@@ -22,16 +23,16 @@ MonoBehaviour:
     SendOnPostProcessing: 1
   EditorSettings:
     FPS: 60
-    DispatcherChunkSize: 60
+    DispatcherChunkSize: 1
   ClientSettings:
     FPS: 60
     DispatcherChunkSize: 1
   ServerSettings:
     BackLog: 10
     FPS: 60
-    DispatcherChunkSize: 60
-    PacketChunkSize: 60
-    ProcessChunkSize: 60
+    DispatcherChunkSize: 1
+    PacketChunkSize: 1
+    ProcessChunkSize: 1
     NeutronAntiCheat: 1
   HandleSettings:
     OnPlayerNicknameChanged:
@@ -44,7 +45,7 @@ MonoBehaviour:
       protocol: 6
     OnPlayerJoinedChannel:
       sendTo: 0
-      broadcast: 2
+      broadcast: 5
       protocol: 6
     OnPlayerJoinedRoom:
       sendTo: 0

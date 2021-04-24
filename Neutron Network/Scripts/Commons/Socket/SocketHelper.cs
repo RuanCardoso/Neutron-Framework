@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using NeutronNetwork;
 using NeutronNetwork.Internal.Extesions;
+using NeutronNetwork.Internal.Server;
 using UnityEngine;
 
 public static class SocketHelper
@@ -25,6 +27,9 @@ public static class SocketHelper
             && Neutron.Server.PlayersById.TryRemove(nPlayer.ID, out Player _);
         if (tryRemove)
         {
+            #region Provider
+            Neutron.Server.generatedIds.SafeEnqueue(nPlayer.ID);
+            #endregion
             string addr = nPlayer.RemoteEndPoint().Address.ToString();
             if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
                 Neutron.Server.RegisteredConnectionsByIp[addr] = --value;
@@ -54,6 +59,7 @@ public static class SocketHelper
                         MatchmakingHelper.Leave(nPlayer, leaveRoom: false);
                 }
             }
+            Neutron.Server.CurrentPlayers--;
         }
         return tryRemove;
     }
@@ -107,6 +113,29 @@ public static class SocketHelper
                     break;
             }
         }
+    }
+
+    public static bool LimitConnectionsByIP(TcpClient Socket)
+    {
+        string addr = ((IPEndPoint)Socket.Client.RemoteEndPoint).Address.ToString();
+        if (addr != IPAddress.Loopback.ToString())
+        {
+            if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
+            {
+                if (value > NeutronServer.LIMIT_OF_CONNECTIONS_BY_IP)
+                {
+                    #region Logger
+                    NeutronUtils.LoggerError("Client not allowed!");
+                    #endregion
+                    Socket.Close();
+                    return false;
+                }
+                Neutron.Server.RegisteredConnectionsByIp[addr] = value + 1;
+                return true;
+            }
+            else return Neutron.Server.RegisteredConnectionsByIp.TryAdd(addr, 1);
+        }
+        else return true;
     }
 
     public static void Dispose()

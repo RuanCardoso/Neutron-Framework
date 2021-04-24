@@ -39,7 +39,7 @@ namespace NeutronNetwork.Internal.Server
         {
             base.Awake();
             _ = (NeutronServer)this;
-            if (isReady)
+            if (IsReady)
                 m_OnAwake?.Invoke();
         }
 
@@ -97,7 +97,7 @@ namespace NeutronNetwork.Internal.Server
         protected void DynamicHandler(Player nSender, Broadcast broadcast, SendTo sendTo, CacheMode cacheMode, int networkObjectId, int dynamicID, byte[] parameters, byte[] infor, Protocol protocol)
         {
             #region Logic
-            NeutronMessageInfo NeutronMessageInfo = infor.DeserializeObject<NeutronMessageInfo>();
+            NeutronMessageInfo NeutronMessageInfo = new NeutronMessageInfo(0);
             if (nSender.IsInChannel() || nSender.IsInRoom())
             {
                 if (InternalUtils.IsSceneObject(networkObjectId))
@@ -132,7 +132,7 @@ namespace NeutronNetwork.Internal.Server
                                 }
                                 #endregion
                                 if (dynamicAttr.DispatchOnMainThread)
-                                    _.DispatchOnMainThread();
+                                    NeutronDispatcher.Dispatch(_);
                                 else _.Invoke();
                             }
                             else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
@@ -176,12 +176,12 @@ namespace NeutronNetwork.Internal.Server
                                     }
                                     #endregion
                                     if (dynamicAttr.DispatchOnMainThread)
-                                        _.DispatchOnMainThread();
+                                        NeutronDispatcher.Dispatch(_);
                                     else _.Invoke();
                                 }
                                 else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
                             }
-                            else Debug.LogError("Invalid NonDynamic ID, there is no attribute with this ID.");
+                            else Debug.LogError("Invalid Dynamic ID, there is no attribute with this ID.");
                         }
                         else Broadcast(nPlayer);
                     }
@@ -243,7 +243,7 @@ namespace NeutronNetwork.Internal.Server
                     }
                     #endregion
                     if (nonDynamicAttr.DispatchOnMainThread)
-                        _.DispatchOnMainThread();
+                        NeutronDispatcher.Dispatch(_);
                     else _.Invoke();
                 }
                 else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");

@@ -23,4 +23,12 @@ public static class PlayerHelper
             nSocket.Send(writer);
         }
     }
+
+    public static bool GetAvailableID(out int ID)
+    {
+        if (Neutron.Server.generatedIds.SafeCount > 0)
+            ID = Neutron.Server.generatedIds.SafeDequeue();
+        else ID = 0;
+        return ID > Neutron.GENERATE_PLAYER_ID;
+    }
 }

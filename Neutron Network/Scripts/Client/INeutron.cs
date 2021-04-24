@@ -28,10 +28,8 @@ namespace NeutronNetwork
         /// <summary>
         /// Returns instance of server
         /// </summary>
-        public static NeutronServer Server
-        {
-            get
-            {
+        public static NeutronServer Server {
+            get {
                 if (NeutronServerFunctions._ != null) return NeutronServerFunctions._;
 #if !UNITY_EDITOR && !UNITY_SERVER
                 NeutronUtils.LoggerError("You cannot access the server's methods and properties on the client, except within the Unity Editor.");
@@ -67,8 +65,7 @@ namespace NeutronNetwork
         /// <summary>
         /// The nickname of the player that will be used to be displayed to other players.
         /// </summary>
-        public string Nickname
-        {
+        public string Nickname {
             get => _nickname;
             set => SetNickname(value);
         }
@@ -266,7 +263,7 @@ namespace NeutronNetwork
                         NeutronUtils.LoggerError("An attempt to establish a connection to the server failed.");
                         Dispose();
                         Destroy(this);
-                        new Action(() => OnNeutronConnected?.Invoke(false, this)).DispatchOnMainThread();
+                        OnNeutronConnected?.Invoke(false, this);
                     }
                 }
                 else
@@ -283,7 +280,7 @@ namespace NeutronNetwork
                 NeutronUtils.LoggerError("An attempt to establish a connection to the server failed.");
                 Dispose();
                 Destroy(this);
-                new Action(() => OnNeutronConnected?.Invoke(false, this)).DispatchOnMainThread();
+                OnNeutronConnected?.Invoke(false, this);
             }
         }
 
@@ -346,7 +343,10 @@ namespace NeutronNetwork
                         else
                         {
                             Dispose();
-                            new Action(() => Destroy(this)).DispatchOnMainThread();
+                            NeutronDispatcher.Dispatch(() =>
+                            {
+                                Destroy(this);
+                            });
                         }
                     } while (!token.IsCancellationRequested);
             }
@@ -411,7 +411,10 @@ namespace NeutronNetwork
                                 endPointUDP = new IPEndPoint(IPAddress.Parse(NeutronConfig.Settings.GlobalSettings.Address), port);
                                 ///////////////////////////////////////////////////////////////////////
                                 HandleConnected(array);
-                                new Action(() => OnNeutronConnected?.Invoke(true, this)).DispatchOnMainThread();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnNeutronConnected?.Invoke(true, this);
+                                });
                                 diff = TimeAsDouble;
                                 IsReady = true;
                             }
@@ -419,15 +422,21 @@ namespace NeutronNetwork
                         case Packet.DisconnectedByReason:
                             {
                                 string reason = mReader.ReadString();
-                                new Action(() => OnNeutronDisconnected?.Invoke(reason, this)).DispatchOnMainThread();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnNeutronDisconnected?.Invoke(reason, this);
+                                });
                             }
                             break;
                         case Packet.Chat:
                             {
                                 string message = mReader.ReadString();
                                 byte[] array = mReader.ReadExactly();
-                                Player mSender = array.DeserializeObject<Player>();
-                                new Action(() => OnMessageReceived?.Invoke(message, mSender, this)).DispatchOnMainThread();
+                                Player mSender = array.Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnMessageReceived?.Invoke(message, mSender, this);
+                                });
                             }
                             break;
                         case Packet.Dynamic:
@@ -435,8 +444,8 @@ namespace NeutronNetwork
                                 int playerID = mReader.ReadInt32();
                                 int rpcID = mReader.ReadInt32();
                                 byte[] parameters = mReader.ReadExactly();
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                NeutronMessageInfo infor = mReader.ReadExactly().DeserializeObject<NeutronMessageInfo>();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronMessageInfo infor = mReader.ReadExactly().Deserialize<NeutronMessageInfo>();
                                 HandleRPC(rpcID, playerID, parameters, player, infor);
                             }
                             break;
@@ -445,84 +454,125 @@ namespace NeutronNetwork
                                 int ID = mReader.ReadInt32();
                                 byte[] _array = mReader.ReadExactly();
                                 byte[] array_ = mReader.ReadExactly();
-                                Player mSender = _array.DeserializeObject<Player>();
+                                Player mSender = _array.Deserialize<Player>();
                                 HandleRCC(ID, mSender, array_, false);
                             }
                             break;
                         case Packet.GetChannels:
                             {
-                                Channel[] channels = mReader.ReadExactly().DeserializeObject<Channel[]>();
-                                new Action(() => OnChannelsReceived?.Invoke(channels, this)).DispatchOnMainThread();
+                                Channel[] channels = mReader.ReadExactly().Deserialize<Channel[]>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnChannelsReceived?.Invoke(channels, this);
+                                });
                             }
                             break;
                         case Packet.JoinChannel:
                             {
-                                Player mSender = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerJoinedChannel?.Invoke(mSender, this)).DispatchOnMainThread();
+                                Player mSender = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerJoinedChannel?.Invoke(mSender, this);
+                                });
                             }
                             break;
                         case Packet.LeaveChannel:
                             {
-                                Player mSender = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerLeftChannel?.Invoke(mSender)).DispatchOnMainThread();
+                                Player mSender = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerLeftChannel?.Invoke(mSender);
+                                });
                             }
                             break;
                         case Packet.Fail:
                             {
                                 Packet failedPacket = mReader.ReadPacket<Packet>();
                                 string failMessage = mReader.ReadString();
-                                new Action(() => OnFailed?.Invoke(failedPacket, failMessage, this)).DispatchOnMainThread();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnFailed?.Invoke(failedPacket, failMessage, this);
+                                });
                             }
                             break;
                         case Packet.CreateRoom:
                             {
-                                Room room = mReader.ReadExactly().DeserializeObject<Room>();
-                                new Action(() => OnCreatedRoom?.Invoke(room, this)).DispatchOnMainThread();
+                                Room room = mReader.ReadExactly().Deserialize<Room>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnCreatedRoom?.Invoke(room, this);
+                                });
                                 break;
                             }
                         case Packet.GetRooms:
                             {
-                                Room[] rooms = mReader.ReadExactly().DeserializeObject<Room[]>();
-                                new Action(() => OnRoomsReceived?.Invoke(rooms, this)).DispatchOnMainThread();
+                                Room[] rooms = mReader.ReadExactly().Deserialize<Room[]>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnRoomsReceived?.Invoke(rooms, this);
+                                });
                             }
                             break;
                         case Packet.JoinRoom:
                             {
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerJoinedRoom?.Invoke(player, this)).DispatchOnMainThread();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerJoinedRoom?.Invoke(player, this);
+                                });
                             }
                             break;
                         case Packet.LeaveRoom:
                             {
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerLeftRoom?.Invoke(player, this)).DispatchOnMainThread();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerLeftRoom?.Invoke(player, this);
+                                });
                             }
                             break;
                         case Packet.DestroyPlayer:
-                            new Action(() => OnPlayerDestroyed?.Invoke(this)).DispatchOnMainThread();
+                            {
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerDestroyed?.Invoke(this);
+                                });
+                            }
                             break;
                         case Packet.PlayerDisconnected:
                             {
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerDisconnected?.Invoke(player, this)).DispatchOnMainThread();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerDisconnected?.Invoke(player, this);
+                                });
                             }
                             break;
                         case Packet.Nickname:
                             {
                                 Player player = mReader.ReadExactly<Player>();
-                                new Action(() => OnPlayerNicknameChanged?.Invoke(player, IsMine(player), this)).DispatchOnMainThread();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerNicknameChanged?.Invoke(player, IsMine(player), this);
+                                });
                             }
                             break;
                         case Packet.SetPlayerProperties:
                             {
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnPlayerPropertiesChanged?.Invoke(player, this)).DispatchOnMainThread();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnPlayerPropertiesChanged?.Invoke(player, this);
+                                });
                             }
                             break;
                         case Packet.SetRoomProperties:
                             {
-                                Player player = mReader.ReadExactly().DeserializeObject<Player>();
-                                new Action(() => OnRoomPropertiesChanged?.Invoke(player, this)).DispatchOnMainThread();
+                                Player player = mReader.ReadExactly().Deserialize<Player>();
+                                NeutronDispatcher.Dispatch(() =>
+                                {
+                                    OnRoomPropertiesChanged?.Invoke(player, this);
+                                });
                             }
                             break;
                     }

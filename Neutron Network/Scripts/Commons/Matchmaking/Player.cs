@@ -100,7 +100,7 @@ namespace NeutronNetwork
         /// <summary>
         /// infor.
         /// </summary>
-        public NeutronMessageInfo infor;
+        [NonSerialized] public NeutronMessageInfo infor;
 
         public Player() { }// the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 

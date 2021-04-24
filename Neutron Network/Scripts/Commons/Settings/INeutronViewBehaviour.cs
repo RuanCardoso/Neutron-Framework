@@ -7,10 +7,10 @@ using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Extesions;
 using UnityEngine;
 
-public class ViewConfig : MonoBehaviour
+public class NeutronViewBehaviour : MonoBehaviour
 {
     #region Primitives
-    [ID] [DisableField] public int ID;
+    [ID] public int ID;
     public Ambient ambient = Ambient.Both;
     [ReadOnly] public bool isServer;
     #endregion

@@ -37,8 +37,18 @@ namespace NeutronNetwork.Internal.Client
         /// </summary>
         protected CancellationTokenSource _cts = new CancellationTokenSource();
 
+        public NeutronSafeDictionary<int, Player> playerConnections = new NeutronSafeDictionary<int, Player>();
+
         public void Internal()
         {
+            #region Provider
+            for (int i = 0; i < NeutronConfig.Settings.GlobalSettings.MaxPlayers; i++)
+            {
+                int Key = (Neutron.GENERATE_PLAYER_ID + i) + 1;
+                playerConnections.TryAdd(Key, new Player(Key, null, null));
+            }
+            #endregion
+
             mainThreadActions = new NeutronQueue<Action>();
             monoBehaviourRPCActions = new NeutronQueue<Action>();
             //-------------------------------------------------------------------------------------------------------------

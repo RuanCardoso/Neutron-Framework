@@ -106,7 +106,6 @@ namespace NeutronNetwork.Internal
 {
     public class InternalUtils
     {
-        public static int GetUniqueID() => ++NeutronServer.uniqueID;
         public static int GetFreePort(Protocol type)
         {
             switch (type)

@@ -8,7 +8,7 @@ namespace NeutronNetwork
     {
         #region Identity
         [Header("[Identity]")]
-        [SerializeField] [ID] [DisableField] private int iD;
+        [SerializeField] [ID] private int m_ID;
         [SerializeField] [Separator] private AuthorityMode authority = AuthorityMode.Owner;
         #endregion
 
@@ -18,7 +18,7 @@ namespace NeutronNetwork
         /// <para>EN: This ID is used to identify the instance that should execute the method marked with the dynamic attribute.</para> 
         /// </summary>
         /// <value>Unique ID</value>
-        public int ID => iD;
+        public int ID => m_ID;
         /// <summary>
         /// </summary>
         /// <value>

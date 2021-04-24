@@ -12,7 +12,7 @@ public class NeutronDispatcher : MonoBehaviour
     #endregion
 
     #region Collections
-    public static NeutronQueue<Action> m_ActionsDispatcher = new NeutronQueue<Action>();
+    private static NeutronQueue<Action> m_ActionsDispatcher = new NeutronQueue<Action>();
     #endregion
 
     private void Awake()
@@ -26,6 +26,7 @@ public class NeutronDispatcher : MonoBehaviour
 #endif
     }
 
+    [ThreadSafe]
     private void Update()
     {
         try
@@ -34,6 +35,12 @@ public class NeutronDispatcher : MonoBehaviour
                 m_ActionsDispatcher.SafeDequeue().Invoke();
         }
         catch (Exception ex) { StackTrace(ex); }
+    }
+
+    [ThreadSafe]
+    public static void Dispatch(Action action)
+    {
+        m_ActionsDispatcher.SafeEnqueue(action);
     }
 
     void StackTrace(Exception ex)

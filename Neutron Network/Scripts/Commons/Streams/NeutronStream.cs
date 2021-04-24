@@ -164,7 +164,7 @@ namespace NeutronNetwork
 
         public T ReadExactly<T>()
         {
-            return ReadExactly().DeserializeObject<T>();
+            return ReadExactly().Deserialize<T>();
         }
 
         public byte[] ReadExactly()

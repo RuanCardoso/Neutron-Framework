@@ -7,6 +7,7 @@ public class NeutronGlobalSettings
 {
     public string Address = "127.0.0.1";
     public int Port = 5055;
+    public int MaxPlayers = 1000;
     public Serialization Serialization = Serialization.Json;
     public Compression Compression = Compression.Deflate;
     [ReadOnly] public bool Lan;
@@ -18,7 +19,7 @@ public class NeutronGlobalSettings
 public class NeutronEditorSettings
 {
     public int FPS = 60;
-    public int DispatcherChunkSize = 60;
+    public int DispatcherChunkSize = 1;
 }
 
 [Serializable]

@@ -35,9 +35,16 @@ namespace NeutronNetwork.Internal.Server
 
         #region Physics
         public GameObject[] unsharedObjects;
-        public LocalPhysicsMode PhysicsMode = LocalPhysicsMode.Physics3D;
+        [Separator] public LocalPhysicsMode PhysicsMode = LocalPhysicsMode.Physics3D;
         #endregion
-        protected bool isReady;
+
+        #region Variables
+        private bool m_IsReady;
+        public bool IsReady { get => m_IsReady; set => m_IsReady = value; }
+
+        [SerializeField] [ReadOnly] private int m_CurrentPlayers;
+        public int CurrentPlayers { get => m_CurrentPlayers; set => m_CurrentPlayers = value; }
+        #endregion
 
         public void Awake()
         {
@@ -53,7 +60,7 @@ namespace NeutronNetwork.Internal.Server
                     SetConstants(NeutronConfig.Settings);
                     TcpSocket = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronConfig.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
                     TcpSocket.Start(NeutronConfig.Settings.ServerSettings.BackLog);
-                    isReady = true;
+                    IsReady = true;
                 }
                 catch (SocketException ex)
                 {

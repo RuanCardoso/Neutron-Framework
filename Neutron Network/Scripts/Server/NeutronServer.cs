@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
+using NeutronNetwork.Internal.Attributes;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -29,27 +30,25 @@ namespace NeutronNetwork.Internal.Server
     {
         #region Events
         //* notifies you if the server has started.
-        public static event Events.OnServerStart onServerStart;
+        public static event Events.OnServerStart m_OnServerStart;
+        public static event Events.OnServerStart m_OnPlayerConnected;
         #endregion
 
         #region Variables
         //* Signals that the server has been started.
         public static bool Initialized;
-        //* generate uniqueID.
-        public static int uniqueID = Neutron.GENERATE_PLAYER_ID;
-        //* Amounts of clients that have signed in since the server was started.
-        //* This property is not reset and does not decrease its value.
-        private static int totalAmountOfPlayers;
         //* all accepted clients will be queued here.
         #endregion
 
         #region Collections
-        private NeutronQueue<TcpClient> acceptedClients = new NeutronQueue<TcpClient>();
         //* here the data received from clients for processing will be queued.
         //* all this processing is done in a single thread on the server, making this whole operation safe for threads.
-        private NeutronQueue<DataBuffer> dataForProcessing = new NeutronQueue<DataBuffer>();
+        private NeutronQueue<TcpClient> acceptedClients = new NeutronQueue<TcpClient>();
         //* [Three Unique Thread] - do not use ThreadPool here.(These methods must have their own dedicated thread for processing.)
         //* Thread pool will join them with other threads that are already processing other methods. causing loss of performance, these must be unique.
+        private NeutronQueue<DataBuffer> dataForProcessing = new NeutronQueue<DataBuffer>();
+        //* provides a unique id for new client.
+        public NeutronQueue<int> generatedIds = new NeutronQueue<int>();
         #endregion
 
         #region Threading
@@ -59,10 +58,18 @@ namespace NeutronNetwork.Internal.Server
         #region Functions
         private void InitilizeServer()
         {
+            #region Provider
+            for (int i = 0; i < NeutronConfig.Settings.GlobalSettings.MaxPlayers; i++)
+                generatedIds.SafeEnqueue((Neutron.GENERATE_PLAYER_ID + i) + 1);
+            #endregion
+
             Initialized = true;
-            /////////////////////////////////////////////////////////////////////////////////
+
+            #region Logger
             NeutronUtils.Logger("The Server is ready, all protocols have been initialized.\r\n");
-            /////////////////////////////////////////////////////////////////////////////////
+            #endregion
+
+            #region Threads
             Thread acptTh = new Thread((o) => OnAcceptedClient()); //* exclusive thread to accept connections.
             acptTh.Priority = System.Threading.ThreadPriority.Normal;
             acptTh.IsBackground = true;
@@ -77,8 +84,11 @@ namespace NeutronNetwork.Internal.Server
             stackProcessingAcceptedConnectionsTh.Priority = System.Threading.ThreadPriority.Normal;
             stackProcessingAcceptedConnectionsTh.IsBackground = true;
             stackProcessingAcceptedConnectionsTh.Start();
-            /////////////////////////////////////////////
-            onServerStart?.Invoke();
+            #endregion
+
+            #region Events
+            m_OnServerStart?.Invoke();
+            #endregion
         }
         //* initiates client acceptance.
         private async void OnAcceptedClient()
@@ -121,27 +131,6 @@ namespace NeutronNetwork.Internal.Server
         private void AcceptedConnectionsProcessingStack()
         {
             CancellationToken token = cts.Token;
-            bool SYNCheck(TcpClient synClient)
-            {
-                string addr = ((IPEndPoint)synClient.Client.RemoteEndPoint).Address.ToString();
-                if (addr == IPAddress.Loopback.ToString()) return true;
-                if (RegisteredConnectionsByIp.TryGetValue(addr, out int value))
-                {
-                    if (value > LIMIT_OF_CONNECTIONS_BY_IP)
-                    {
-                        NeutronUtils.LoggerError("Client not allowed!");
-                        synClient.Close();
-                        return false;
-                    }
-                    else
-                    {
-                        RegisteredConnectionsByIp[addr] = value + 1;
-                        return true;
-                    }
-                }
-                else return RegisteredConnectionsByIp.TryAdd(addr, 1);
-            }
-
             while (Initialized && !token.IsCancellationRequested)
             {
                 if (token.IsCancellationRequested) return;
@@ -150,28 +139,42 @@ namespace NeutronNetwork.Internal.Server
                 {
                     if (token.IsCancellationRequested) return;
                     var acceptedClient = acceptedClients.SafeDequeue();
-                    if (!SYNCheck(acceptedClient)) continue;
-                    acceptedClient.NoDelay = NeutronConfig.Settings.GlobalSettings.NoDelay;
-                    // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
-                    // TODO acceptedClient.SendTimeout = int.MaxValue;
-                    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
-                    Player newPlayer = new Player(InternalUtils.GetUniqueID(), acceptedClient, cancellationTokenSource);
-                    if (SocketHelper.AddPlayer(newPlayer))
+                    if (PlayerHelper.GetAvailableID(out int ID))
                     {
-                        totalAmountOfPlayers++;
-                        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        if (SocketHelper.LimitConnectionsByIP(acceptedClient))
+                        {
+                            acceptedClient.NoDelay = NeutronConfig.Settings.GlobalSettings.NoDelay;
+                            // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
+                            // TODO acceptedClient.SendTimeout = int.MaxValue;
+                            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); //* Propagates notification that operations should be canceled.
+                            Player newPlayer = new Player(ID, acceptedClient, cancellationTokenSource);
+                            if (SocketHelper.AddPlayer(newPlayer))
+                            {
+                                CurrentPlayers++;
+                                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if UNITY_SERVER
                         NeutronUtils.Logger($"Incoming client, IP: [{newPlayer.RemoteEndPoint().Address}] | TCP: [{newPlayer.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)newPlayer.udpClient.Client.LocalEndPoint).Port}] -:[{totalAmountOfPlayers}]");
 #endif
-                        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        Thread procTh = new Thread(() => OnProcessData(newPlayer, cancellationTokenSource.Token)); //* because this method locks the thread, if it falls on a segment of "OnReceive" the data will not be received.
-                        procTh.IsBackground = true;
-                        procTh.Start();
-                        ThreadPool.QueueUserWorkItem((e) =>
-                        {
-                            OnReceiveData(newPlayer, Protocol.Tcp, e);
-                            OnReceiveData(newPlayer, Protocol.Udp, e);
-                        }, cancellationTokenSource.Token); //! Thread dedicated to receive data.
+                                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                Thread procTh = new Thread(() => OnProcessData(newPlayer, cancellationTokenSource.Token)); //* because this method locks the thread, if it falls on a segment of "OnReceive" the data will not be received.
+                                procTh.IsBackground = true;
+                                procTh.Start();
+                                ThreadPool.QueueUserWorkItem((e) =>
+                                {
+                                    OnReceiveData(newPlayer, Protocol.Tcp, e);
+                                    OnReceiveData(newPlayer, Protocol.Udp, e);
+                                }, cancellationTokenSource.Token); //! Thread dedicated to receive data.
+                            }
+                        }
+                        else continue;
+                    }
+                    else
+                    {
+                        #region Logger
+                        NeutronUtils.LoggerError("Max Players Reached");
+                        #endregion
+                        acceptedClient.Close();
+                        continue;
                     }
                 }
                 acceptedClients.mEvent.WaitOne(); //* Blocks the current thread until the current WaitHandle receives a signal.
@@ -233,7 +236,6 @@ namespace NeutronNetwork.Internal.Server
 
             byte[] header = new byte[sizeof(int)];
             byte[] message;
-
             try
             {
                 var netStream = player.tcpClient.GetStream();
@@ -370,7 +372,7 @@ NeutronUtils.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
 #endif
             void Init()
             {
-                if (!isReady)
+                if (!IsReady)
                     NeutronUtils.LoggerError("The server could not be initialized ):");
                 else InitilizeServer();
             }

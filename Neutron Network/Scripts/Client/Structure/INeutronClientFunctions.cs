@@ -133,38 +133,50 @@ namespace NeutronNetwork.Internal.Client
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         protected void HandleConnected(byte[] array)
         {
-            _myPlayer = array.DeserializeObject<Player>();
+            _myPlayer = array.Deserialize<Player>();
+            playerConnections[_myPlayer.ID] = _myPlayer;
+            Debug.LogError(playerConnections[_myPlayer.ID].Get["Neutron"]);
+            Debug.LogError(_myPlayer.Get["Neutron"]);
             void RegisterSceneObjects()
             {
                 foreach (NeutronView nV in GameObject.FindObjectsOfType<NeutronView>().Where(x => x.IsSceneObject && !x.isServer))
                     NeutronRegister.RegisterSceneObject(_myPlayer, nV, false, _);
             }
-            new Action(() => RegisterSceneObjects()).DispatchOnMainThread();
+            NeutronDispatcher.Dispatch(() =>
+            {
+                RegisterSceneObjects();
+            });
         }
 
         protected void HandleRPC(int rpcID, int playerID, byte[] parameters, Player sender, NeutronMessageInfo infor)
         {
             if (_.IsBot) return;
-            new Action(() =>
+            if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
             {
-                if (networkObjects.TryGetValue(playerID, out NeutronView neutronObject))
+                if (neutronObject.Dynamics.TryGetValue(rpcID, out RemoteProceduralCall remoteProceduralCall))
                 {
-                    if (neutronObject.Dynamics.TryGetValue(rpcID, out RemoteProceduralCall remoteProceduralCall))
+                    Dynamic dynamicAttr = (Dynamic)remoteProceduralCall.attribute;
+                    Action _ = new Action(() =>
+                    {
                         Communication.Dynamic(rpcID, parameters, remoteProceduralCall, sender, infor, neutronObject);
-                    else NeutronUtils.LoggerError("Invalid Dynamic ID, there is no attribute with this ID in the target object.");
+                    });
+                    if (dynamicAttr.DispatchOnMainThread)
+                        NeutronDispatcher.Dispatch(_);
+                    else _.Invoke();
                 }
-            }).DispatchOnMainThread();
+                else NeutronUtils.LoggerError("Invalid Dynamic ID, there is no attribute with this ID in the target object.");
+            }
         }
 
         protected void HandleRCC(int executeID, Player sender, byte[] parameters, bool isServer)
         {
-            new Action(() =>
+            NeutronDispatcher.Dispatch(() =>
             {
                 if (NeutronNonDynamicBehaviour.NonDynamics.TryGetValue(executeID, out RemoteProceduralCall remoteProceduralCall))
                 {
                     Communication.NonDynamic(executeID, sender, parameters, remoteProceduralCall, isServer, _);
                 }
-            }).DispatchOnMainThread();
+            });
         }
 
         //protected void HandleDatabase(Packet packet, object[] response)
@@ -187,10 +199,10 @@ namespace NeutronNetwork.Internal.Client
             {
                 NeutronView obj = neutronObject;
                 //-----------------------------------------------------------------------------------
-                new Action(() =>
+                NeutronDispatcher.Dispatch(() =>
                 {
                     MonoBehaviour.Destroy(obj.gameObject);
-                }).DispatchOnMainThread();
+                });
                 //------------------------------------------------------------------------------------
                 networkObjects.TryRemove(player.ID, out NeutronView objRemoved);
             }

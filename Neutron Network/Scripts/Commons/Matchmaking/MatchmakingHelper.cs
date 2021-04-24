@@ -26,7 +26,12 @@ public static class MatchmakingHelper
     public static void DestroyPlayer(Player nPlayer)
     {
         if (nPlayer.NeutronView != null)
-            new Action(() => MonoBehaviour.Destroy(nPlayer.NeutronView.gameObject)).DispatchOnMainThread();
+        {
+            NeutronDispatcher.Dispatch(() =>
+            {
+                UnityEngine.Object.Destroy(nPlayer.NeutronView.gameObject);
+            });
+        }
     }
 
     public static void Leave(Player nPlayer, bool leaveRoom = true, bool leaveChannel = true)

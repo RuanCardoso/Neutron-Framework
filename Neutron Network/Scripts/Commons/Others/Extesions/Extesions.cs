@@ -44,7 +44,8 @@ namespace NeutronNetwork.Internal.Extesions
             }
             catch (Exception ex) { NeutronUtils.StackTrace(ex); return null; }
         }
-        public static T DeserializeObject<T>(this byte[] message)
+
+        public static T Deserialize<T>(this byte[] message)
         {
             message = message.Decompress(NeutronConfig.Settings.GlobalSettings.Compression);
             try
