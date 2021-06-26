@@ -25,7 +25,7 @@ namespace NeutronNetwork.Internal.Client.Delegates
         /// <summary>
         ///This event is only triggered by you.
         /// <summary>
-        public delegate void OnDatabasePacket(Packet packet, object[] response, Neutron localInstance);
+        public delegate void OnDatabasePacket(SystemPacket packet, object[] response, Neutron localInstance);
         /// <summary>
         ///This event is only triggered by you.
         /// <summary>
@@ -58,7 +58,7 @@ namespace NeutronNetwork.Internal.Client.Delegates
         // <summary>
         ///This event is only triggered by you.
         /// <summary>
-        public delegate void OnFailed(Packet packet, string errorMessage, Neutron localInstance);
+        public delegate void OnFailed(SystemPacket packet, string errorMessage, Neutron localInstance);
         /// <summary>
         /// This
         /// </summary>

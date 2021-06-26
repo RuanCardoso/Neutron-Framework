@@ -1,4 +1,7 @@
 using UnityEngine;
 
-public class SeparatorAttribute : PropertyAttribute
-{ }
+namespace NeutronNetwork.Attributes
+{
+    public class SeparatorAttribute : PropertyAttribute
+    { }
+}

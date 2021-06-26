@@ -1,7 +1,12 @@
-﻿using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Interfaces;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Server.Internal;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -19,8 +24,8 @@ namespace NeutronNetwork
         /// <summary>
         /// ID of player.
         /// </summary>
-        public int ID { get => iD; set => iD = value; }
-        [SerializeField] [ReadOnly] private int iD;
+        public int ID { get => m_ID; set => m_ID = value; }
+        [SerializeField] [ReadOnly] private int m_ID;
         /// <summary>
         /// Nickname of player.
         /// </summary>
@@ -36,11 +41,6 @@ namespace NeutronNetwork
         /// </summary>
         public int CurrentRoom { get => currentRoom; set => currentRoom = value; }
         [SerializeField, ReadOnly] private int currentRoom = -1;
-        /// <summary>
-        /// Check if player is a bot.
-        /// </summary>
-        public bool IsBot { get => isBot; set => isBot = value; }
-        [SerializeField, ReadOnly] private bool isBot;
         /// <summary>
         /// Properties of player.
         /// </summary>
@@ -62,13 +62,18 @@ namespace NeutronNetwork
         /// <summary>
         /// Check if this player is a server Player.
         /// </summary>
-        public bool isServer { get; set; }
+        public bool IsServer { get; set; }
+        /// <summary>
+        /// Check if this player is connected in server.
+        /// </summary>
+        public bool IsConnected { get; set; }
         /// <summary>
         /// queue of data TCP.
         /// returns null on the client.
         /// not serialized over the network.
         /// </summary>
-        public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
+        public NeutronBlockingQueue<DataBuffer> qData = new NeutronBlockingQueue<DataBuffer>();
+        //! [OBSOLETE]: public NeutronQueue<DataBuffer> qData = new NeutronQueue<DataBuffer>();
         /// <summary>
         /// Remote EndPoint of player.
         /// returns null on the client.
@@ -102,19 +107,33 @@ namespace NeutronNetwork
         /// </summary>
         [NonSerialized] public NeutronMessageInfo infor;
 
-        public Player() { }// the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
+        #region Cached
+        public INeutronMatchmaking Matchmaking;
+        #endregion
+
+        public Player() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
+
+        public Player(int ID)
+        {
+            this.ID = ID;
+        }
 
         public Player(int ID, TcpClient tcpClient, CancellationTokenSource _cts)
         {
-            string randomNickname = $"Unk#{new System.Random().Next(0, 10000)}";
-            IPEndPoint localIPEndPoint = new IPEndPoint(IPAddress.Any, InternalUtils.GetFreePort(Protocol.Udp));
+            #region Properties
             this.ID = ID;
-            this.Nickname = randomNickname;
+            this.Nickname = PlayerHelper.GetNickname(ID);
+            #endregion
+
+            #region Socket
             this.tcpClient = tcpClient;
-            this.udpClient = new UdpClient(localIPEndPoint);
+            this.udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
             this.lPEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
-            this.infor = new NeutronMessageInfo(0);
+            #endregion
+
+            #region Others
             this._cts = _cts;
+            #endregion
         }
 
         public Player(SerializationInfo info, StreamingContext context)
@@ -123,7 +142,6 @@ namespace NeutronNetwork
             Nickname = info.GetString("NN");
             currentChannel = info.GetInt32("CC");
             CurrentRoom = info.GetInt32("CR");
-            IsBot = info.GetBoolean("IB");
             _ = info.GetString("_");
             Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(_);
         }
@@ -134,7 +152,6 @@ namespace NeutronNetwork
             info.AddValue("NN", Nickname);
             info.AddValue("CC", CurrentChannel);
             info.AddValue("CR", CurrentRoom);
-            info.AddValue("IB", IsBot);
             info.AddValue("_", _);
         }
 
@@ -165,14 +182,17 @@ namespace NeutronNetwork
         public void Dispose()
         {
             using (_cts)
+            using (udpClient)
+            using (tcpClient)
             {
-                using (udpClient)
+                try
                 {
-                    using (tcpClient)
+                    _cts.Cancel();
                     {
-                        _cts.Cancel();
+                        qData.Dispose();
                     }
                 }
+                catch (ObjectDisposedException) { }
             }
         }
     }

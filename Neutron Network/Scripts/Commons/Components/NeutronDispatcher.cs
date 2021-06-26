@@ -1,51 +1,60 @@
 using System;
 using System.Reflection;
 using NeutronNetwork;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Wrappers;
 using UnityEngine;
 
-[DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_DISPATCHER)]
-public class NeutronDispatcher : MonoBehaviour
+namespace NeutronNetwork.Internal.Components
 {
-    #region Variables
-    private int m_ChunkSize;
-    #endregion
-
-    #region Collections
-    private static NeutronQueue<Action> m_ActionsDispatcher = new NeutronQueue<Action>();
-    #endregion
-
-    private void Awake()
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_DISPATCHER)]
+    public class NeutronDispatcher : MonoBehaviour
     {
-#if UNITY_EDITOR
-        m_ChunkSize = NeutronConfig.Settings.EditorSettings.DispatcherChunkSize * 2;
-#elif UNITY_SERVER
-        m_ChunkSize = NeutronConfig.Settings.ServerSettings.DispatcherChunkSize;
-#else
-        m_ChunkSize = NeutronConfig.Settings.ClientSettings.DispatcherChunkSize;
-#endif
-    }
+        #region Variables
+        private int m_ChunkSize;
+        #endregion
 
-    [ThreadSafe]
-    private void Update()
-    {
-        try
+        #region Collections
+        private static NeutronSafeQueue<Action> m_ActionsDispatcher = new NeutronSafeQueue<Action>();
+        #endregion
+
+        private void Awake()
         {
-            for (int i = 0; i < m_ChunkSize && m_ActionsDispatcher.SafeCount > 0; i++)
-                m_ActionsDispatcher.SafeDequeue().Invoke();
+#if UNITY_EDITOR
+            m_ChunkSize = NeutronConfig.Settings.EditorSettings.DispatcherChunkSize * 2;
+#elif UNITY_SERVER
+            m_ChunkSize = NeutronConfig.Settings.ServerSettings.DispatcherChunkSize;
+#else
+            m_ChunkSize = NeutronConfig.Settings.ClientSettings.DispatcherChunkSize;
+#endif
         }
-        catch (Exception ex) { StackTrace(ex); }
-    }
 
-    [ThreadSafe]
-    public static void Dispatch(Action action)
-    {
-        m_ActionsDispatcher.SafeEnqueue(action);
-    }
+        [ThreadSafe]
+        private void Update()
+        {
+            try
+            {
+                for (int i = 0; i < m_ChunkSize && m_ActionsDispatcher.Count > 0; i++)
+                {
+                    if (m_ActionsDispatcher.TryDequeue(out Action action))
+                        action.Invoke();
+                    else { }
+                }
+            }
+            catch (Exception ex) { StackTrace(ex); }
+        }
 
-    void StackTrace(Exception ex)
-    {
-        NeutronUtils.StackTrace(ex);
-        NeutronUtils.StackTrace(ex.InnerException);
+        [ThreadSafe]
+        public static void Dispatch(Action action)
+        {
+            m_ActionsDispatcher.Enqueue(action);
+        }
+
+        void StackTrace(Exception ex)
+        {
+            NeutronLogger.StackTrace(ex);
+            NeutronLogger.StackTrace(ex.InnerException);
+        }
     }
 }

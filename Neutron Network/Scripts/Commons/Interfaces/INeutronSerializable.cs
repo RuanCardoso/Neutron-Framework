@@ -1,3 +1,7 @@
 ﻿using System.Runtime.Serialization;
-public interface INeutronSerializable : ISerializable
-{ }
+
+namespace NeutronNetwork.Internal.Interfaces
+{
+    public interface INeutronSerializable : ISerializable
+    { }
+}

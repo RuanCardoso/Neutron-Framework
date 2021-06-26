@@ -1,4 +1,6 @@
-﻿using NeutronNetwork.Internal.Attributes;
+﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Client.Internal;
+using NeutronNetwork.Internal.Attributes;
 using System.Collections;
 using UnityEngine;
 
@@ -33,8 +35,9 @@ namespace NeutronNetwork.Components
         {
             while (true)
             {
-                using (NeutronWriter options = new NeutronWriter())
+                using (var options = Neutron.PooledNetworkWriters.Pull())
                 {
+                    options.SetLength(0);
                     for (int i = 0; i < parameters.Length; i++)
                     {
                         var networkedParameter = parameters[i];
@@ -54,14 +57,14 @@ namespace NeutronNetwork.Components
                                 break;
                         }
                     }
-                    Dynamic(10018, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                    iRPC(10018, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                 }
                 yield return new WaitForSeconds(synchronizeInterval);
             }
         }
 
-        [Dynamic(10018, true)]
-        private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
+        [iRPC(10018, true)]
+        private void RPC(NeutronReader options, bool isMine, Player sender, NeutronMessageInfo infor)
         {
             using (options)
             {

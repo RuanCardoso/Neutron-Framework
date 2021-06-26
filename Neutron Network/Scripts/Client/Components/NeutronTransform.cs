@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections;
 using NeutronNetwork;
+using NeutronNetwork.Attributes;
+using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Attributes;
-using NeutronNetwork.Internal.Server.Cheats;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
@@ -48,7 +49,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronStart();
             if ((synchronizePosition || synchronizeRotation || synchronizeScale) && HasAuthority)
                 StartCoroutine(Synchronize());
-            else if (IsServer) maxPacketsPerSecond = NeutronUtils.GetMaxPacketsPerSecond(synchronizeInterval);
+            else if (IsServer) maxPacketsPerSecond = Helpers.NeutronHelper.GetMaxPacketsPerSecond(synchronizeInterval);
         }
 
         private void Start()
@@ -70,13 +71,14 @@ namespace NeutronNetwork.Components
         {
             while (true)
             {
-                using (NeutronWriter options = new NeutronWriter())
+                using (var options = Neutron.PooledNetworkWriters.Pull())
                 {
+                    options.SetLength(0);
                     if (synchronizePosition) options.Write(transform.position);
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
-                        Dynamic(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                        iRPC(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                     if (sendTo == SendTo.Others || sendTo == SendTo.Me)
                         ResetTransforms();
                 }
@@ -84,7 +86,7 @@ namespace NeutronNetwork.Components
             }
         }
 
-        [Dynamic(10013)]
+        [iRPC(10013)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             onFirstPacket = true;
@@ -114,7 +116,7 @@ namespace NeutronNetwork.Components
             {
 #if UNITY_SERVER || UNITY_EDITOR
                 if (IsServer && antiTeleport)
-                    CheatsUtils.Teleport(lagDistance, (teleportIfDistanceGreaterThan + isCheaterIfDistanceGreaterThan), NeutronView.owner);
+                    CheatsHelper.Teleport(lagDistance, (teleportIfDistanceGreaterThan + isCheaterIfDistanceGreaterThan), NeutronView.Owner);
 #endif
                 transform.position = position;
             }
@@ -124,7 +126,7 @@ namespace NeutronNetwork.Components
         {
             while (IsServer)
             {
-                CheatsUtils.SpeedHack(currentPacketsPerSecond, maxPacketsPerSecond, NeutronView.owner);
+                CheatsHelper.SpeedHack(currentPacketsPerSecond, maxPacketsPerSecond, NeutronView.Owner);
                 currentPacketsPerSecond = 0;
                 yield return new WaitForSeconds(1f);
             }

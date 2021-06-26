@@ -15,21 +15,20 @@ MonoBehaviour:
   GlobalSettings:
     Address: 127.0.0.1
     Port: 5055
-    MaxPlayers: 2
+    MaxPlayers: 100
     Serialization: 1
     Compression: 1
     Lan: 0
     NoDelay: 1
-    SendOnPostProcessing: 1
   EditorSettings:
     FPS: 60
-    DispatcherChunkSize: 1
+    DispatcherChunkSize: 40
   ClientSettings:
     FPS: 60
     DispatcherChunkSize: 1
   ServerSettings:
-    BackLog: 10
     FPS: 60
+    BackLog: 10
     DispatcherChunkSize: 1
     PacketChunkSize: 1
     ProcessChunkSize: 1
@@ -71,6 +70,5 @@ MonoBehaviour:
       sendTo: 0
       broadcast: 5
       protocol: 6
-  MAX_REC_MSG: 512
-  MAX_SEND_MSG: 512
+  MAX_REC_MSG: 500
   LIMIT_OF_CONN_BY_IP: 3

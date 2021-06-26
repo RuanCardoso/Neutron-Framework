@@ -1,7 +1,8 @@
 using System;
 
-[AttributeUsage(AttributeTargets.All)]
-public class NetworkAttribute : Attribute
+namespace NeutronNetwork.Internal.Attributes
 {
-
+    [AttributeUsage(AttributeTargets.All)]
+    public class NetworkAttribute : Attribute
+    { }
 }

@@ -1,6 +1,9 @@
-﻿using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Interfaces;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
+using NeutronNetwork.Internal.Interfaces;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,7 +14,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Room : ANeutronMatchmaking, INeutronSerializable, INeutronNotify, IEquatable<Room>, IEqualityComparer<Room>
+    public class Room : NeutronMatchmaking, INeutronSerializable, INeutronNotify, IEquatable<Room>, IEqualityComparer<Room>
     {
         /// <summary>
         ///* Unique room ID.

@@ -1,4 +1,4 @@
-﻿namespace NeutronNetwork.Internal.Client
+﻿namespace NeutronNetwork.Interfaces
 {
     public interface INeutronNotify
     {

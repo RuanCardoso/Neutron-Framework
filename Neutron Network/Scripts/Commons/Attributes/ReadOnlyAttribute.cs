@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace NeutronNetwork.Internal.Attributes
+namespace NeutronNetwork.Attributes
 {
     public class ReadOnlyAttribute : PropertyAttribute
     { }

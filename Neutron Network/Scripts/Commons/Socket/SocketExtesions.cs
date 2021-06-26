@@ -2,7 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class SocketExtesions
+namespace NeutronNetwork.Extensions
 {
+    public static class SocketExtesions
+    {
 
+    }
 }

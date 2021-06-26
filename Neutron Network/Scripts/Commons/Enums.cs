@@ -1,7 +1,14 @@
-﻿using System;
+﻿using NeutronNetwork.Internal.Attributes;
+using System;
 using System.ComponentModel;
 
 #region Byte
+
+[Network]
+public enum ClientPacket : byte
+{
+    [Obsolete("Do not use this packet, it is only for testing (:")] CustomTest,
+}
 
 [Network]
 public enum SendTo : byte
@@ -25,17 +32,16 @@ public enum SendTo : byte
 }
 
 [Network]
-public enum Packet : byte
+public enum SystemPacket : byte
 {
-    Connected,
-    DisconnectedByReason,
-    Login,
-    Dynamic,
-    NonDynamic,
+    Handshake,
+    NewPlayer,
+    Disconnection,
+    iRPC,
+    sRPC,
     JoinChannel,
     JoinRoom,
-    LeaveRoom,
-    LeaveChannel,
+    Leave,
     CreateRoom,
     Chat,
     GetChannels,
@@ -43,23 +49,33 @@ public enum Packet : byte
     GetRooms,
     Fail,
     DestroyPlayer,
-    VoiceChat,
-    PlayerDisconnected,
     Nickname,
     SetPlayerProperties,
     SetRoomProperties,
     Heartbeat,
-    //======================================================
-    // - CUSTOM PACKETS ADD HERE.
-    //======================================================
-    [Obsolete("Do not use this packet, it is only for testing (:")] CustomTest,
+    ClientPacket
+}
+
+[Network]
+public enum MatchmakingPacket : byte
+{
+    Room,
+    Channel,
+    Group
+}
+
+[Network]
+public enum ChatPacket : byte
+{
+    Global,
+    Private,
 }
 
 [Network]
 public enum CachedPacket : byte
 {
-    NonDynamic = 121,
-    Dynamic = 122,
+    sRPC = 121,
+    iRPC = 122,
 }
 
 [Network]
@@ -130,7 +146,6 @@ public enum Compression : int
 public enum ClientType : int
 {
     MainPlayer,
-    Bot,
     VirtualPlayer,
 }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
 using UnityEngine;
 
@@ -113,12 +114,13 @@ namespace NeutronNetwork.Components
                 {
                     if (tSyncInterval >= synchronizeInterval)
                     {
-                        using (NeutronWriter options = new NeutronWriter())
+                        using (var options = Neutron.PooledNetworkWriters.Pull())
                         {
+                            options.SetLength(0);
                             options.Write(Frequency);
                             options.Write(audioClip.channels);
                             options.Write(samples);
-                            Dynamic(10021, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                            iRPC(10021, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                         }
                         tSyncInterval = 0;
                     }
@@ -195,7 +197,7 @@ namespace NeutronNetwork.Components
             while (!(Microphone.GetPosition(deviceName) > 0)) { }
         }
 
-        [Dynamic(10021)]
+        [iRPC(10021)]
         private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
         {
             Debug.Log(IsClient);

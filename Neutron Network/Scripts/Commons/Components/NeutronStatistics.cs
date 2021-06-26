@@ -1,59 +1,40 @@
-﻿using System;
-using System.Collections;
-using System.Threading;
-using NeutronNetwork.Internal;
-using NeutronNetwork.Internal.Attributes;
-using NeutronNetwork.Internal.Wrappers;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class NeutronStatistics : MonoBehaviour
+namespace NeutronNetwork.Internal.Components
 {
-    public static int clientBytesSent, clientBytesRec, serverBytesSent, serverBytesRec;
-    [SerializeField] private float perSeconds = 1;
-
-    [Header("Client Statistics")]
-    [SerializeField] [ReadOnly] private string _BytesSent;
-    [SerializeField] [ReadOnly] private string _BytesRec;
-
-    [Header("Server Statistics")]
-    [SerializeField] [ReadOnly] private string BytesSent;
-    [SerializeField] [ReadOnly] private string BytesRec;
-
-    private void Awake()
+    public class NeutronStatistics : MonoBehaviour
     {
-#if UNITY_SERVER || UNITY_EDITOR
-        StartCoroutine(UpdateStatistics());
-#endif
-    }
+        #region Variables
+        float t_Timer = 0;
+        #endregion
 
-    private void Start()
-    {
-#if UNITY_SERVER || UNITY_EDITOR
-        StartCoroutine(ClearStatistics());
-#endif
-    }
+        #region Client;
+        public static NeutronStatisticsProfiler m_ClientTCP = new NeutronStatisticsProfiler();
+        public static NeutronStatisticsProfiler m_ClientUDP = new NeutronStatisticsProfiler();
+        #endregion
 
-    private IEnumerator UpdateStatistics()
-    {
-        while (true)
+        #region Server;
+        public static NeutronStatisticsProfiler m_ServerTCP = new NeutronStatisticsProfiler();
+        public static NeutronStatisticsProfiler m_ServerUDP = new NeutronStatisticsProfiler();
+        #endregion
+
+        private void Start()
         {
-            _BytesSent = $"{InternalUtils.SizeSuffix(clientBytesSent)} | [{InternalUtils.SizeSuffixMB(clientBytesSent)}]";
-            _BytesRec = $"{InternalUtils.SizeSuffix(clientBytesRec)} | [{InternalUtils.SizeSuffixMB(clientBytesRec)}]";
-            BytesSent = $"{InternalUtils.SizeSuffix(serverBytesSent)} | [{InternalUtils.SizeSuffixMB(serverBytesSent)}]";
-            BytesRec = $"{InternalUtils.SizeSuffix(serverBytesRec)} | [{InternalUtils.SizeSuffixMB(serverBytesRec)}]";
-            yield return new WaitForSeconds(perSeconds);
+#if UNITY_SERVER || UNITY_EDITOR
+#endif
         }
-    }
 
-    private IEnumerator ClearStatistics()
-    {
-        while (true)
+        private void Update()
         {
-            Interlocked.Exchange(ref clientBytesSent, 0);
-            Interlocked.Exchange(ref clientBytesRec, 0);
-            Interlocked.Exchange(ref serverBytesSent, 0);
-            Interlocked.Exchange(ref serverBytesRec, 0);
-            yield return new WaitForSeconds(perSeconds);
+            t_Timer += Time.deltaTime;
+            if (t_Timer >= 1)
+            {
+                m_ClientTCP.Reset();
+                m_ClientUDP.Reset();
+                m_ServerTCP.Reset();
+                m_ServerUDP.Reset();
+                t_Timer = 0;
+            }
         }
     }
 }

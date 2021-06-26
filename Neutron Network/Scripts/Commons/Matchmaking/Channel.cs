@@ -6,11 +6,16 @@ using NeutronNetwork.Internal.Client;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using System.Linq;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Interfaces;
+using NeutronNetwork.Attributes;
+using NeutronNetwork.Internal.Wrappers;
 
 namespace NeutronNetwork
 {
     [Serializable]
-    public class Channel : ANeutronMatchmaking, INeutronSerializable, INeutronNotify, IEquatable<Channel>, IEqualityComparer<Channel>
+    public class Channel : NeutronMatchmaking, INeutronSerializable, INeutronNotify, IEquatable<Channel>, IEqualityComparer<Channel>
     {
         /// <summary>
         ///* ID of channel.
@@ -20,7 +25,7 @@ namespace NeutronNetwork
         ///* Current amount of rooms.
         /// </summary>
         public int CountOfRooms { get => m_CountOfRooms; set => m_CountOfRooms = value; }
-        [SerializeField, ReadOnly] private int m_CountOfRooms;
+        [SerializeField] [ReadOnly] private int m_CountOfRooms;
         /// <summary>
         ///* Max rooms of channel.
         /// </summary>
@@ -67,7 +72,7 @@ namespace NeutronNetwork
         public bool AddRoom(Room room)
         {
             if (m_CountOfRooms >= MaxRooms)
-                return NeutronUtils.LoggerError("Matchmaking: failed to enter, exceeded the maximum rooms limit.");
+                return NeutronLogger.LoggerError("Matchmaking: failed to enter, exceeded the maximum rooms limit.");
             else
             {
                 bool TryValue = false;

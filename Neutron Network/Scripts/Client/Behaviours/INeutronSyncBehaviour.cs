@@ -1,5 +1,5 @@
 ﻿using NeutronNetwork;
-using NeutronNetwork.Internal.Extesions;
+using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Server;
 using NeutronNetwork.Internal.Wrappers;
 using Newtonsoft.Json;
@@ -33,6 +33,7 @@ namespace NeutronNetwork
         [SerializeField] private Broadcast broadcast = global::Broadcast.Room;
         [SerializeField] [Separator] private Protocol protocol = Protocol.Tcp;
         #endregion
+
         private bool Synchronizing = false;
 
         protected override void OnNeutronUpdate()
@@ -80,15 +81,16 @@ namespace NeutronNetwork
 
         private void Broadcast(string jsonString)
         {
-            using (NeutronWriter writer = new NeutronWriter())
+            using (var writer = Neutron.PooledNetworkWriters.Pull())
             {
+                writer.SetLength(0);
                 writer.Write(jsonString);
-                Dynamic(24, writer, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                iRPC(24, writer, CacheMode.Overwrite, sendTo, broadcast, protocol);
             }
         }
 
-        [Dynamic(24)]
-        public void SyncBehaviour(NeutronReader options, Player sender, NeutronMessageInfo infor)
+        [iRPC(24)]
+        public void SyncBehaviour(NeutronReader options, bool isMine, Player sender, NeutronMessageInfo infor)
         {
             using (options)
             {

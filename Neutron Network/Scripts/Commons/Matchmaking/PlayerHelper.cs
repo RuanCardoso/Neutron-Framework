@@ -1,34 +1,60 @@
 using NeutronNetwork;
-using NeutronNetwork.Internal.Extesions;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Extensions;
+using NeutronNetwork.Internal.Components;
 
-public static class PlayerHelper
+namespace NeutronNetwork.Helpers
 {
-    public static void Disconnect(Player nPlayer, string reason)
+    public static class PlayerHelper
     {
-        using (NeutronWriter writer = new NeutronWriter())
+        public static void Disconnect(Player nPlayer, string reason)
         {
-            writer.WritePacket(Packet.DisconnectedByReason);
-            writer.Write(reason);
-            nPlayer.Send(writer);
+            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            {
+                writer.SetLength(0);
+                writer.WritePacket(SystemPacket.Disconnection);
+                writer.Write(nPlayer.ID);
+                writer.Write(reason);
+                nPlayer.Send(writer, NeutronConfig.Settings.HandleSettings.OnPlayerDisconnected);
+            }
         }
-    }
 
-    public static void Message(Player nSocket, Packet packet, string message)
-    {
-        using (NeutronWriter writer = new NeutronWriter())
+        public static void Message(Player nSocket, SystemPacket packet, string message)
         {
-            writer.WritePacket(Packet.Fail);
-            writer.WritePacket(packet);
-            writer.Write(message);
-            nSocket.Send(writer);
+            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            {
+                writer.SetLength(0);
+                writer.WritePacket(SystemPacket.Fail);
+                writer.WritePacket(packet);
+                writer.Write(message);
+                nSocket.Send(writer);
+            }
         }
-    }
 
-    public static bool GetAvailableID(out int ID)
-    {
-        if (Neutron.Server.generatedIds.SafeCount > 0)
-            ID = Neutron.Server.generatedIds.SafeDequeue();
-        else ID = 0;
-        return ID > Neutron.GENERATE_PLAYER_ID;
+        public static string GetNickname(int ID)
+        {
+            return $"Player#{ID}";
+        }
+
+        public static bool IsMine(Player nSender, int networkID)
+        {
+            return nSender.ID == networkID;
+        }
+
+        public static bool GetAvailableID(out int ID)
+        {
+            #region Provider
+            if (Neutron.Server.generatedIds.Count > 0)
+            {
+                if (!Neutron.Server.generatedIds.TryDequeue(out ID))
+                    ID = 0;
+            }
+            else ID = 0;
+            #endregion
+
+            #region Return
+            return ID > NeutronConstants.GENERATE_PLAYER_ID;
+            #endregion
+        }
     }
 }

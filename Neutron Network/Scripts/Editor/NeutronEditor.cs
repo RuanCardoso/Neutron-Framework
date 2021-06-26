@@ -1,22 +1,34 @@
-﻿using NeutronNetwork;
-using NeutronNetwork.Internal.Comms;
-using NeutronNetwork.Internal.Cipher;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
-using System.Threading.Tasks;
+using NeutronNetwork.Server.Internal;
+using UnityEditor.SceneManagement;
+using NeutronNetwork.Server;
 
 public class NeutronEditor : EditorWindow
 {
     [MenuItem("Neutron/Neutron/Settings")]
-    private static void LocateSettings()
+    private static void OpenSettings()
     {
-        UnityEngine.Object asset = Resources.Load("Neutron Settings");
+        Object asset = Resources.Load("Neutron Settings");
         if (asset != null)
             AssetDatabase.OpenAsset(asset);
+    }
+
+    [MenuItem("Neutron/Setup")]
+    private static void Setup()
+    {
+        GameObject l_Controllers = GameObject.Find("Controllers");
+        if (l_Controllers == null)
+        {
+            l_Controllers = new GameObject("Controllers");
+            GameObject l_Client = new GameObject("Client");
+            GameObject l_Server = new GameObject("Server");
+            l_Client.transform.SetParent(l_Controllers.transform);
+            l_Server.transform.SetParent(l_Controllers.transform);
+            l_Server.AddComponent<NeutronServer>();
+            EditorUtility.SetDirty(l_Controllers);
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        }
+        else Debug.LogError("A setup object has already been created.");
     }
 }

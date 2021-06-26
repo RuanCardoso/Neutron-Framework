@@ -9,7 +9,7 @@ public class NeutronSynchronizeDrawer : PropertyDrawer
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
         prefixStyle.richText = true;
-        prefixStyle.normal.textColor = Color.white;
+        prefixStyle.normal.textColor = GUI.skin.label.normal.textColor;
         EditorGUI.PrefixLabel(position, new GUIContent($"{label.text}<size=10><color=green><b><i>[Synced]</i></b></color></size>"), prefixStyle);
         EditorGUI.PropertyField(position, property, true);
     }

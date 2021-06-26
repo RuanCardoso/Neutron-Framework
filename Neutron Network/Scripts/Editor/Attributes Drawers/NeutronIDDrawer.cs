@@ -5,6 +5,7 @@ using System;
 using UnityEditor.Experimental.SceneManagement;
 using Random = UnityEngine.Random;
 using System.Linq;
+using NeutronNetwork.Internal.Attributes;
 
 [CustomPropertyDrawer(typeof(IDAttribute))]
 public class NeutronIDDrawer : PropertyDrawer

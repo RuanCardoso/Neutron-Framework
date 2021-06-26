@@ -1,4 +1,6 @@
-﻿using NeutronNetwork.Internal.Attributes;
+﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Internal.Attributes;
 using UnityEngine;
 
 namespace NeutronNetwork
@@ -64,21 +66,17 @@ namespace NeutronNetwork
         /// <para>EN: Check if the object is yours, HasAuthority can also be used to check if the object is mine.</para>
         /// </summary>
         /// <returns></returns>
-        protected bool IsMine => Initialized && Mine();
-        /// <summary>
-        /// Ignore this/Ignore isto porra.
-        /// </summary>
-        protected bool IsBot => Initialized && NeutronView.owner.IsBot;
+        protected bool IsMine => Mine();
         /// <summary>
         /// <para>PT: Verifica se é o objeto do servidor.</para>
         /// <para>EN: Checks if it is the server object.</para>
         /// </summary>
-        protected bool IsServer => Initialized && NeutronView.isServer;
+        protected bool IsServer => NeutronView.IsServer;
         /// <summary>
         /// <para>PT: Verifica se é o objeto do cliente.</para>
         /// <para>EN: Checks if it is the client object.</para>
         /// </summary>
-        protected bool IsClient => Initialized && !NeutronView.isServer;
+        protected bool IsClient => !IsServer;
         /// <summary>
         /// <para>PT: Verifica se você tem autoridade para controlar este objeto, uma versão simplificada de IsMine / IsServer / IsClient / IsMasterClient.</para>
         /// <para>EN: Checks whether you have the authority to control this object, a simplified version of IsMine / IsServer / IsClient / IsMasterClient.</para>
@@ -108,7 +106,7 @@ namespace NeutronNetwork
                             return false;
                     }
                 }
-                else return NeutronUtils.LoggerError("Unable to find Neutron View");
+                else return NeutronLogger.LoggerError("Unable to find Neutron View");
             }
         }
         #endregion
@@ -138,7 +136,7 @@ namespace NeutronNetwork
         /// <returns></returns>
         private bool Mine()
         {
-            return !IsServer && NeutronView._.IsMine(NeutronView.owner);
+            return !IsServer && NeutronView._.IsMine(NeutronView.Owner);
         }
         /// <summary>
         /// <para>PT: Verifica se você é o MasterClient.</para>
@@ -153,7 +151,7 @@ namespace NeutronNetwork
         /// <para>PT: Invoca o método na rede.</para>
         /// <para>EN: Invokes the method on the network.</para>
         /// </summary>
-        /// <param name="DynamicID">
+        /// <param name="attributeID">
         /// <para>PT: ID do método que será invocado.</para><br/>
         /// <para>EN: ID of the method that will be invoked.</para>
         /// </param>
@@ -177,31 +175,49 @@ namespace NeutronNetwork
         /// <para>PT: Qual protocolo será usado para enviar estes dados?</para><br/>
         /// <para>EN: Which protocol will be used to send this data?</para>
         /// </param>
-        protected void Dynamic(int DynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        protected void iRPC(int attributeID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
-            int uniqueID = DynamicID ^ ID;
+            int uniqueID = attributeID ^ ID;
             if (IsClient)
-                NeutronView._.Dynamic(NeutronView.ID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
+                NeutronView._.iRPC(NeutronView.ID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
             else if (IsServer)
-                Neutron.Server.Dynamic(NeutronView.ID, uniqueID, parameters, NeutronView.owner, cacheMode, sendTo, broadcast, protocol);
+                Neutron.Server.iRPC(NeutronView.ID, uniqueID, parameters, NeutronView.Owner, cacheMode, sendTo, broadcast, protocol);
         }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="networkID"></param>
-        /// <param name="DynamicID"></param>
+        /// <param name="attributeID"></param>
         /// <param name="cacheMode"></param>
         /// <param name="parameters"></param>
         /// <param name="sendTo"></param>
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
-        protected void Dynamic(int networkID, int DynamicID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        protected void iRPC(Player playerID, int attributeID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
         {
-            int uniqueID = DynamicID ^ ID;
+            int uniqueID = attributeID ^ ID;
             if (IsClient)
-                NeutronView._.Dynamic(networkID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
+                NeutronView._.iRPC(playerID.ID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
             else if (IsServer)
-                Neutron.Server.Dynamic(networkID, uniqueID, parameters, NeutronView.owner, cacheMode, sendTo, broadcast, protocol);
+                Neutron.Server.iRPC(playerID.ID, uniqueID, parameters, NeutronView.Owner, cacheMode, sendTo, broadcast, protocol);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="networkID"></param>
+        /// <param name="attributeID"></param>
+        /// <param name="cacheMode"></param>
+        /// <param name="parameters"></param>
+        /// <param name="sendTo"></param>
+        /// <param name="broadcast"></param>
+        /// <param name="protocol"></param>
+        protected void iRPC(NeutronView viewID, int attributeID, NeutronWriter parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocol)
+        {
+            int uniqueID = attributeID ^ ID;
+            if (IsClient)
+                NeutronView._.iRPC(viewID.ID, uniqueID, parameters, cacheMode, sendTo, broadcast, protocol);
+            else if (IsServer)
+                Neutron.Server.iRPC(viewID.ID, uniqueID, parameters, NeutronView.Owner, cacheMode, sendTo, broadcast, protocol);
         }
         #endregion
     }

@@ -1,7 +1,6 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace NeutronNetwork.Internal.Attributes
+namespace NeutronNetwork.Attributes
 {
     public class DisableFieldAttribute : PropertyAttribute
     { }

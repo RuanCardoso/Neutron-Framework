@@ -1,19 +1,46 @@
-﻿using UnityEngine;
+﻿using NeutronNetwork.Constants;
+using UnityEngine;
 
-[DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CONFIG)]
-public class NeutronConfig : MonoBehaviour
+namespace NeutronNetwork.Internal.Components
 {
-    public static NeutronSettings Settings { get; private set; }
-    private void Awake()
+    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CONFIG)]
+    public class NeutronConfig : MonoBehaviour
     {
-        LoadSettings();
-    }
+        public static NeutronSettings Settings { get; private set; }
 
-    private void Start() { }
+        #region Variables
+        private int m_Framerate;
+        #endregion
 
-    private void LoadSettings()
-    {
-        if (Settings == null)
-            Settings = Resources.Load<NeutronSettings>("Neutron Settings");
+        private void Awake()
+        {
+            LoadSettings();
+        }
+
+        private void Start()
+        {
+            DontDestroyOnLoad(transform.root);
+
+            #region Framerate
+#if UNITY_EDITOR
+            m_Framerate = NeutronConfig.Settings.EditorSettings.FPS;
+#elif UNITY_SERVER
+            m_Framerate = NeutronConfig.Settings.ServerSettings.FPS;
+#else
+            m_Framerate = NeutronConfig.Settings.ClientSettings.FPS;
+#endif
+            if (m_Framerate > 0)
+            {
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = m_Framerate;
+            }
+            #endregion
+        }
+
+        private void LoadSettings()
+        {
+            if (Settings == null)
+                Settings = Resources.Load<NeutronSettings>("Neutron Settings");
+        }
     }
 }

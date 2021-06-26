@@ -1,5 +1,8 @@
 using System;
 
-[AttributeUsage(AttributeTargets.All)]
-public class ThreadSafeAttribute : Attribute
-{ }
+namespace NeutronNetwork.Internal.Attributes
+{
+    [AttributeUsage(AttributeTargets.All)]
+    public class ThreadSafeAttribute : Attribute
+    { }
+}

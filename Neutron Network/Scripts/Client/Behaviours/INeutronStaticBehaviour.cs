@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using NeutronNetwork.Constants;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -29,9 +31,9 @@ namespace NeutronNetwork
         /// <param name="sendTo"></param>
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
-        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Player sender)
+        protected void sRPC(int nonDynamicID, NeutronWriter parameters, Player sender)
         {
-            Neutron.Server.NonDynamic(sender, nonDynamicID, parameters);
+            Neutron.Server.sRPC(sender, nonDynamicID, parameters);
         }
         /// <summary>
         /// client side.
@@ -43,9 +45,19 @@ namespace NeutronNetwork
         /// <param name="broadcast"></param>
         /// <param name="protocol"></param>
         /// <param name="instance"></param>
-        protected void NonDynamic(int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
+        protected void sRPC(int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
         {
-            instance.NonDynamic(nonDynamicID, parameters, protocol);
+            instance.sRPC(instance.MyPlayer.ID, nonDynamicID, parameters, protocol);
+        }
+
+        protected void sRPC(Player nID, int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
+        {
+            instance.sRPC(nID.ID, nonDynamicID, parameters, protocol);
+        }
+
+        protected void sRPC(NeutronView nID, int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
+        {
+            instance.sRPC(nID.ID, nonDynamicID, parameters, protocol);
         }
         #endregion
 
@@ -59,13 +71,13 @@ namespace NeutronNetwork
                 MethodInfo[] mInfos = mType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 for (int y = 0; y < mInfos.Length; y++)
                 {
-                    NonDynamic NeutronNonDynamicAttr = mInfos[y].GetCustomAttribute<NonDynamic>();
-                    if (NeutronNonDynamicAttr != null)
+                    sRPC[] Attrs = mInfos[y].GetCustomAttributes<sRPC>().ToArray();
+                    if (Attrs != null)
                     {
-                        RemoteProceduralCall remoteProceduralCall = new RemoteProceduralCall(mInstance, mInfos[y], NeutronNonDynamicAttr);
-                        NonDynamics.Add(NeutronNonDynamicAttr.ID, remoteProceduralCall);
-                        if (mInfos[y].ReturnType == typeof(bool) && !NeutronConfig.Settings.GlobalSettings.SendOnPostProcessing)
-                            NeutronUtils.LoggerError($"Boolean return in NonDynamic -> {remoteProceduralCall.method.Name} : [{NeutronNonDynamicAttr.ID}] is useless when \"SendOnPostProcessing\" is disabled, switch to void instead of bool");
+                        foreach (sRPC Attr in Attrs)
+                        {
+                            NonDynamics.Add(Attr.ID, new RemoteProceduralCall(mInstance, mInfos[y], Attr));
+                        }
                     }
                     else continue;
                 }

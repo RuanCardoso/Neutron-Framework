@@ -1,4 +1,5 @@
-﻿using NeutronNetwork.Internal.Attributes;
+﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Internal.Attributes;
 using UnityEditor;
 using UnityEngine;
 
