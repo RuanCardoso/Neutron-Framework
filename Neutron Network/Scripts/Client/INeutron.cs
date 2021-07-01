@@ -25,7 +25,7 @@ namespace NeutronNetwork
     ///* Esta classe é o núcleo do Neutron, aqui é o lado do cliente, você pode fazer oque quiser.
     ///* Um Salve pra Unity Brasil.
     [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_CLIENT)]
-    public class Neutron : NeutronClientPublicFunctions
+    public class Neutron : NeutronClientFunctions
     {
         #region Pool
         /// <summary>
@@ -68,7 +68,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o objeto que representa seu jogador.
         /// </summary>
-        public Player MyPlayer => _myPlayer;
+        public Player MyPlayer { get; set; }
         /// <summary>
         ///* Retorna a sala em que você está ingressado.
         /// </summary>
@@ -78,19 +78,18 @@ namespace NeutronNetwork
         /// </summary>
         public Channel CurrentChannel { get; set; }
         #endregion
-
-        #region Fields
-        private string m_Nickname;
-        #endregion
-
         /// <summary>
         ///* Retorna o status da sua conexão.
         /// </summary>
-        public bool IsConnected { get; private set; }
+        public bool IsConnected { get; set; }
         /// <summary>
         ///* Obtém o nickname do seu jogador.
         /// </summary>
         public string Nickname => m_Nickname;
+        #endregion
+
+        #region Fields
+        private string m_Nickname;
         #endregion
 
         #region Events
@@ -271,13 +270,21 @@ namespace NeutronNetwork
                     #region Dispose
                     Dispose();
                     #endregion
-                    IsConnected = false;
                     NeutronLogger.Print("An attempt to establish a connection to the server failed.");
                 }
                 else if (ConnectTask.IsCompleted)
                 {
                     IsConnected = true;
-                    Handshake();
+
+                    //* Envia um pacote de reconhecimento pro servidor.
+                    #region Handshake
+                    using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                    {
+                        nWriter.SetLength(0);
+                        nWriter.WritePacket(SystemPacket.Handshake);
+                        Send(nWriter);
+                    }
+                    #endregion
 
                     //* Dedica um thread a receber os dados do servidor.
                     #region Threading
@@ -393,7 +400,8 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                HandleConnected(nPlayer);
+                                MyPlayer = nPlayer;
+                                PlayerConnections[MyPlayer.ID] = MyPlayer;
                                 foreach (var nIPlayer in nPlayers)
                                 {
                                     nIPlayer.IsConnected = true;
@@ -402,6 +410,7 @@ namespace NeutronNetwork
                                     else
                                         PlayerConnections[nIPlayer.ID] = nIPlayer;
                                 }
+                                OnPlayerConnected.Invoke(MyPlayer, IsMine(MyPlayer), this);
                                 #endregion
                             }
                             break;
@@ -465,7 +474,7 @@ namespace NeutronNetwork
 
                                 #region Logic
                                 Player nPlayer = PlayerConnections[nPlayerId];
-                                iRPCHandler(nIRPCId, nNetworkID, nParameters, IsMine(nPlayer), nPlayer, new NeutronMessageInfo(0));
+                                iRPCHandler(nIRPCId, nNetworkID, nParameters, IsMine(nPlayer), nPlayer);
                                 #endregion
                             }
                             break;
@@ -651,10 +660,49 @@ namespace NeutronNetwork
                     nWriter.SetLength(0); // * Reseta o escritor, apaga os dados antigos.
                     nWriter.WritePacket(SystemPacket.Heartbeat);
                     nWriter.Write(CurrentTime);
-                    Send(nWriter.ToArray(), nProtocol);
+                    Send(nWriter, nProtocol);
                 }
                 yield return new WaitForSeconds(nDelay);
             }
+        }
+
+        /// <summary>
+        ///* Obtém as informações da sua conexão com o servidor.
+        ///* Para mais detalhes, consulte a documentação.<br/> 
+        /// </summary>
+        /// <param name="nPing">* A latência entre você e o servidor.</param>
+        /// <param name="nPcktLoss">* A quantidade de pacotes perdidos.</param>
+        /// <param name="nIterations">* A quantidade de testes que será realizado.</param>
+        public void GetNetworkStats(out long nPing, out double nPcktLoss, int nIterations)
+        {
+            #region Sender
+            for (int i = 0; i < nIterations; i++)
+            {
+                m_PingAmount++;
+                using (System.Net.NetworkInformation.Ping pingSender = new System.Net.NetworkInformation.Ping())
+                {
+                    pingSender.PingCompleted += (object sender, PingCompletedEventArgs e) =>
+                    {
+                        if (e.Reply != null)
+                        {
+                            if (e.Reply.Status == IPStatus.Success)
+                                m_Ping = e.Reply.RoundtripTime;
+                            else m_PacketLoss += 1; //* Se a tentativa de ping falhar, incrementa.
+                        }
+                    };
+                    pingSender.SendAsync(NeutronConfig.Settings.GlobalSettings.Address, null);
+                }
+            }
+            #endregion
+            nPing = m_Ping;
+            nPcktLoss = (m_PacketLoss / m_PingAmount) * 100; //* Packet loss em porcentagem(%).
+
+            //* Reseta os status.
+            #region Reset
+            m_Ping = 0;
+            m_PacketLoss = 0;
+            m_PingAmount = 0;
+            #endregion
         }
 
         /// <summary>
@@ -671,7 +719,7 @@ namespace NeutronNetwork
                 nWriter.SetLength(0);
                 nWriter.WritePacket(SystemPacket.Leave);
                 nWriter.WritePacket(nMatchmakingPacket);
-                Send(nWriter.ToArray());
+                Send(nWriter);
             }
         }
 
@@ -692,7 +740,7 @@ namespace NeutronNetwork
                 nWriter.WritePacket(ChatPacket.Global);
                 nWriter.WritePacket(nBroadcast);
                 nWriter.Write(nMessage);
-                Send(nWriter.ToArray());
+                Send(nWriter);
             }
         }
 
@@ -713,7 +761,7 @@ namespace NeutronNetwork
                 nWriter.WritePacket(ChatPacket.Private);
                 nWriter.Write(nPlayer.ID);
                 nWriter.Write(nMessage);
-                Send(nWriter.ToArray());
+                Send(nWriter);
             }
         }
 
@@ -722,25 +770,25 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerPacketReceived ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="nWriter">* Os parâmetros que o pacote irá enviar.</param>
+        /// <param name="nParameters">* Os parâmetros que o pacote irá enviar.</param>
         /// <param name="nClientPacket">* O Pacote personalizado que será usado.</param>
         /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
         /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
         /// <param name="nSendProtocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void Send(NeutronWriter nWriter, ClientPacket nClientPacket, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
+        public void Send(NeutronWriter nParameters, ClientPacket nClientPacket, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
-            using (NeutronWriter nIWriter = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
-                nIWriter.SetLength(0);
-                nIWriter.WritePacket(SystemPacket.ClientPacket);
-                nIWriter.Write(MyPlayer.ID);
-                nIWriter.WritePacket(nClientPacket);
-                nIWriter.WritePacket(nSendTo);
-                nIWriter.WritePacket(nBroadcast);
-                nIWriter.WritePacket(nRecProtocol);
-                nIWriter.WriteExactly(nWriter.ToArray());
-                Send(nIWriter.ToArray(), nSendProtocol);
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.ClientPacket);
+                nWriter.Write(MyPlayer.ID);
+                nWriter.WritePacket(nClientPacket);
+                nWriter.WritePacket(nSendTo);
+                nWriter.WritePacket(nBroadcast);
+                nWriter.WritePacket(nRecProtocol);
+                nWriter.WriteExactly(nParameters.ToArray());
+                Send(nWriter, nSendProtocol);
             }
         }
 
@@ -750,22 +798,22 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerPacketReceived ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="paramsWriter">* Os parâmetros que o pacote irá enviar.</param>
-        /// <param name="player">* O jogador de destino do pacote.</param>
-        /// <param name="clientPacket">* O Pacote personalizado que será usado.</param>
-        /// <param name="recProtocol">* O protocolo que será usado para receber o pacote.</param>
-        /// <param name="sendProtocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void Send(NeutronWriter paramsWriter, Player player, ClientPacket clientPacket, Protocol recProtocol, Protocol sendProtocol)
+        /// <param name="nParameters">* Os parâmetros que o pacote irá enviar.</param>
+        /// <param name="nPlayer">* O jogador de destino do pacote.</param>
+        /// <param name="nClientPacket">* O Pacote personalizado que será usado.</param>
+        /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar o pacote.</param>
+        public void Send(NeutronWriter nParameters, Player nPlayer, ClientPacket nClientPacket, Protocol nRecProtocol, Protocol nSendProtocol)
         {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.ClientPacket);
-                writer.Write(player.ID);
-                writer.WritePacket(clientPacket);
-                writer.WritePacket(recProtocol);
-                writer.WriteExactly(paramsWriter.ToArray());
-                Send(writer.ToArray(), sendProtocol);
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.ClientPacket);
+                nWriter.Write(nPlayer.ID);
+                nWriter.WritePacket(nClientPacket);
+                nWriter.WritePacket(nRecProtocol);
+                nWriter.WriteExactly(nParameters.ToArray());
+                Send(nWriter, nSendProtocol);
             }
         }
 
@@ -780,17 +828,65 @@ namespace NeutronNetwork
         /// <param name="clientPacket">* O Pacote personalizado que será usado.</param>
         /// <param name="recProtocol">* O protocolo que será usado para receber o pacote.</param>
         /// <param name="sendProtocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void Send(NeutronWriter paramsWriter, NeutronView view, ClientPacket clientPacket, Protocol recProtocol, Protocol sendProtocol)
+        public void Send(NeutronWriter nParameters, NeutronView nView, ClientPacket nClientPacket, Protocol nRecProtocol, Protocol nSendProtocol)
         {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.ClientPacket);
-                writer.Write(view.ID);
-                writer.WritePacket(clientPacket);
-                writer.WritePacket(recProtocol);
-                writer.WriteExactly(paramsWriter.ToArray());
-                Send(writer.ToArray(), sendProtocol);
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.ClientPacket);
+                nWriter.Write(nView.ID);
+                nWriter.WritePacket(nClientPacket);
+                nWriter.WritePacket(nRecProtocol);
+                nWriter.WriteExactly(nParameters.ToArray());
+                Send(nWriter, nSendProtocol);
+            }
+        }
+
+        /// <summary>
+        ///* sRPC(Static Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <param name="nNetworkId">* ID do objeto de rede que será usado para transmitir os dados.</param>
+        /// <param name="nSRPCId">* ID do metódo que será invocado.</param>
+        /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
+        public void sRPC(int nNetworkId, int nSRPCId, NeutronWriter nParameters, Protocol nProtocol)
+        {
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+            {
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.sRPC);
+                nWriter.Write(nNetworkId);
+                nWriter.Write(nSRPCId);
+                nWriter.Write(nParameters);
+                Send(nWriter, nProtocol);
+            }
+        }
+
+        /// <summary>
+        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <param name="nNetworkId">* ID do objeto de rede que será usado para identificar a instância que deve invocar o metódo.</param>
+        /// <param name="nIRPCId">* ID do metódo que será invocado.</param>
+        /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
+        /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
+        /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
+        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
+        public void iRPC(int nNetworkId, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nProtocol)
+        {
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+            {
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.iRPC);
+                nWriter.WritePacket(nBroadcast);
+                nWriter.WritePacket(nSendTo);
+                nWriter.WritePacket(nCacheMode);
+                nWriter.Write(nNetworkId);
+                nWriter.Write(nIRPCId);
+                nWriter.Write(nParameters);
+                Send(nWriter, nProtocol);
             }
         }
 
@@ -800,17 +896,17 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerNicknameChanged ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="nickname">* O Nickname que você deseja registrar.</param>
-        public void SetNickname(string nickname)
+        /// <param name="nNickname">* O Nickname que você deseja registrar.</param>
+        public void SetNickname(string nNickname)
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.Nickname);
-                writer.Write(nickname);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.Nickname);
+                nWriter.Write(nNickname);
+                Send(nWriter);
             }
-            m_Nickname = nickname;
+            m_Nickname = nNickname;
         }
 
         /// <summary>
@@ -820,15 +916,15 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerJoinedRoom ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="ChannelID">* O ID do canal que deseja ingressar.</param>
-        public void JoinChannel(int ChannelID)
+        /// <param name="nChannelID">* O ID do canal que deseja ingressar.</param>
+        public void JoinChannel(int nChannelID)
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.JoinChannel);
-                writer.Write(ChannelID);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.JoinChannel);
+                nWriter.Write(nChannelID);
+                Send(nWriter);
             }
         }
 
@@ -839,15 +935,15 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerJoinedRoom ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="RoomID">* O ID da sala que deseja ingressar.</param>
-        public void JoinRoom(int RoomID)
+        /// <param name="nRoomID">* O ID da sala que deseja ingressar.</param>
+        public void JoinRoom(int nRoomID)
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.JoinRoom);
-                writer.Write(RoomID);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.JoinRoom);
+                nWriter.Write(nRoomID);
+                Send(nWriter);
             }
         }
 
@@ -857,25 +953,25 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerCreatedRoom ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="roomName">* O Nome que será exibido para os jogadores do lobby.</param>
-        /// <param name="maxPlayers">* A quantidade máxima de jogadores permitida.</param>
-        /// <param name="password">* A senha que os jogadores usarão para ingressar na sala.</param>
-        /// <param name="properties">* As propriedades da sala, ex: Tempo, Kills, Deaths.</param>
-        /// <param name="visible">* Define se a sala é visivel em lobby.</param>
-        /// <param name="JoinOrCreate">* Define se deve criar uma sala nova ou ingressar se uma sala com o mesmo nome já existe.</param>
-        public void CreateRoom(string roomName, int maxPlayers, string password, Dictionary<string, object> properties, bool visible = true, bool JoinOrCreate = false)
+        /// <param name="nRoomName">* O Nome que será exibido para os jogadores do lobby.</param>
+        /// <param name="nMaxPlayers">* A quantidade máxima de jogadores permitida.</param>
+        /// <param name="nPassword">* A senha que os jogadores usarão para ingressar na sala.</param>
+        /// <param name="nProperties">* As propriedades da sala, ex: Tempo, Kills, Deaths.</param>
+        /// <param name="nIsVisible">* Define se a sala é visivel em lobby.</param>
+        /// <param name="nJoinOrCreate">* Define se deve criar uma sala nova ou ingressar se uma sala com o mesmo nome já existe.</param>
+        public void CreateRoom(string nRoomName, int nMaxPlayers, string nPassword, Dictionary<string, object> nProperties, bool nIsVisible = true, bool nJoinOrCreate = false)
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.CreateRoom);
-                writer.Write(roomName);
-                writer.Write(maxPlayers);
-                writer.Write(password ?? string.Empty);
-                writer.Write(visible);
-                writer.Write(JoinOrCreate);
-                writer.Write(JsonConvert.SerializeObject(properties));
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.CreateRoom);
+                nWriter.Write(nRoomName);
+                nWriter.Write(nMaxPlayers);
+                nWriter.Write(nPassword ?? string.Empty);
+                nWriter.Write(nIsVisible);
+                nWriter.Write(nJoinOrCreate);
+                nWriter.Write(JsonConvert.SerializeObject(nProperties));
+                Send(nWriter);
             }
         }
 
@@ -885,19 +981,19 @@ namespace NeutronNetwork
         ///* Retorno de chamada: Nenhum.<br/>
         ///* Para mais detalhes, consulte a documentação. 
         /// </summary>
-        /// <param name="packet">* O tipo de pacote que deseja obter.</param>
-        /// <param name="ID">* ID do pacote que deseja obter os dados.</param>
-        /// <param name="includeMe">* Define se você deve receber pacotes em cache que são seus.</param>
-        public void GetCachedPackets(CachedPacket packet, int ID, bool includeMe = true)
+        /// <param name="nCachedPacket">* O tipo de pacote que deseja obter.</param>
+        /// <param name="nPacketID">* ID do pacote que deseja obter os dados.</param>
+        /// <param name="nSendMyPacketsToMe">* Define se você deve receber pacotes em cache que são seus.</param>
+        public void GetCachedPackets(CachedPacket nCachedPacket, int nPacketID, bool nSendMyPacketsToMe = true)
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.GetChached);
-                writer.WritePacket(packet);
-                writer.Write(ID);
-                writer.Write(includeMe);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.GetChached);
+                nWriter.WritePacket(nCachedPacket);
+                nWriter.Write(nPacketID);
+                nWriter.Write(nSendMyPacketsToMe);
+                Send(nWriter);
             }
         }
 
@@ -909,11 +1005,11 @@ namespace NeutronNetwork
         /// </summary>
         public void GetChannels()
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.GetChannels);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.GetChannels);
+                Send(nWriter);
             }
         }
 
@@ -925,11 +1021,11 @@ namespace NeutronNetwork
         /// </summary>
         public void GetRooms()
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.GetRooms);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.GetRooms);
+                Send(nWriter);
             }
         }
 
@@ -938,16 +1034,15 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerPropertiesChanged ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação. 
         /// </summary>
-        /// <param name="properties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
-        public void SetPlayerProperties(Dictionary<string, object> properties)
+        /// <param name="nProperties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
+        public void SetPlayerProperties(Dictionary<string, object> nProperties)
         {
-            string _properties = JsonConvert.SerializeObject(properties);
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.SetPlayerProperties);
-                writer.Write(_properties);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.SetPlayerProperties);
+                nWriter.Write(JsonConvert.SerializeObject(nProperties));
+                Send(nWriter);
             }
         }
 
@@ -956,100 +1051,16 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnRoomPropertiesChanged ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação. 
         /// </summary>
-        /// <param name="properties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
-        public void SetRoomProperties(Dictionary<string, object> properties)
+        /// <param name="nProperties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
+        public void SetRoomProperties(Dictionary<string, object> nProperties)
         {
-            string _properties = JsonConvert.SerializeObject(properties);
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.SetRoomProperties);
-                writer.Write(_properties);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.SetRoomProperties);
+                nWriter.Write(JsonConvert.SerializeObject(nProperties));
+                Send(nWriter);
             }
-        }
-        #endregion
-
-        /// <summary>
-        ///* Obtém as informações da sua conexão com o servidor.
-        ///* Para mais detalhes, consulte a documentação.<br/> 
-        /// </summary>
-        /// <param name="Ping">* A latência entre você e o servidor.</param>
-        /// <param name="PcktLoss">* A quantidade de pacotes perdidos.</param>
-        /// <param name="iterations">* A quantidade de testes que será realizado.</param>
-        public void GetNetworkStats(out long Ping, out double PcktLoss, int iterations)
-        {
-            #region Sender
-            for (int i = 0; i < iterations; i++)
-            {
-                m_PingAmount++;
-                using (System.Net.NetworkInformation.Ping pingSender = new System.Net.NetworkInformation.Ping())
-                {
-                    pingSender.PingCompleted += (object sender, PingCompletedEventArgs e) =>
-                    {
-                        if (e.Reply != null)
-                        {
-                            if (e.Reply.Status == IPStatus.Success)
-                                m_Ping = e.Reply.RoundtripTime;
-                            else m_PacketLoss += 1;
-                        }
-                    };
-                    pingSender.SendAsync(NeutronConfig.Settings.GlobalSettings.Address, null);
-                }
-            }
-            #endregion
-            Ping = m_Ping;
-            PcktLoss = (m_PacketLoss / m_PingAmount) * 100; //* Packet loss em porcentagem.
-
-            //* Reseta os status.
-            #region Reset
-            m_Ping = 0;
-            m_PacketLoss = 0;
-            m_PingAmount = 0;
-            #endregion
-        }
-
-        /// <summary>
-        ///* Retorna se o jogador especificado é seu.
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <param name="mPlayer">* O Jogador que será comparado.</param>
-        /// <returns></returns>
-        public bool IsMine(Player mPlayer)
-        {
-            return mPlayer.Equals(MyPlayer);
-        }
-
-        /// <summary>
-        ///* Retorna se você é o dono(master) da sala.<br/>
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <returns></returns>
-        public bool IsMasterClient()
-        {
-            return CurrentRoom.Owner.Equals(MyPlayer);
-        }
-
-        /// <summary>
-        ///* Envia uma chamada(sRPC) que aciona a criação do seu jogador.<br/>
-        ///* ID: 1001<br/>
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <param name="options">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreatePlayer(NeutronWriter options)
-        {
-            sRPC(MyPlayer.ID, 1001, options, Protocol.Tcp);
-        }
-
-        /// <summary>
-        ///* Envia uma chamada(sRPC) que aciona a criação de um objeto.<br/>
-        ///* ID: 1002<br/>
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <param name="options">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreateObject(NeutronWriter options)
-        {
-            sRPC(MyPlayer.ID, 1002, options, Protocol.Tcp);
         }
 
         /// <summary>
@@ -1058,56 +1069,29 @@ namespace NeutronNetwork
         /// </summary>
         public void DestroyPlayer()
         {
-            using (var writer = PooledNetworkWriters.Pull())
+            using (NeutronWriter nWriter = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.DestroyPlayer);
-                Send(writer.ToArray());
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.DestroyPlayer);
+                Send(nWriter);
             }
         }
+        #endregion
 
-        /// <summary>
-        ///* Usado para a comunicação entre: Client->Server | Server->Client.<br/>
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <param name="nID">* ID do objeto de rede que será usado para transmitir os dados.</param>
-        /// <param name="nonDynamicID">* ID do metódo que será invocado.</param>
-        /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="protocolType">* O protocolo que será usado para enviar os dados.</param>
-        public void sRPC(int nID, int nonDynamicID, NeutronWriter writer, Protocol protocolType)
-        {
-            InternalRCC(nID, nonDynamicID, writer.ToArray(), protocolType);
-        }
-
-        /// <summary>
-        ///* Usado para a comunicação entre: Client->Server | Server->Client.<br/>
-        ///* Para mais detalhes, consulte a documentação.<br/>
-        /// </summary>
-        /// <param name="nID">* ID do objeto de rede que será usado para identificar a instância que deve invocar o metódo.</param>
-        /// <param name="dynamicID">* ID do metódo que será invocado.</param>
-        /// <param name="parametersStream">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="cacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
-        /// <param name="sendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
-        /// <param name="broadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="protocolType">* O protocolo que será usado para enviar os dados.</param>
-        public void iRPC(int nID, int dynamicID, NeutronWriter parametersStream, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
-        {
-            InternalRPC(nID, dynamicID, parametersStream.ToArray(), cacheMode, sendTo, broadcast, protocolType);
-        }
-
+        #region Methods -> Statics
         /// <summary>
         ///* Cria uma instância de Neutron que será usada para realizar a conexão e a comunicação com o servidor.<br/>
         ///* As instâncias são independentes, cada instância é uma conexão nova.<br/>
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
-        /// <param name="type">* O tipo de cliente que a instância usará.</param>
-        /// <param name="ownerGameObject">* O objeto que é dono dessa instância.</param>
+        /// <param name="nClientType">* O tipo de cliente que a instância usará.</param>
+        /// <param name="nOwner">* O objeto que é dono dessa instância.</param>
         /// <returns>Retorna uma instância do tipo Neutron.</returns>
-        public static Neutron CreateClient(ClientType type, GameObject ownerGameObject)
+        public static Neutron CreateClient(ClientType nClientType, GameObject nOwner)
         {
-            Neutron neutronInstance = ownerGameObject.AddComponent<Neutron>();
-            neutronInstance.InitializeClient(type);
-            if (type == ClientType.MainPlayer)
+            Neutron neutronInstance = nOwner.AddComponent<Neutron>();
+            neutronInstance.InitializeClient(nClientType);
+            if (nClientType == ClientType.MainPlayer)
                 Client = neutronInstance;
             return neutronInstance;
         }
@@ -1116,36 +1100,38 @@ namespace NeutronNetwork
         ///* Cria um objeto em rede.
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
-        /// <param name="IsServer">* Define se o ambiente a ser instaciado é o servidor ou o cliente.</param>
-        /// <param name="prefab">* O Prefab que será usado para criar o objeto em rede.</param>
-        /// <param name="position">* A posição que o objeto usará no momento de sua criação.</param>
-        /// <param name="rotation">* A rotação que o objeto usará no momento de sua criação.</param>
+        /// <param name="nIsServer">* Define se o ambiente a ser instaciado é o servidor ou o cliente.</param>
+        /// <param name="nPrefab">* O Prefab que será usado para criar o objeto em rede.</param>
+        /// <param name="nPosition">* A posição que o objeto usará no momento de sua criação.</param>
+        /// <param name="nRotation">* A rotação que o objeto usará no momento de sua criação.</param>
         /// <returns>Retorna uma instância do tipo NeutronView.</returns>
-        public static NeutronView Spawn(bool IsServer, GameObject prefab, Vector3 position, Quaternion rotation)
+        public static NeutronView Spawn(bool nIsServer, GameObject nPrefab, Vector3 nPosition, Quaternion nRotation)
         {
             #region Local Functions
-            NeutronView Spawn() => Instantiate(prefab, position, rotation).GetComponent<NeutronView>();
+            NeutronView Spawn() => Instantiate(nPrefab, nPosition, nRotation).GetComponent<NeutronView>();
             #endregion
 
             #region Logic
-            if (prefab.TryGetComponent<NeutronView>(out NeutronView neutronView))
+            if (nPrefab.TryGetComponent<NeutronView>(out NeutronView neutronView))
             {
                 switch (neutronView.Ambient)
                 {
                     case Ambient.Both:
                         return Spawn();
                     case Ambient.Server:
-                        return IsServer ? Spawn() : null;
+                        return nIsServer ? Spawn() : null;
                     case Ambient.Client:
-                        return !IsServer ? Spawn() : null;
+                        return !nIsServer ? Spawn() : null;
                     default:
                         return null;
                 }
             }
             else if (!NeutronLogger.LoggerError("\"Neutron View\" object not found, failed to instantiate in network."))
                 return null;
-            else return null;
+            else
+                return null;
             #endregion
         }
+        #endregion
     }
 }

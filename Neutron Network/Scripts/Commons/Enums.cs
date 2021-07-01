@@ -178,8 +178,22 @@ public enum ComponentMode : int
 {
     IsMine = 2, IsServer = 4
 }
-public enum SmoothMode : int { Lerp, MoveTowards }
-public enum ParameterMode : int { Sync, NonSync }
-public enum Ambient : int { Server, Client, Both }
+public enum SmoothMode : int
+{
+    Lerp,
+    MoveTowards,
+    SmoothDamp,
+}
+public enum ParameterMode : int
+{
+    Sync,
+    NonSync
+}
+public enum Ambient : int
+{
+    Server,
+    Client,
+    Both
+}
 
 #endregion

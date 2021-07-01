@@ -1,76 +1,82 @@
-﻿using NeutronNetwork;
-using NeutronNetwork.Constants;
-using NeutronNetwork.Extensions;
+﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Components;
-using Newtonsoft.Json;
 using System;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
-using System.Threading;
 using UnityEngine;
 
 namespace NeutronNetwork.Client
 {
     public class NeutronClientFunctions : NeutronClientConstants
     {
-        /// <summary>
-        /// Get instance of derived class.
-        /// </summary>
+        //* Obtém a instância de Neutron, classe derivada.
         private Neutron _;
-        /// <summary>
-        /// Returns to the local player's instance.
-        /// </summary>
-        protected Player _myPlayer;
-        /// <summary>
-        /// Initializes the client and activates the response events.
-        /// </summary>
-        /// <param name="isBot">Tells whether the virtual player should behave like a bot.</param>
-        protected void InitializeClient(ClientType type)
+        //* Inicializa o cliente e registra os eventos de Neutron.
+        protected void InitializeClient(ClientType nClientType)
         {
             _ = (Neutron)this;
-            //--------------------------------------------------------------
-            Neutron.OnNeutronConnected.Register(OnConnected);
-            //_.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
-            //_.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
-            //_.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
-            //_.OnPlayerLeftChannel += OnPlayerLeftChannel;
-            //_.OnPlayerLeftRoom += OnPlayerLeftRoom;
-            //_.OnFailed += OnFailed;
-            //_.OnNeutronDisconnected += OnDisconnected;
-            //_.OnCreatedRoom += OnCreatedRoom;
+
+            #region Events
+            Neutron.OnNeutronConnected.Register(OnNeutronConnected);
+            Neutron.OnPlayerConnected.Register(OnPlayerConnected);
+            Neutron.OnPlayerDisconnected.Register(OnPlayerDisconnected);
+            Neutron.OnChannelsReceived.Register(OnChannelsReceived);
+            Neutron.OnRoomsReceived.Register(OnRoomsReceived);
+            Neutron.OnRoomPropertiesChanged.Register(OnRoomPropertiesChanged);
+            Neutron.OnPlayerPropertiesChanged.Register(OnPlayerPropertiesChanged);
+            Neutron.OnPlayerNicknameChanged.Register(OnPlayerNicknameChanged);
+            Neutron.OnPlayerPacketReceived.Register(OnPlayerPacketReceived);
+            Neutron.OnPlayerLeftChannel.Register(OnPlayerLeftChannel);
+            Neutron.OnPlayerLeftRoom.Register(OnPlayerLeftRoom);
+            Neutron.OnPlayerDestroyed.Register(OnPlayerDestroyed);
+            Neutron.OnPlayerInstantiated.Register(OnPlayerInstantiated);
+            Neutron.OnFail.Register(OnFail);
+            #endregion
         }
 
-        protected void Send(byte[] buffer, Protocol protocolType = Protocol.Tcp)
-        {
-            if (!_.IsConnected) return;
-            switch (protocolType)
-            {
-                case Protocol.Tcp:
-                    SendTCP(buffer);
-                    break;
-                case Protocol.Udp:
-                    SendUDP(buffer);
-                    break;
-            }
-        }
-
-        protected async void SendTCP(byte[] buffer)
+        //* Usado para enviar os dados para o servidor.
+        protected async void Send(NeutronWriter nWriter, Protocol nProtocol = Protocol.Tcp)
         {
             try
             {
-                NetworkStream networkStream = TcpSocket.GetStream();
-                using (NeutronWriter writerOnly = Neutron.PooledNetworkWriters.Pull())
+                if (_.IsConnected)
                 {
-                    writerOnly.SetLength(0);
-                    writerOnly.WriteFixedLength(buffer.Length);
-                    writerOnly.Write(buffer);
-                    byte[] nBuffer = writerOnly.ToArray();
-                    await networkStream.WriteAsync(nBuffer, 0, nBuffer.Length);
-                    NeutronStatistics.m_ClientTCP.AddOutgoing(buffer.Length);
+                    switch (nProtocol)
+                    {
+                        case Protocol.Tcp:
+                            {
+                                NetworkStream nNetStream = TcpSocket.GetStream();
+                                using (NeutronWriter nHeaderWriter = Neutron.PooledNetworkWriters.Pull())
+                                {
+                                    byte[] nBuffer = nWriter.ToArray();
+                                    #region Header
+                                    nHeaderWriter.SetLength(0); //* Limpa o escritor.
+                                    nHeaderWriter.WriteFixedLength(nBuffer.Length); //* Pre-fixa o tamanho da mensagem no buffer.
+                                    nHeaderWriter.Write(nBuffer); //* Os dados enviados junto do pre-fixo.
+                                    #endregion
+
+                                    byte[] nHeaderBuffer = nHeaderWriter.ToArray();
+                                    await nNetStream.WriteAsync(nHeaderBuffer, 0, nHeaderBuffer.Length); //* Envia os dados pro servidor.
+                                    {
+                                        //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                        NeutronStatistics.m_ClientTCP.AddOutgoing(nBuffer.Length);
+                                    }
+                                }
+                            }
+                            break;
+                        case Protocol.Udp:
+                            {
+                                byte[] nBuffer = nWriter.ToArray();
+                                await UdpSocket.SendAsync(nBuffer, nBuffer.Length, UDPEndPoint); //* Envia os dados pro servidor.
+                                {
+                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                    NeutronStatistics.m_ClientUDP.AddOutgoing(nBuffer.Length);
+                                }
+                            }
+                            break;
+                    }
                 }
             }
             catch (ObjectDisposedException) { }
@@ -78,193 +84,170 @@ namespace NeutronNetwork.Client
             catch (Exception) { }
         }
 
-        protected async void SendUDP(byte[] message)
+        //* Executa o iRPC na instância especificada.
+        protected void iRPCHandler(int nIRPCId, int nPlayerId, byte[] nParameters, bool nIsMine, Player nSender)
         {
-            try
+            if (NetworkObjects.TryGetValue(nPlayerId, out NeutronView nView)) //* Obtém o objeto de rede com o ID especificado.
             {
-                await UdpSocket.SendAsync(message, message.Length, UDPEndPoint);
-                NeutronStatistics.m_ClientUDP.AddOutgoing(message.Length);
-            }
-            catch (ObjectDisposedException) { }
-            catch (SocketException) { }
-            catch (Exception) { }
-        }
-
-        protected void Handshake()
-        {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-            {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.Handshake);
-                Send(writer.ToArray());
-            }
-        }
-
-        protected void InternalRPC(int nID, int dynamicID, byte[] parameters, CacheMode cacheMode, SendTo sendTo, Broadcast broadcast, Protocol protocolType)
-        {
-            NeutronMessageInfo infor = _myPlayer.infor;
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-            {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.iRPC);
-                writer.WritePacket(broadcast);
-                writer.WritePacket(sendTo);
-                writer.WritePacket(cacheMode);
-                writer.Write(nID);
-                writer.Write(dynamicID);
-                writer.WriteExactly(parameters);
-                //writer.WriteExactly(infor);
-                Send(writer.ToArray(), protocolType);
-            }
-        }
-
-        protected void InternalRCC(int nID, int nonDynamic, byte[] parameters, Protocol protocolType)
-        {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-            {
-                writer.SetLength(0);
-                writer.WritePacket(SystemPacket.sRPC);
-                writer.Write(nID);
-                writer.Write(nonDynamic);
-                writer.WriteExactly(parameters);
-                //---------------------------------------------------------------------------------------------------------------------
-                Send(writer.ToArray(), protocolType);
-            }
-        }
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //Handles
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        protected void HandleConnected(Player nPlayer)
-        {
-            _myPlayer = nPlayer;
-            PlayerConnections[_myPlayer.ID] = _myPlayer;
-            void RegisterSceneObjects()
-            {
-                foreach (NeutronView nV in GameObject.FindObjectsOfType<NeutronView>().Where(x => x.IsSceneObject && !x.IsServer))
-                    NeutronRegister.RegisterSceneObject(_myPlayer, nV, false, _);
-            }
-            NeutronDispatcher.Dispatch(() =>
-            {
-                RegisterSceneObjects();
-            });
-        }
-
-        protected void iRPCHandler(int rpcID, int playerID, byte[] parameters, bool isMine, Player sender, NeutronMessageInfo infor)
-        {
-            if (NetworkObjects.TryGetValue(playerID, out NeutronView neutronObject))
-            {
-                if (neutronObject.Dynamics.TryGetValue(rpcID, out RemoteProceduralCall remoteProceduralCall))
+                if (nView.iRPCs.TryGetValue(nIRPCId, out RemoteProceduralCall remoteProceduralCall)) //* Obtém o iRPC com o ID especificado.
                 {
-                    iRPC dynamicAttr = (iRPC)remoteProceduralCall.attribute;
-                    Action _ = new Action(() =>
+                    iRPC nIRPCAttr = (iRPC)remoteProceduralCall.attribute;
+                    if (nIRPCAttr != null)
                     {
-                        NeutronHelper.iRPC(parameters, isMine, remoteProceduralCall, sender, infor, neutronObject);
-                    });
-                    if (dynamicAttr.DispatchOnMainThread)
-                        NeutronDispatcher.Dispatch(_);
-                    else _.Invoke();
+                        Action _ = new Action(() => NeutronHelper.iRPC(nParameters, nIsMine, remoteProceduralCall, nSender, nView));
+                        {
+                            if (nIRPCAttr.DispatchOnMainThread)
+                                NeutronDispatcher.Dispatch(_); //* Invoca o metódo na thread main(Unity).
+                            else _.Invoke(); //* Invoca o metódo
+                        }
+                    }
                 }
                 else NeutronLogger.LoggerError("Invalid iRPC ID, there is no attribute with this ID in the target object.");
             }
         }
 
-        protected void sRPCHandler(int executeID, Player sender, byte[] parameters, bool isServer, bool isMine)
+        //* Executa o sRPC, chamada global, não é por instâncias.
+        protected void sRPCHandler(int nSRPCId, Player nSender, byte[] nParameters, bool nIsServer, bool nIsMine)
         {
-            NeutronDispatcher.Dispatch(() =>
+            if (NeutronNonDynamicBehaviour.sRPCs.TryGetValue(nSRPCId, out RemoteProceduralCall remoteProceduralCall)) //* Obtém o sRPC com o ID especificado.
             {
-                if (NeutronNonDynamicBehaviour.NonDynamics.TryGetValue(executeID, out RemoteProceduralCall remoteProceduralCall))
+                sRPC nSRPCAttr = (sRPC)remoteProceduralCall.attribute;
+                if (nSRPCAttr != null)
                 {
-                    NeutronHelper.sRPC(executeID, sender, parameters, remoteProceduralCall, isServer, isMine, _);
+                    Action __ = new Action(() => NeutronHelper.sRPC(nSRPCId, nSender, nParameters, remoteProceduralCall, nIsServer, nIsMine, _));
+                    {
+                        if (nSRPCAttr.DispatchOnMainThread)
+                            NeutronDispatcher.Dispatch(__); //* Invoca o metódo na thread main(Unity).
+                        else __.Invoke(); //* Invoca o metódo
+                    }
                 }
-            });
-        }
-
-        //protected void HandleDatabase(Packet packet, object[] response)
-        //{
-        //    if (_.onDatabasePacket != null)
-        //    {
-        //        new Action(() =>
-        //        {
-        //            _.onDatabasePacket(packet, response, _);
-        //        }).ExecuteOnMainThread(_, false);
-        //    }
-        //}
-
-        protected void HandlePlayerDisconnected(Player player)
-        {
-            //-----------------------------------------------------------------------------------------
-            //-----------------------------------------------------------------------------------------
-            if (NetworkObjects.TryGetValue(player.ID, out NeutronView neutronObject))
-            {
-                NeutronView obj = neutronObject;
-                //-----------------------------------------------------------------------------------
-                NeutronDispatcher.Dispatch(() =>
-                {
-                    MonoBehaviour.Destroy(obj.gameObject);
-                });
-                //------------------------------------------------------------------------------------
-                NetworkObjects.TryRemove(player.ID, out NeutronView objRemoved);
             }
         }
 
-        private void InitializeContainer()
+        /// <summary>
+        ///* Envia uma chamada(sRPC) que aciona a criação do seu jogador.<br/>
+        ///* ID: 1001<br/>
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <param name="nParameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void CreatePlayer(NeutronWriter nParameters)
         {
-            SceneHelper.CreateContainer(NeutronConstants.CONTAINER_PLAYER_NAME);
+            _.sRPC(_.MyPlayer.ID, 1001, nParameters, Protocol.Tcp);
         }
 
-        private void UpdateLocalPlayer(Player player)
+        /// <summary>
+        ///* Envia uma chamada(sRPC) que aciona a criação de um objeto.<br/>
+        ///* ID: 1002<br/>
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <param name="nParameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void CreateObject(NeutronWriter nParameters)
         {
-            if (_.IsMine(player))
-            {
-                _myPlayer = player;
-            }
+            _.sRPC(_.MyPlayer.ID, 1002, nParameters, Protocol.Tcp);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //Events
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private void OnFailed(SystemPacket packet, string errorMessage, Neutron localinstance)
+        /// <summary>
+        ///* Retorna se o jogador especificado é seu.
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <param name="nPlayer">* O Jogador que será comparado.</param>
+        /// <returns></returns>
+        public bool IsMine(Player nPlayer)
         {
-            NeutronLogger.LoggerError(packet + ":-> " + errorMessage);
+            return nPlayer.Equals(_.MyPlayer);
         }
 
-        private void OnPlayerJoinedChannel(Player player, Neutron localinstance)
+        /// <summary>
+        ///* Retorna se você é o dono(master) da sala.<br/>
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        /// <returns></returns>
+        public bool IsMasterClient()
         {
-            UpdateLocalPlayer(player); // Update currentChannel
+            return _.CurrentRoom.Owner.Equals(_.MyPlayer);
         }
 
-        private void OnPlayerJoinedRoom(Player player, Neutron localinstance)
+        /// <summary>
+        ///* Registra os objetos da cena na rede, atribuindo-os um ID único.
+        ///* Para mais detalhes, consulte a documentação.<br/>
+        /// </summary>
+        public void RegisterSceneObjects()
         {
-            UpdateLocalPlayer(player); // update currentRoom
+            foreach (NeutronView nView in GameObject.FindObjectsOfType<NeutronView>().Where(x => x.IsSceneObject && !x.IsServer))
+                NeutronRegister.RegisterSceneObject(_.MyPlayer, nView, false, _);
         }
 
-        private void OnCreatedRoom(Room room, Neutron localinstance)
-        {
-            _.MyPlayer.CurrentRoom = room.ID;
-        }
-
-        private void OnDisconnected(string reason, Neutron localinstance)
-        {
-            //_.Dispose();
-            //-------------------------------------------------------------------
-            NeutronLogger.Logger("You Have Disconnected from server -> [" + reason + "]");
-        }
-
-        private void OnConnected(bool success, Neutron localinstance)
-        {
-            if (success)
-                InitializeContainer();
-        }
-
-        private void OnPlayerLeftRoom(Player player, Neutron localInstance)
+        #region Callbacks
+        private void OnPlayerInstantiated(Player nPlayer, GameObject nPrefab, bool nIsMine, Neutron nNeutron)
         {
 
         }
 
-        private void OnPlayerLeftChannel(Player player)
+        private void OnPlayerDestroyed(Neutron nNeutron)
         {
 
         }
+
+        private void OnPlayerLeftRoom(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerLeftChannel(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerPacketReceived(NeutronReader nReader, Player nPlayer, ClientPacket nClientPacket, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerNicknameChanged(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerPropertiesChanged(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnRoomPropertiesChanged(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnRoomsReceived(Room[] nRooms, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnChannelsReceived(Channel[] nChannels, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerDisconnected(string nReason, Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnPlayerConnected(Player nPlayer, bool nIsMine, Neutron nNeutron)
+        {
+
+        }
+
+        private void OnNeutronConnected(bool nIsSuccess, Neutron nNeutron)
+        {
+            if (nIsSuccess)
+                SceneHelper.CreateContainer(NeutronConstants.CONTAINER_PLAYER_NAME);
+        }
+
+        private void OnFail(SystemPacket p1, string p2, Neutron p3)
+        {
+
+        }
+        #endregion
     }
 }

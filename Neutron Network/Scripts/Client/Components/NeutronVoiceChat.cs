@@ -198,7 +198,7 @@ namespace NeutronNetwork.Components
         }
 
         [iRPC(10021)]
-        private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
+        private void RPC(NeutronReader options, Player sender)
         {
             Debug.Log(IsClient);
             using (options)

@@ -11,7 +11,7 @@ namespace NeutronNetwork.Helpers
         private static readonly string[] SizeSuffixes = { "B/s", "kB/s", "mB/s", "gB/s" };
 
         public const int BUFFER_SIZE = 1024;
-        public static bool iRPC(byte[] parameters, bool isMine, RemoteProceduralCall remoteProceduralCall, Player sender, NeutronMessageInfo infor, NeutronView neutronView)
+        public static bool iRPC(byte[] parameters, bool isMine, RemoteProceduralCall remoteProceduralCall, Player sender, NeutronView neutronView)
         {
             #region Pool
             var pool = Neutron.PooledNetworkReaders.Pull();
@@ -19,7 +19,7 @@ namespace NeutronNetwork.Helpers
             #endregion
 
             #region Reflection
-            object obj = remoteProceduralCall.Invoke(pool, isMine, sender, infor);
+            object obj = remoteProceduralCall.Invoke(pool, isMine, sender);
             if (obj != null)
             {
                 Type objType = obj.GetType();
@@ -105,16 +105,12 @@ namespace NeutronNetwork.Helpers
 
         public static int GetMaxPacketsPerSecond(float sInterval)
         {
-#if UNITY_SERVER || UNITY_EDITOR
             int currentFPS = NeutronConfig.Settings.ServerSettings.FPS;
             if (sInterval == 0)
                 return currentFPS;
             float interval = (sInterval * currentFPS);
             float MPPS = currentFPS / interval;
             return (int)MPPS;
-#else
-            return 0;
-#endif
         }
 
 #if !UNITY_2019_2_OR_NEWER

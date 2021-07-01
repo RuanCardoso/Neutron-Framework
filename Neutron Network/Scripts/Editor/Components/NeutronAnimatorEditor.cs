@@ -14,20 +14,20 @@ public class NeutronAnimatorEditor : Editor
     private void OnEnable()
     {
         neutronAnimatorTarget = (NeutronAnimator)target;
-        if (neutronAnimatorTarget.animator == null)
-            neutronAnimatorTarget.animator = neutronAnimatorTarget.GetComponent<Animator>();
+        if (neutronAnimatorTarget.m_Animator == null)
+            neutronAnimatorTarget.m_Animator = neutronAnimatorTarget.GetComponent<Animator>();
     }
 
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
-        if (neutronAnimatorTarget.animator != null)
+        if (neutronAnimatorTarget.m_Animator != null)
         {
-            AnimatorController controller = (AnimatorController)neutronAnimatorTarget.animator.runtimeAnimatorController;
+            AnimatorController controller = (AnimatorController)neutronAnimatorTarget.m_Animator.runtimeAnimatorController;
             if (controller != null)
             {
-                if (neutronAnimatorTarget.parameters.Length != controller.parameters.Length)
-                    neutronAnimatorTarget.parameters = controller.parameters.Select(x => new NeutronAnimatorParameter(x.name, x.type, ParameterMode.Sync)).ToArray();
+                if (neutronAnimatorTarget.m_Parameters.Length != controller.parameters.Length)
+                    neutronAnimatorTarget.m_Parameters = controller.parameters.Select(x => new NeutronAnimatorParameter(x.name, x.type, ParameterMode.Sync)).ToArray();
             }
         }
     }

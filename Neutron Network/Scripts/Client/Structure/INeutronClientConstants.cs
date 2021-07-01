@@ -61,7 +61,10 @@ namespace NeutronNetwork.Client
             {
                 try
                 {
-                    _cts.Cancel();
+                    Neutron.Client.IsConnected = false;
+                    {
+                        _cts.Cancel();
+                    }
                 }
                 catch (ObjectDisposedException) { }
             }

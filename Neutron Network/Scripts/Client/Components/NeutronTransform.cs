@@ -87,7 +87,7 @@ namespace NeutronNetwork.Components
         }
 
         [iRPC(10013)]
-        private void RPC(NeutronReader options, Player sender, NeutronMessageInfo infor)
+        private void RPC(NeutronReader options, Player sender)
         {
             onFirstPacket = true;
             using (options)
@@ -102,8 +102,8 @@ namespace NeutronNetwork.Components
                 if (synchronizeScale) scale = options.ReadVector3();
                 if (IsServer && lagCompensation)
                 {
-                    float lag = (float)Math.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
-                    position += (transform.position - oldPos) * (lag / lagMultiplier);
+                    // float lag = (float)Math.Abs(Neutron.Server.CurrentTime - infor.SentClientTime) + synchronizeInterval;
+                    // position += (transform.position - oldPos) * (lag / lagMultiplier);
                 }
                 if (synchronizePosition) TeleportByDistance();
             }

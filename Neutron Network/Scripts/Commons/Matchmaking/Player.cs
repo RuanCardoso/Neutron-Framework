@@ -102,10 +102,6 @@ namespace NeutronNetwork
         /// cts.
         /// </summary>
         public CancellationTokenSource _cts;
-        /// <summary>
-        /// infor.
-        /// </summary>
-        [NonSerialized] public NeutronMessageInfo infor;
 
         #region Cached
         public INeutronMatchmaking Matchmaking;

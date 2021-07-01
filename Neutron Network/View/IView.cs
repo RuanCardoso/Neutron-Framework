@@ -4,14 +4,15 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     /// <summary>
-    /// <para>Think of it as an "exclusive player space" all players when connecting create one on the server side, this "space" is global.</para>
-    /// Here, for example, you can perform functions on the player who owns this "space", for example, send a function in certain seconds.
+    ///* Todos os jogadores terão este script, ao lado do servidor.<br/>
+    ///* Você basicamente pode fazer oque quiser aqui, ex: enviar os canais pro jogador a cada X Segundos.
+    ///* Melhor você herdar para não perder suas implementações.
     /// </summary>
     public class View : MonoBehaviour
     {
         [SerializeField] [ReadOnly] private Player m_Owner;
         /// <summary>
-        /// The owner of this instance.
+        ///* O Jogador dono deste objeto, é pra ele que você vai enviar as paradas.
         /// </summary>
         public Player Owner { get => m_Owner; set => m_Owner = value; }
 

@@ -10,7 +10,8 @@ namespace NeutronNetwork
     public class NeutronNonDynamicBehaviour : MonoBehaviour
     {
         #region Collections
-        public static Dictionary<int, RemoteProceduralCall> NonDynamics = new Dictionary<int, RemoteProceduralCall>();
+        //* Aqui será armazenado todos os sRPC's.
+        public static Dictionary<int, RemoteProceduralCall> sRPCs = new Dictionary<int, RemoteProceduralCall>();
         #endregion
 
         #region MonoBehaviour
@@ -22,61 +23,68 @@ namespace NeutronNetwork
 
         #region Neutron
         /// <summary>
-        /// server side.
+        ///* sRPC(Static Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.<br/>
+        ///* Envie o sRPC para um jogador específico, suporta o roteamento dos dados.<br/>
+        ///* (Server Side) Server->Client.
         /// </summary>
-        /// <param name="nonDynamicID"></param>
-        /// <param name="parameters"></param>
-        /// <param name="sender"></param>
-        /// <param name="cacheMode"></param>
-        /// <param name="sendTo"></param>
-        /// <param name="broadcast"></param>
-        /// <param name="protocol"></param>
-        protected void sRPC(int nonDynamicID, NeutronWriter parameters, Player sender)
+        /// <param name="nSRPCId">* ID do metódo que será invocado.</param>
+        /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="nSender">* O jogador de destino da mensagem.</param>
+        public void sRPC(int nSRPCId, NeutronWriter nParameters, Player nSender)
         {
-            Neutron.Server.sRPC(sender, nonDynamicID, parameters);
+            Neutron.Server.sRPC(nSender, nSRPCId, nParameters);
         }
+
         /// <summary>
-        /// client side.
+        ///* sRPC(Static Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.<br/>
+        ///* (Client Side) Client->Server.
         /// </summary>
-        /// <param name="nonDynamicID"></param>
-        /// <param name="parameters"></param>
-        /// <param name="cacheMode"></param>
-        /// <param name="sendTo"></param>
-        /// <param name="broadcast"></param>
-        /// <param name="protocol"></param>
-        /// <param name="instance"></param>
-        protected void sRPC(int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
+        /// <param name="nSRPCId">* ID do metódo que será invocado.</param>
+        /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
+        /// <param name="nNeutron">* A instância de Neutron que realizará a comunicação.</param>
+        protected void sRPC(int nSRPCId, NeutronWriter nParameters, Protocol nProtocol, Neutron nNeutron)
         {
-            instance.sRPC(instance.MyPlayer.ID, nonDynamicID, parameters, protocol);
+            nNeutron.sRPC(nNeutron.MyPlayer.ID, nSRPCId, nParameters, nProtocol);
         }
 
-        protected void sRPC(Player nID, int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
+        /// <summary>
+        ///* sRPC(Static Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.<br/>
+        ///* Envie o sRPC para um jogador específico, suporta o roteamento dos dados.<br/>
+        ///* (Client Side) Client->Server.
+        /// </summary>
+        /// <param name="nPlayer">* O jogador de destino da mensagem.</param>
+        /// <param name="nSRPCId">* ID do metódo que será invocado.</param>
+        /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
+        /// <param name="nNeutron">* A instância de Neutron que realizará a comunicação.</param>
+        protected void sRPC(Player nPlayer, int nSRPCId, NeutronWriter nParameters, Protocol nProtocol, Neutron nNeutron)
         {
-            instance.sRPC(nID.ID, nonDynamicID, parameters, protocol);
-        }
-
-        protected void sRPC(NeutronView nID, int nonDynamicID, NeutronWriter parameters, Protocol protocol, Neutron instance)
-        {
-            instance.sRPC(nID.ID, nonDynamicID, parameters, protocol);
+            nNeutron.sRPC(nPlayer.ID, nSRPCId, nParameters, nProtocol);
         }
         #endregion
 
         #region Reflection
+        //* Este método usa reflexão(Lento? é, mas só uma vez, foda-se hehehehhe), é chamado apenas uma vez quando o objeto é inicializado.
         private void GetAttributes()
         {
-            NeutronNonDynamicBehaviour mInstance = this;
+            NeutronNonDynamicBehaviour mInstance = this; //* pega a instância atual que contém os metódos sRPC, herança.
             if (mInstance != null)
             {
                 var mType = mInstance.GetType();
                 MethodInfo[] mInfos = mType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                for (int y = 0; y < mInfos.Length; y++)
+                //* Percorre as instâncias e pega os metódos e armazena no dicionário sRPC'S.
+                for (int y = 0; y < mInfos.Length; y++) //* Percorre a parada.
                 {
-                    sRPC[] Attrs = mInfos[y].GetCustomAttributes<sRPC>().ToArray();
+                    sRPC[] Attrs = mInfos[y].GetCustomAttributes<sRPC>().ToArray(); //* pega todos os attributos sRPC do metódo.
                     if (Attrs != null)
                     {
                         foreach (sRPC Attr in Attrs)
                         {
-                            NonDynamics.Add(Attr.ID, new RemoteProceduralCall(mInstance, mInfos[y], Attr));
+                            if (!sRPCs.ContainsKey(Attr.ID)) //* Verifica se não existe um metódo duplicado, ou seja, um sRPC com mesmo ID.
+                                sRPCs.Add(Attr.ID, new RemoteProceduralCall(mInstance, mInfos[y], Attr)); //* Monta sua estrutura e armazena no Dict.
+                            else
+                                NeutronLogger.Print($"Duplicate ID not allowed in \"{mType.Name}\".");
                         }
                     }
                     else continue;

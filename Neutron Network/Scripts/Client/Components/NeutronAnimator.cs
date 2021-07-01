@@ -1,26 +1,37 @@
 ﻿using NeutronNetwork.Attributes;
 using NeutronNetwork.Client.Internal;
+using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Attributes;
 using System.Collections;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
 {
+    /// <summary>
+    ///* Este componente irá sincronizar os estados das variáveis do animator.
+    /// </summary>
     [RequireComponent(typeof(Animator))]
     [AddComponentMenu("Neutron/Neutron Animator")]
     public class NeutronAnimator : NeutronBehaviour
     {
         [Header("[Component]")]
-        [ReadOnly] public Animator animator;
+        /// <summary>
+        ///* O Componente animator anexado ao objeto.
+        /// </summary>
+        [ReadOnly] public Animator m_Animator;
 
         [Header("[Parameters Settings]")]
-        public NeutronAnimatorParameter[] parameters;
+        /// <summary>
+        ///* Os parâmetros do animator que serão sincronizados via rede.
+        /// </summary>
+        public NeutronAnimatorParameter[] m_Parameters;
 
         [Header("[General Settings]")]
-        [SerializeField] [Range(0, 1)] private float synchronizeInterval = 0.1f;
-        [SerializeField] private SendTo sendTo = SendTo.Others;
-        [SerializeField] private Broadcast broadcast = Broadcast.Room;
-        [SerializeField] private Protocol protocol = Protocol.Udp;
+        [SerializeField] [Range(0, 1)] private float m_SynchronizeInterval = 0.1f;
+        [SerializeField] private CacheMode m_CacheMode = CacheMode.Overwrite;
+        [SerializeField] private SendTo m_SendTo = SendTo.Others;
+        [SerializeField] private Broadcast m_Broadcast = Broadcast.Room;
+        [SerializeField] private Protocol m_Protocol = Protocol.Udp;
 
         private void Start() { }
 
@@ -28,63 +39,71 @@ namespace NeutronNetwork.Components
         {
             base.OnNeutronStart();
             if (HasAuthority)
-                StartCoroutine(Synchronize());
+                StartCoroutine(Synchronize()); //* Inicia a sincronização.
         }
 
         private IEnumerator Synchronize()
         {
             while (true)
             {
-                using (var options = Neutron.PooledNetworkWriters.Pull())
+                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
                 {
-                    options.SetLength(0);
-                    for (int i = 0; i < parameters.Length; i++)
+                    nWriter.SetLength(0);
+                    for (int i = 0; i < m_Parameters.Length; i++)
                     {
-                        var networkedParameter = parameters[i];
-                        if (networkedParameter.parameterMode == ParameterMode.NonSync) continue;
-                        switch (networkedParameter.parameterType)
+                        var cParam = m_Parameters[i];
+                        if (cParam.parameterMode == ParameterMode.NonSync) continue;
+                        else
+                        {
+                            //* Percorre os parâmetros e escreve os seus valores na rede.
+                            switch (cParam.parameterType)
+                            {
+                                case AnimatorControllerParameterType.Float:
+                                    nWriter.Write(m_Animator.GetFloat(cParam.parameterName));
+                                    break;
+                                case AnimatorControllerParameterType.Int:
+                                    nWriter.Write(m_Animator.GetInteger(cParam.parameterName));
+                                    break;
+                                case AnimatorControllerParameterType.Bool:
+                                    nWriter.Write(m_Animator.GetBool(cParam.parameterName));
+                                    break;
+                                case AnimatorControllerParameterType.Trigger:
+                                    break;
+                            }
+                        }
+                    }
+                    iRPC(NeutronConstants.NEUTRON_ANIMATOR, nWriter, m_CacheMode, m_SendTo, m_Broadcast, m_Protocol); //* envia pra rede.
+                }
+                yield return new WaitForSeconds(m_SynchronizeInterval);
+            }
+        }
+
+        [iRPC(NeutronConstants.NEUTRON_ANIMATOR, true)]
+        private void RPC(NeutronReader nReader, bool nIsMine, Player nSender)
+        {
+            using (nReader)
+            {
+                for (int i = 0; i < m_Parameters.Length; i++)
+                {
+                    var cParam = m_Parameters[i];
+                    if (cParam.parameterMode == ParameterMode.NonSync) continue;
+                    else
+                    {
+                        //* Percorre os parâmetros e ler os seus valores da rede.
+                        switch (cParam.parameterType)
                         {
                             case AnimatorControllerParameterType.Float:
-                                options.Write(animator.GetFloat(networkedParameter.parameterName));
+                                m_Animator.SetFloat(cParam.parameterName, nReader.ReadSingle());
                                 break;
                             case AnimatorControllerParameterType.Int:
-                                options.Write(animator.GetInteger(networkedParameter.parameterName));
+                                m_Animator.SetInteger(cParam.parameterName, nReader.ReadInt32());
                                 break;
                             case AnimatorControllerParameterType.Bool:
-                                options.Write(animator.GetBool(networkedParameter.parameterName));
+                                m_Animator.SetBool(cParam.parameterName, nReader.ReadBoolean());
                                 break;
                             case AnimatorControllerParameterType.Trigger:
                                 break;
                         }
-                    }
-                    iRPC(10018, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
-                }
-                yield return new WaitForSeconds(synchronizeInterval);
-            }
-        }
-
-        [iRPC(10018, true)]
-        private void RPC(NeutronReader options, bool isMine, Player sender, NeutronMessageInfo infor)
-        {
-            using (options)
-            {
-                for (int i = 0; i < parameters.Length; i++)
-                {
-                    var networkedParameter = parameters[i];
-                    if (networkedParameter.parameterMode == ParameterMode.NonSync) continue;
-                    switch (networkedParameter.parameterType)
-                    {
-                        case AnimatorControllerParameterType.Float:
-                            animator.SetFloat(networkedParameter.parameterName, options.ReadSingle());
-                            break;
-                        case AnimatorControllerParameterType.Int:
-                            animator.SetInteger(networkedParameter.parameterName, options.ReadInt32());
-                            break;
-                        case AnimatorControllerParameterType.Bool:
-                            animator.SetBool(networkedParameter.parameterName, options.ReadBoolean());
-                            break;
-                        case AnimatorControllerParameterType.Trigger:
-                            break;
                     }
                 }
             }

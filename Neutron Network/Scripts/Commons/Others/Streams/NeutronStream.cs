@@ -72,6 +72,11 @@ namespace NeutronNetwork
             WriteExactly(buffer);
         }
 
+        public void Write(NeutronWriter nWriter)
+        {
+            WriteExactly(nWriter.ToArray());
+        }
+
         public void WritePacket<T>(T packet) where T : Enum
         {
             Write((byte)(object)packet);

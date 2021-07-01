@@ -119,14 +119,13 @@ namespace NeutronNetwork.Server
         protected void DynamicHandler(Player nSender, Broadcast broadcast, SendTo sendTo, CacheMode cacheMode, int networkID, int attributeID, byte[] parameters, Protocol protocol)
         {
             #region Logic
-            NeutronMessageInfo NeutronMessageInfo = new NeutronMessageInfo(0);
             if (nSender.IsInChannel() || nSender.IsInRoom())
             {
                 if (SceneHelper.IsSceneObject(networkID))
                 {
                     if (MatchmakingHelper.GetNetworkObject(networkID, nSender, out NeutronView nView))
                     {
-                        if (nView.Dynamics.TryGetValue(attributeID, out RemoteProceduralCall remoteProceduralCall))
+                        if (nView.iRPCs.TryGetValue(attributeID, out RemoteProceduralCall remoteProceduralCall))
                         {
                             iRPC dynamicAttr = (iRPC)remoteProceduralCall.attribute;
                             if (dynamicAttr != null)
@@ -170,7 +169,7 @@ namespace NeutronNetwork.Server
                         NeutronView neutronView = nPlayer.NeutronView;
                         if (neutronView != null)
                         {
-                            if (neutronView.Dynamics.TryGetValue(attributeID, out RemoteProceduralCall remoteProceduralCall))
+                            if (neutronView.iRPCs.TryGetValue(attributeID, out RemoteProceduralCall remoteProceduralCall))
                             {
                                 iRPC dynamicAttr = (iRPC)remoteProceduralCall.attribute;
                                 if (dynamicAttr != null)
@@ -229,8 +228,8 @@ namespace NeutronNetwork.Server
                 }
                 return true;
             }
-            bool DynamicPlayer(RemoteProceduralCall remoteProceduralCall, Player nPlayer) => NeutronHelper.iRPC(parameters, false, remoteProceduralCall, nSender, NeutronMessageInfo, nPlayer.NeutronView);
-            bool DynamicObject(RemoteProceduralCall remoteProceduralCall, NeutronView nView) => NeutronHelper.iRPC(parameters, false, remoteProceduralCall, nSender, NeutronMessageInfo, nView);
+            bool DynamicPlayer(RemoteProceduralCall remoteProceduralCall, Player nPlayer) => NeutronHelper.iRPC(parameters, false, remoteProceduralCall, nSender, nPlayer.NeutronView);
+            bool DynamicObject(RemoteProceduralCall remoteProceduralCall, NeutronView nView) => NeutronHelper.iRPC(parameters, false, remoteProceduralCall, nSender, nView);
             #endregion
         }
 
@@ -239,7 +238,7 @@ namespace NeutronNetwork.Server
             #region Logic
             if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
             {
-                if (NeutronNonDynamicBehaviour.NonDynamics.TryGetValue(nonDynamicID, out RemoteProceduralCall remoteProceduralCall))
+                if (NeutronNonDynamicBehaviour.sRPCs.TryGetValue(nonDynamicID, out RemoteProceduralCall remoteProceduralCall))
                 {
                     sRPC nonDynamicAttr = (sRPC)remoteProceduralCall.attribute;
                     if (nonDynamicAttr != null)

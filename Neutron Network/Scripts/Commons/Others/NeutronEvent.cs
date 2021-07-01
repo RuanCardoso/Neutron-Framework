@@ -1,6 +1,8 @@
+using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Components;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NeutronNetwork
 {
@@ -17,14 +19,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke(P1 p1)
+        public async Task<T> Invoke(P1 p1)
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke(p1);
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke(p1));
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke(p1);
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }
@@ -52,14 +74,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke(P1 p1, P2 p2)
+        public async Task<T> Invoke(P1 p1, P2 p2)
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke(p1, p2);
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke(p1, p2));
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke(p1, p2);
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }
@@ -87,14 +129,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke(P1 p1, P2 p2, P3 p3)
+        public async Task<T> Invoke(P1 p1, P2 p2, P3 p3)
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke(p1, p2, p3);
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke(p1, p2, p3));
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke(p1, p2, p3);
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }
@@ -122,14 +184,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke(P1 p1, P2 p2, P3 p3, P4 p4)
+        public async Task<T> Invoke(P1 p1, P2 p2, P3 p3, P4 p4)
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke(p1, p2, p3, p4);
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke(p1, p2, p3, p4));
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke(p1, p2, p3, p4);
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }
@@ -157,14 +239,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke(P1 p1, P2 p2, P3 p3, P4 p4, P5 p5)
+        public async Task<T> Invoke(P1 p1, P2 p2, P3 p3, P4 p4, P5 p5)
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke(p1, p2, p3, p4, p5);
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke(p1, p2, p3, p4, p5));
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke(p1, p2, p3, p4, p5);
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }
@@ -194,14 +296,34 @@ namespace NeutronNetwork
         #endregion
 
         #region Default
-        public T Invoke()
+        public async Task<T> Invoke()
         {
             T def = default(T);
             if (m_Event != null)
             {
+                bool IsCompleted = false;
                 if (!DispatchOnMainThread)
                     return m_Event.Invoke();
-                else NeutronDispatcher.Dispatch(() => m_Event.Invoke());
+                else
+                {
+                    #region Dispatcher
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        def = m_Event.Invoke();
+                        {
+                            IsCompleted = true;
+                        }
+                    });
+                    #endregion
+
+                    #region Async Logic
+                    await Task.Run(async () =>
+                    {
+                        while (!IsCompleted)
+                            await Task.Delay(NeutronConstants.NEUTRON_EVENT_WITH_RETURN_DELAY);
+                    });
+                    #endregion
+                }
             }
             return def;
         }

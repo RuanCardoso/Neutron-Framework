@@ -10,7 +10,7 @@ public class RemoteProceduralCall
     public Attribute attribute { get; }
 
     #region Delegates iRPC
-    Action<NeutronReader, bool, Player, NeutronMessageInfo> VoidDynamic;
+    Action<NeutronReader, bool, Player> VoidDynamic;
     #endregion
 
     #region Delegates sRPC
@@ -30,7 +30,7 @@ public class RemoteProceduralCall
             if (attribute is iRPC)
             {
                 if (method.ReturnType == typeof(void))
-                    VoidDynamic = (Action<NeutronReader, bool, Player, NeutronMessageInfo>)Delegate.CreateDelegate(typeof(Action<NeutronReader, bool, Player, NeutronMessageInfo>), instance, method);
+                    VoidDynamic = (Action<NeutronReader, bool, Player>)Delegate.CreateDelegate(typeof(Action<NeutronReader, bool, Player>), instance, method);
                 else
                 {
 
@@ -52,11 +52,11 @@ public class RemoteProceduralCall
         #endregion
     }
 
-    public object Invoke(NeutronReader reader, bool isMine, Player player, NeutronMessageInfo neutronMessageInfo) // dynamic
+    public object Invoke(NeutronReader reader, bool isMine, Player player) // dynamic
     {
         Type type = method.ReturnType;
         if (type == typeof(void))
-            VoidDynamic(reader, isMine, player, neutronMessageInfo);
+            VoidDynamic(reader, isMine, player);
         else NeutronLogger.LoggerError("Type not supported");
         #region Return
         return null;
