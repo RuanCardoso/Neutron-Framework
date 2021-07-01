@@ -5,7 +5,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
-using Newtonsoft.Json;
+using NeutronNetwork.Json;
 using System.Threading.Tasks;
 using System.Collections;
 using NeutronNetwork.Client;

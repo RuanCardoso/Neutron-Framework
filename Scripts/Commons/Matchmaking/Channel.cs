@@ -4,7 +4,7 @@ using UnityEngine;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
 using System.Runtime.Serialization;
-using Newtonsoft.Json;
+using NeutronNetwork.Json;
 using System.Linq;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;

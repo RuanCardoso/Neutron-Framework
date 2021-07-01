@@ -1,6 +1,6 @@
 using NeutronNetwork;
 using NeutronNetwork.Internal.Components;
-using Newtonsoft.Json;
+using NeutronNetwork.Json;
 using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;

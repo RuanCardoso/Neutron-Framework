@@ -7,7 +7,7 @@ using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Server.Internal;
-using Newtonsoft.Json;
+using NeutronNetwork.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;

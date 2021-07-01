@@ -1,7 +1,7 @@
 ﻿using NeutronNetwork;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Constants;
-using Newtonsoft.Json;
+using NeutronNetwork.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
