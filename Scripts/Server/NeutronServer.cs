@@ -467,7 +467,7 @@ namespace NeutronNetwork.Server
                                 #endregion
                             }
                             break;
-                        case SystemPacket.sRPC:
+                        case SystemPacket.gRPC:
                             {
                                 #region Reader
                                 int networkID = nReader.ReadInt32();
@@ -620,7 +620,21 @@ namespace NeutronNetwork.Server
                                 #endregion
 
                                 #region Logic
-                                ClientPacketHandler(nSender, isMine, networkID, clientPacket, sendTo, broadcast, recProtocol, parameters);
+                                ClientPacketHandler(nSender, isMine, networkID, parameters, clientPacket, sendTo, broadcast, recProtocol);
+                                #endregion
+                            }
+                            break;
+                        case SystemPacket.SerializeView:
+                            {
+                                #region Reader
+                                Protocol recProtocol = nReader.ReadPacket<Protocol>();
+                                int networkID = nReader.ReadInt32();
+                                int instanceID = nReader.ReadInt32();
+                                byte[] parameters = nReader.ReadExactly();
+                                #endregion
+
+                                #region Logic
+                                OnSerializeViewHandler(nSender, networkID, instanceID, parameters, recProtocol);
                                 #endregion
                             }
                             break;

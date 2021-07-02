@@ -1,7 +1,6 @@
 ﻿using NeutronNetwork.Attributes;
 using NeutronNetwork.Client.Internal;
 using NeutronNetwork.Constants;
-using NeutronNetwork.Internal.Attributes;
 using System.Collections;
 using UnityEngine;
 
@@ -32,8 +31,6 @@ namespace NeutronNetwork.Components
         [SerializeField] private SendTo m_SendTo = SendTo.Others;
         [SerializeField] private Broadcast m_Broadcast = Broadcast.Room;
         [SerializeField] private Protocol m_Protocol = Protocol.Udp;
-
-        private void Start() { }
 
         public override void OnNeutronStart()
         {

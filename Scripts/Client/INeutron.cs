@@ -478,7 +478,7 @@ namespace NeutronNetwork
                                 #endregion
                             }
                             break;
-                        case SystemPacket.sRPC:
+                        case SystemPacket.gRPC:
                             {
                                 #region Reader
                                 int nSRPCId = nReader.ReadInt32();
@@ -787,7 +787,7 @@ namespace NeutronNetwork
                 nWriter.WritePacket(nSendTo);
                 nWriter.WritePacket(nBroadcast);
                 nWriter.WritePacket(nRecProtocol);
-                nWriter.WriteExactly(nParameters.ToArray());
+                nWriter.Write(nParameters);
                 Send(nWriter, nSendProtocol);
             }
         }
@@ -812,7 +812,7 @@ namespace NeutronNetwork
                 nWriter.Write(nPlayer.ID);
                 nWriter.WritePacket(nClientPacket);
                 nWriter.WritePacket(nRecProtocol);
-                nWriter.WriteExactly(nParameters.ToArray());
+                nWriter.Write(nParameters);
                 Send(nWriter, nSendProtocol);
             }
         }
@@ -823,11 +823,11 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerPacketReceived ou OnFail.<br/>
         ///* Para mais detalhes, consulte a documentação.
         /// </summary>
-        /// <param name="paramsWriter">* Os parâmetros que o pacote irá enviar.</param>
-        /// <param name="view">* O jogador de destino do pacote.</param>
-        /// <param name="clientPacket">* O Pacote personalizado que será usado.</param>
-        /// <param name="recProtocol">* O protocolo que será usado para receber o pacote.</param>
-        /// <param name="sendProtocol">* O protocolo que será usado para enviar o pacote.</param>
+        /// <param name="nParameters">* Os parâmetros que o pacote irá enviar.</param>
+        /// <param name="nView">* O jogador de destino do pacote.</param>
+        /// <param name="nClientPacket">* O Pacote personalizado que será usado.</param>
+        /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar o pacote.</param>
         public void Send(NeutronWriter nParameters, NeutronView nView, ClientPacket nClientPacket, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
@@ -837,25 +837,46 @@ namespace NeutronNetwork
                 nWriter.Write(nView.ID);
                 nWriter.WritePacket(nClientPacket);
                 nWriter.WritePacket(nRecProtocol);
-                nWriter.WriteExactly(nParameters.ToArray());
+                nWriter.Write(nParameters);
                 Send(nWriter, nSendProtocol);
             }
         }
 
         /// <summary>
-        ///* sRPC(Static Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.
+        ///* Envia o OnNeutronSerializeView.<br/>
+        /// </summary>
+        /// <param name="nParameters">* Os parâmetros que o pacote irá enviar.</param>
+        /// <param name="ID">* A Instância que invocará o metódo.</param>
+        /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar o pacote.</param>
+        public void Send(NeutronWriter nParameters, NeutronView nView, int nID, Protocol nRecProtocol, Protocol nSendProtocol)
+        {
+            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+            {
+                nWriter.SetLength(0);
+                nWriter.WritePacket(SystemPacket.SerializeView);
+                nWriter.WritePacket(nRecProtocol);
+                nWriter.Write(nView.ID);
+                nWriter.Write(nID);
+                nWriter.Write(nParameters);
+                Send(nWriter, nSendProtocol);
+            }
+        }
+
+        /// <summary>
+        ///* gRPC(Global Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
         /// <param name="nNetworkId">* ID do objeto de rede que será usado para transmitir os dados.</param>
         /// <param name="nSRPCId">* ID do metódo que será invocado.</param>
         /// <param name="nParameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
         /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
-        public void sRPC(int nNetworkId, int nSRPCId, NeutronWriter nParameters, Protocol nProtocol)
+        public void gRPC(int nNetworkId, int nSRPCId, NeutronWriter nParameters, Protocol nProtocol)
         {
             using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
                 nWriter.SetLength(0);
-                nWriter.WritePacket(SystemPacket.sRPC);
+                nWriter.WritePacket(SystemPacket.gRPC);
                 nWriter.Write(nNetworkId);
                 nWriter.Write(nSRPCId);
                 nWriter.Write(nParameters);

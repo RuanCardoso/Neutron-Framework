@@ -30,7 +30,7 @@ namespace NeutronNetwork.Helpers
             #endregion
         }
 
-        public static bool sRPC(int sRPCId, Player sender, byte[] parameters, RemoteProceduralCall remoteProceduralCall, bool isServer, bool isMine, Neutron localInstance = null)
+        public static bool gRPC(int sRPCId, Player sender, byte[] parameters, RemoteProceduralCall remoteProceduralCall, bool isServer, bool isMine, Neutron localInstance = null)
         {
             #region Pool
             var pool = Neutron.PooledNetworkReaders.Pull();
@@ -72,7 +72,7 @@ namespace NeutronNetwork.Helpers
                     return (bool)obj;
                 else NeutronLogger.LoggerError("invalid type hehehe");
             }
-            //else NeutronLogger.LoggerError("Invalid sRPC ID, there is no attribute with this ID.");
+            //else NeutronLogger.LoggerError("Invalid gRPC ID, there is no attribute with this ID.");
             return true;
         }
 

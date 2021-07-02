@@ -1,6 +1,7 @@
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -54,7 +55,7 @@ namespace NeutronNetwork.Components
         [SerializeField] [ReadOnly] private int m_CurrentPacketsPerSecond;
         [SerializeField] [ReadOnly] private int m_MaxPacketsPerSecond;
 
-        private bool m_IsOn = false;
+        private bool m_IsReceived = false;
 
         #region States
         private Vector3 m_Position, m_PositionDelta;
@@ -91,8 +92,9 @@ namespace NeutronNetwork.Components
             else if (IsServer) m_MaxPacketsPerSecond = NeutronHelper.GetMaxPacketsPerSecond(m_SynchronizeInterval);
         }
 
-        private void Start()
+        private new void Start()
         {
+            base.Start();
             // if (IsServer && !HasAuthority && m_AntiSpeedHack)
             //     StartCoroutine(PacketSpeed());
         }
@@ -104,12 +106,18 @@ namespace NeutronNetwork.Components
                 using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
                 {
                     nWriter.SetLength(0);
+                    #region Writer
                     if (m_SyncPosition) nWriter.Write(m_Rigidbody.position);
                     if (m_SyncVelocity) nWriter.Write(m_Rigidbody.velocity);
                     if (m_SyncRotation) nWriter.Write(m_Rigidbody.rotation);
                     if (m_SyncAngularVelocity) nWriter.Write(m_Rigidbody.angularVelocity);
+                    nWriter.Write(NeutronView._.CurrentTime);
+                    #endregion
+
+                    #region Send
                     if ((m_Rigidbody.velocity.sqrMagnitude != 0 && m_SyncVelocity) || (m_Rigidbody.angularVelocity.sqrMagnitude != 0 && m_SyncAngularVelocity))
                         iRPC(NeutronConstants.NEUTRON_RIGIDBODY, nWriter, CacheMode.Overwrite, m_SendTo, m_Broadcast, m_Protocol);
+                    #endregion
                 }
                 yield return new WaitForSeconds(m_SynchronizeInterval);
             }
@@ -123,9 +131,22 @@ namespace NeutronNetwork.Components
             if (m_SyncVelocity) m_Velocity = nReader.ReadVector3();
             if (m_SyncRotation) m_Rotation = nReader.ReadQuaternion();
             if (m_SyncAngularVelocity) m_AngularVelocity = nReader.ReadVector3();
+            double l_Time = nReader.ReadDouble();
             #endregion
+
             //* Define se o primeiro pacote de atualização chegou.
-            m_IsOn = true;
+            m_IsReceived = true;
+
+            #region Lag Compensation
+            if (m_LagCompensation)
+            {
+                float l_CurrentTime = 0;
+                if (!IsServer)
+                    l_CurrentTime = Math.Abs((float)(NeutronView._.CurrentTime - l_Time));
+                else l_CurrentTime = Math.Abs((float)(Neutron.Server.CurrentTime - l_Time));
+                m_Position += (m_Velocity * l_CurrentTime) * m_LagMultiplier;
+            }
+            #endregion
 
 
 
@@ -155,7 +176,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronUpdate();
             {
                 t_TransformUpdateInterval += Time.deltaTime;
-                if (!HasAuthority && m_IsOn)
+                if (!HasAuthority && m_IsReceived)
                 {
                     #region Delta
                     if (m_SmoothMode == SmoothMode.MoveTowards)
@@ -205,7 +226,7 @@ namespace NeutronNetwork.Components
         {
             base.OnNeutronFixedUpdate();
             {
-                if (!HasAuthority && m_IsOn)
+                if (!HasAuthority && m_IsReceived)
                 {
                     if (m_SyncVelocity) m_Rigidbody.velocity = m_Velocity;
                     if (m_SyncAngularVelocity) m_Rigidbody.angularVelocity = m_AngularVelocity;

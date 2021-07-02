@@ -52,8 +52,9 @@ namespace NeutronNetwork.Components
             else if (IsServer) maxPacketsPerSecond = Helpers.NeutronHelper.GetMaxPacketsPerSecond(synchronizeInterval);
         }
 
-        private void Start()
+        private new void Start()
         {
+            base.Start();
 #if UNITY_SERVER || UNITY_EDITOR
             if (IsServer && !HasAuthority && !IsClient && antiSpeedHack)
                 StartCoroutine(PacketSpeed());

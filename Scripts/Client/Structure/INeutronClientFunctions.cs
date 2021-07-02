@@ -106,15 +106,15 @@ namespace NeutronNetwork.Client
             }
         }
 
-        //* Executa o sRPC, chamada global, não é por instâncias.
+        //* Executa o gRPC, chamada global, não é por instâncias.
         protected void sRPCHandler(int nSRPCId, Player nSender, byte[] nParameters, bool nIsServer, bool nIsMine)
         {
-            if (NeutronNonDynamicBehaviour.sRPCs.TryGetValue(nSRPCId, out RemoteProceduralCall remoteProceduralCall)) //* Obtém o sRPC com o ID especificado.
+            if (NeutronNonDynamicBehaviour.gRPCs.TryGetValue(nSRPCId, out RemoteProceduralCall remoteProceduralCall)) //* Obtém o gRPC com o ID especificado.
             {
-                sRPC nSRPCAttr = (sRPC)remoteProceduralCall.attribute;
+                gRPC nSRPCAttr = (gRPC)remoteProceduralCall.attribute;
                 if (nSRPCAttr != null)
                 {
-                    Action __ = new Action(() => NeutronHelper.sRPC(nSRPCId, nSender, nParameters, remoteProceduralCall, nIsServer, nIsMine, _));
+                    Action __ = new Action(() => NeutronHelper.gRPC(nSRPCId, nSender, nParameters, remoteProceduralCall, nIsServer, nIsMine, _));
                     {
                         if (nSRPCAttr.DispatchOnMainThread)
                             NeutronDispatcher.Dispatch(__); //* Invoca o metódo na thread main(Unity).
@@ -125,25 +125,25 @@ namespace NeutronNetwork.Client
         }
 
         /// <summary>
-        ///* Envia uma chamada(sRPC) que aciona a criação do seu jogador.<br/>
+        ///* Envia uma chamada(gRPC) que aciona a criação do seu jogador.<br/>
         ///* ID: 1001<br/>
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
         /// <param name="nParameters">* Os parâmetros que serão enviados com sua chamada.</param>
         public void CreatePlayer(NeutronWriter nParameters)
         {
-            _.sRPC(_.MyPlayer.ID, 1001, nParameters, Protocol.Tcp);
+            _.gRPC(_.MyPlayer.ID, 1001, nParameters, Protocol.Tcp);
         }
 
         /// <summary>
-        ///* Envia uma chamada(sRPC) que aciona a criação de um objeto.<br/>
+        ///* Envia uma chamada(gRPC) que aciona a criação de um objeto.<br/>
         ///* ID: 1002<br/>
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
         /// <param name="nParameters">* Os parâmetros que serão enviados com sua chamada.</param>
         public void CreateObject(NeutronWriter nParameters)
         {
-            _.sRPC(_.MyPlayer.ID, 1002, nParameters, Protocol.Tcp);
+            _.gRPC(_.MyPlayer.ID, 1002, nParameters, Protocol.Tcp);
         }
 
         /// <summary>

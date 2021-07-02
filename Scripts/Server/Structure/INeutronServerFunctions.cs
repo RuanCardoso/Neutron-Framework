@@ -158,7 +158,7 @@ namespace NeutronNetwork.Server
                             }
                             else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
                         }
-                        else Debug.LogError("Invalid sRPC ID, there is no attribute with this ID.");
+                        else Debug.LogError("Invalid gRPC ID, there is no attribute with this ID.");
                     }
                     else Broadcast(nSender);
                 }
@@ -238,9 +238,9 @@ namespace NeutronNetwork.Server
             #region Logic
             if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
             {
-                if (NeutronNonDynamicBehaviour.sRPCs.TryGetValue(nonDynamicID, out RemoteProceduralCall remoteProceduralCall))
+                if (NeutronNonDynamicBehaviour.gRPCs.TryGetValue(nonDynamicID, out RemoteProceduralCall remoteProceduralCall))
                 {
-                    sRPC nonDynamicAttr = (sRPC)remoteProceduralCall.attribute;
+                    gRPC nonDynamicAttr = (gRPC)remoteProceduralCall.attribute;
                     if (nonDynamicAttr != null)
                     {
                         Action _ = () => { };
@@ -249,7 +249,7 @@ namespace NeutronNetwork.Server
                         {
                             _ = new Action(() =>
                             {
-                                if (sRPC(remoteProceduralCall))
+                                if (gRPC(remoteProceduralCall))
                                     Broadcast(nPlayer, nonDynamicAttr.cacheMode, nonDynamicAttr.sendTo, nonDynamicAttr.broadcast, nonDynamicAttr.protocol);
                                 else return;
                             });
@@ -260,7 +260,7 @@ namespace NeutronNetwork.Server
                             {
                                 _ = new Action(() =>
                                 {
-                                    sRPC(remoteProceduralCall);
+                                    gRPC(remoteProceduralCall);
                                 });
                             }
                         }
@@ -271,7 +271,7 @@ namespace NeutronNetwork.Server
                     }
                     else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
                 }
-                else Debug.LogError("Invalid sRPC ID, there is no attribute with this ID.");
+                else Debug.LogError("Invalid gRPC ID, there is no attribute with this ID.");
             }
             #endregion
 
@@ -281,16 +281,16 @@ namespace NeutronNetwork.Server
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
                     writer.SetLength(0);
-                    writer.WritePacket(SystemPacket.sRPC);
+                    writer.WritePacket(SystemPacket.gRPC);
                     writer.Write(nonDynamicID);
                     writer.Write(nSender.ID);
                     writer.WriteExactly(parameters);
                     mSender.Send(writer, sendTo, broadcast, protocol);
-                    MatchmakingHelper.SetCache(nonDynamicID, writer.ToArray(), nSender, cacheMode, CachedPacket.sRPC);
+                    MatchmakingHelper.SetCache(nonDynamicID, writer.ToArray(), nSender, cacheMode, CachedPacket.gRPC);
                 }
                 return true;
             }
-            bool sRPC(RemoteProceduralCall remoteProceduralCall) => NeutronHelper.sRPC(nonDynamicID, nSender, parameters, remoteProceduralCall, true, false);
+            bool gRPC(RemoteProceduralCall remoteProceduralCall) => NeutronHelper.gRPC(nonDynamicID, nSender, parameters, remoteProceduralCall, true, false);
             #endregion
         }
 
@@ -645,7 +645,7 @@ namespace NeutronNetwork.Server
             }
         }
 
-        public void ClientPacketHandler(Player nSender, bool isMine, int networkID, ClientPacket clientPacket, SendTo sendTo, Broadcast broadcast, Protocol recProtocol, byte[] parameters)
+        public void ClientPacketHandler(Player nSender, bool isMine, int networkID, byte[] parameters, ClientPacket clientPacket, SendTo sendTo, Broadcast broadcast, Protocol recProtocol)
         {
             if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
             {
@@ -663,6 +663,46 @@ namespace NeutronNetwork.Server
                 }
             }
             else Debug.LogError("dsdsdsd");
+        }
+
+        public void OnSerializeViewHandler(Player nSender, int networkID, int instanceID, byte[] parameters, Protocol recProtocol)
+        {
+            if (SceneHelper.IsSceneObject(networkID))
+            {
+                if (MatchmakingHelper.GetNetworkObject(networkID, nSender, out NeutronView nView))
+                {
+                    if (nView.NBs.TryGetValue(instanceID, out NeutronBehaviour neutronBehaviour))
+                    {
+                        NeutronDispatcher.Dispatch(() =>
+                        {
+                            using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
+                            {
+                                nReader.SetBuffer(parameters);
+                                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                                {
+                                    nWriter.SetLength(0);
+                                    {
+                                        if (neutronBehaviour.OnNeutronSerializeView(nWriter, nReader, false))
+                                        {
+
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            else
+            {
+                if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
+                {
+                    NeutronView neutronView = nPlayer.NeutronView;
+                    if (neutronView != null)
+                    {
+                    }
+                }
+            }
         }
         #endregion
     }

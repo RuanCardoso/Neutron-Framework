@@ -38,7 +38,7 @@ public enum SystemPacket : byte
     NewPlayer,
     Disconnection,
     iRPC,
-    sRPC,
+    gRPC,
     JoinChannel,
     JoinRoom,
     Leave,
@@ -53,7 +53,8 @@ public enum SystemPacket : byte
     SetPlayerProperties,
     SetRoomProperties,
     Heartbeat,
-    ClientPacket
+    ClientPacket,
+    SerializeView,
 }
 
 [Network]
@@ -74,7 +75,7 @@ public enum ChatPacket : byte
 [Network]
 public enum CachedPacket : byte
 {
-    sRPC = 121,
+    gRPC = 121,
     iRPC = 122,
 }
 

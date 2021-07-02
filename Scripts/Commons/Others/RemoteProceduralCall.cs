@@ -13,7 +13,7 @@ public class RemoteProceduralCall
     Action<NeutronReader, bool, Player> VoidDynamic;
     #endregion
 
-    #region Delegates sRPC
+    #region Delegates gRPC
     readonly Action<NeutronReader, bool, bool, Player, Neutron> VoidNonDynamic;
     readonly Func<NeutronReader, bool, bool, Player, Neutron, bool> BoolNonDynamic;
     readonly Func<NeutronReader, bool, bool, Player, Neutron, NeutronView> NeutronViewNonDynamic;
@@ -36,7 +36,7 @@ public class RemoteProceduralCall
 
                 }
             }
-            else if (attribute is sRPC)
+            else if (attribute is gRPC)
             {
                 if (method.ReturnType == typeof(void))
                     VoidNonDynamic = (Action<NeutronReader, bool, bool, Player, Neutron>)Delegate.CreateDelegate(typeof(Action<NeutronReader, bool, bool, Player, Neutron>), instance, method);

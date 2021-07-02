@@ -47,6 +47,7 @@ namespace NeutronNetwork.Internal
         #region Collection
         ///* Aqui será armazenado todos os metódos marcado com o atributo iRPC.
         [NonSerialized] public Dictionary<int, RemoteProceduralCall> iRPCs = new Dictionary<int, RemoteProceduralCall>();
+        [NonSerialized] public Dictionary<int, NeutronBehaviour> NBs = new Dictionary<int, NeutronBehaviour>();
         #endregion
 
         #region Default Properties
@@ -113,6 +114,11 @@ namespace NeutronNetwork.Internal
                     NeutronBehaviour mInstance = neutronBehaviours[i];
                     if (mInstance != null)
                     {
+                        #region Add Instances
+                        NBs.Add(mInstance.ID, mInstance); //* Adiciona a instância no dict, para manter rápido acesso a qualquer instância.
+                        #endregion
+
+                        #region Create RPC
                         var mType = mInstance.GetType();
                         MethodInfo[] mInfos = mType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                         for (int y = 0; y < mInfos.Length; y++) //* Percorre a parada.
@@ -124,13 +130,14 @@ namespace NeutronNetwork.Internal
                                 {
                                     int uniqueID = Attr.ID ^ mInstance.ID; //* Gera um ID para o metódo.
                                     if (!iRPCs.ContainsKey(uniqueID)) //* Verifica se não existe um metódo duplicado, ou seja, com o iRPC com mesmo ID de iRPC e ID de Instância, o ID do iRPC pode ser igual a de outro metódo se a instância(ID) for diferente.
-                                        iRPCs.Add(uniqueID, new RemoteProceduralCall(mInstance, mInfos[y], Attr)); //* Adiciona o método no Dict, e monta sua estrutura.
+                                        iRPCs.Add(uniqueID, new RemoteProceduralCall(mInstance, mInfos[y], Attr)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
                                     else
                                         NeutronLogger.Print($"Duplicate ID not allowed in \"{mType.Name}\".");
                                 }
                             }
                             else continue;
                         }
+                        #endregion
                     }
                     else continue;
                 }

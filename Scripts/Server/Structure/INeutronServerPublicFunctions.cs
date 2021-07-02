@@ -14,7 +14,7 @@ namespace NeutronNetwork.Server
             DynamicHandler(Sender, broadcast, sendTo, cacheMode, nID, DynamicID, options.ToArray(), protocol);
         }
 
-        public void sRPC(Player sender, int nonDynamicID, NeutronWriter options)
+        public void gRPC(Player sender, int nonDynamicID, NeutronWriter options)
         {
             sRPCHandler(sender, sender.ID, nonDynamicID, options.ToArray());
         }
