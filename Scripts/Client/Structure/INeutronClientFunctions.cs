@@ -107,7 +107,7 @@ namespace NeutronNetwork.Client
         }
 
         //* Executa o gRPC, chamada global, não é por instâncias.
-        protected void sRPCHandler(int nSRPCId, Player nSender, byte[] nParameters, bool nIsServer, bool nIsMine)
+        protected void gRPCHandler(int nSRPCId, Player nSender, byte[] nParameters, bool nIsServer, bool nIsMine)
         {
             if (NeutronNonDynamicBehaviour.gRPCs.TryGetValue(nSRPCId, out RemoteProceduralCall remoteProceduralCall)) //* Obtém o gRPC com o ID especificado.
             {
@@ -120,6 +120,30 @@ namespace NeutronNetwork.Client
                             NeutronDispatcher.Dispatch(__); //* Invoca o metódo na thread main(Unity).
                         else __.Invoke(); //* Invoca o metódo
                     }
+                }
+            }
+        }
+
+        protected void OnSerializeViewHandler(int networkID, int instanceID, byte[] parameters)
+        {
+            if (NetworkObjects.TryGetValue(networkID, out NeutronView nView)) //* Obtém o objeto de rede com o ID especificado.
+            {
+                if (nView.NBs.TryGetValue(instanceID, out NeutronBehaviour neutronBehaviour))
+                {
+                    NeutronDispatcher.Dispatch(() =>
+                    {
+                        using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
+                        {
+                            nReader.SetBuffer(parameters);
+                            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                            {
+                                nWriter.SetLength(0);
+                                {
+                                    neutronBehaviour.OnNeutronSerializeView(nWriter, nReader, false);
+                                }
+                            }
+                        }
+                    });
                 }
             }
         }

@@ -1,3 +1,4 @@
+using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
@@ -19,21 +20,20 @@ namespace NeutronNetwork.Components
         [SerializeField] private bool m_SyncPosition = true;
         [SerializeField] private bool m_SyncRotation = true;
         [SerializeField] private bool m_SyncAngularVelocity = true;
-        [SerializeField] [Range(0, NeutronConstants.SYNCHRONIZE_INTERVAL)] private float m_SynchronizeInterval = 0.03f;
 
         [Header("[Move Towards]")]
-        [SerializeField] [Range(0, NeutronConstants.MAX_RANGE)] private float m_MaxDistanceDelta = 2f;
-        [SerializeField] [Range(0, NeutronConstants.MAX_RANGE)] private float m_MaxDegreesDelta = 2f;
+        [SerializeField] private float m_MaxDistanceDelta = 2f;
+        [SerializeField] private float m_MaxDegreesDelta = 2f;
 
         [Header("[Lerp]")]
-        [SerializeField] [Range(0, NeutronConstants.MAX_RANGE)] private float m_LerpDuration = 1f;
+        [SerializeField] [ShowIf("")] private float m_LerpDuration = 1f;
 
         [Header("[Smooth Damp]")]
-        [SerializeField] [Range(0, NeutronConstants.MAX_RANGE)] private float m_SmoothTime = 1f;
-        [SerializeField] [Range(0, NeutronConstants.MAX_RANGE)] private float m_MaxDampDegreesDelta = 2f;
+        [SerializeField] private float m_SmoothTime = 1f;
+        [SerializeField] private float m_MaxDampDegreesDelta = 2f;
 
         [Header("[Smooth Settings]")]
-        [SerializeField] [Range(0, NeutronConstants.SYNCHRONIZE_INTERVAL)] private float m_TransformUpdateInterval = 0.01f;
+        [SerializeField] private float m_TransformUpdateInterval = 0.01f;
 
         [Header("[Lag Compensation Settings]")]
         [SerializeField] private bool m_LagCompensation = true;
@@ -47,9 +47,6 @@ namespace NeutronNetwork.Components
 
         [Header("[General Settings]")]
         [SerializeField] SmoothMode m_SmoothMode = SmoothMode.MoveTowards;
-        [SerializeField] private SendTo m_SendTo = SendTo.Others;
-        [SerializeField] private Broadcast m_Broadcast = Broadcast.Room;
-        [SerializeField] private Protocol m_Protocol = Protocol.Udp;
 
         [Header("[Infor]")]
         [SerializeField] [ReadOnly] private int m_CurrentPacketsPerSecond;
@@ -89,7 +86,7 @@ namespace NeutronNetwork.Components
             base.OnNeutronStart();
             if ((m_SyncVelocity || m_SyncPosition || m_SyncRotation || m_SyncAngularVelocity) && HasAuthority)
                 StartCoroutine(Synchronize());
-            else if (IsServer) m_MaxPacketsPerSecond = NeutronHelper.GetMaxPacketsPerSecond(m_SynchronizeInterval);
+            else if (IsServer) m_MaxPacketsPerSecond = NeutronHelper.GetMaxPacketsPerSecond(m_SendRate);
         }
 
         private new void Start()
@@ -116,10 +113,10 @@ namespace NeutronNetwork.Components
 
                     #region Send
                     if ((m_Rigidbody.velocity.sqrMagnitude != 0 && m_SyncVelocity) || (m_Rigidbody.angularVelocity.sqrMagnitude != 0 && m_SyncAngularVelocity))
-                        iRPC(NeutronConstants.NEUTRON_RIGIDBODY, nWriter, CacheMode.Overwrite, m_SendTo, m_Broadcast, m_Protocol);
+                        iRPC(NeutronConstants.NEUTRON_RIGIDBODY, nWriter, CacheMode.Overwrite, m_SendTo, m_BroadcastTo, m_ReceivingProtocol, m_SendingProtocol);
                     #endregion
                 }
-                yield return new WaitForSeconds(m_SynchronizeInterval);
+                yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND / m_SendRate);
             }
         }
 

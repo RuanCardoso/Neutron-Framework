@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Attributes;
@@ -45,9 +46,9 @@ namespace NeutronNetwork
         /// </summary>
         public virtual void OnNeutronStart()
         {
-            Initialized = true;
+            Initialized = true; //* Define que está pronto para uso, antes disso, tudo falhará.
             {
-                StartCoroutine(IENeutronSerializeView());
+                StartCoroutine(OnNeutronSerializeView());
             }
         }
         /// <summary>
@@ -113,26 +114,40 @@ namespace NeutronNetwork
         }
         #endregion
 
+        #region Default Options
+        [SerializeField] [Separator] private bool m_ShowDefaultOptions = true;
+
+        [Header("[Default Options]")] //* Opçoes padrão para classes com RPC único.
+
+        [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)]
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] protected int m_SendRate = 15; //* Quantidade de sincronizações por segundo.
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] protected SendTo m_SendTo = SendTo.Others;
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] protected Broadcast m_BroadcastTo = Broadcast.Server;
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] protected CacheMode m_CacheMode = CacheMode.None;
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] protected Protocol m_ReceivingProtocol = Protocol.Tcp;
+        [SerializeField]/* [AllowNesting] */[ShowIf("m_ShowDefaultOptions")] [Separator] protected Protocol m_SendingProtocol = Protocol.Tcp;
+        #endregion
+
         #region MonoBehaviour
-        public void Awake()
+        public virtual void Awake()
         { }
 
-        public void Start()
+        public virtual void Start()
         { }
 
-        public void Update()
+        public virtual void Update()
         {
             if (Initialized)
                 OnNeutronUpdate();
         }
 
-        public void FixedUpdate()
+        public virtual void FixedUpdate()
         {
             if (Initialized)
                 OnNeutronFixedUpdate();
         }
 
-        public void LateUpdate()
+        public virtual void LateUpdate()
         {
             if (Initialized)
                 OnNeutronLateUpdate();
@@ -148,14 +163,14 @@ namespace NeutronNetwork
         /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
         /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
-        protected void iRPC(int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nProtocol)
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
+        protected void iRPC(int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             int uniqueID = nIRPCId ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(NeutronView.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                NeutronView._.iRPC(NeutronView.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(NeutronView.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                Neutron.Server.iRPC(NeutronView.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
         }
 
         /// <summary>
@@ -168,14 +183,14 @@ namespace NeutronNetwork
         /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
         /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
-        protected void iRPC(Player nPlayer, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nProtocol)
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
+        protected void iRPC(Player nPlayer, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             int uniqueID = nIRPCId ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(nPlayer.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                NeutronView._.iRPC(nPlayer.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(nPlayer.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                Neutron.Server.iRPC(nPlayer.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
         }
 
         /// <summary>
@@ -188,19 +203,19 @@ namespace NeutronNetwork
         /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
         /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
-        protected void iRPC(NeutronView nView, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nProtocol)
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
+        protected void iRPC(NeutronView nView, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             int uniqueID = nIRPCId ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(nView.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                NeutronView._.iRPC(nView.ID, uniqueID, nParameters, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(nView.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nProtocol);
+                Neutron.Server.iRPC(nView.ID, uniqueID, nParameters, NeutronView.Owner, nCacheMode, nSendTo, nBroadcast, nRecProtocol, nSendProtocol);
         }
         #endregion
 
         #region Network Serialize View
-        private IEnumerator IENeutronSerializeView()
+        private IEnumerator OnNeutronSerializeView()
         {
             #region Reflection
             bool l_IsOverriden = false;
@@ -211,33 +226,40 @@ namespace NeutronNetwork
                 {
                     var l_Method = l_Instance.GetType().GetMethod("OnNeutronSerializeView", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
                     if (l_Method != null)
-                        l_IsOverriden = l_Method.DeclaringType != typeof(NeutronBehaviour);
+                        l_IsOverriden = l_Method.DeclaringType != typeof(NeutronBehaviour); //* Define se OnNeutronSerializedView está implementado.
                 }
             }
             #endregion
 
-            #region Send
-            while (true)
+            #region Send To Network
+            while (l_IsOverriden && HasAuthority)
             {
-                if (Initialized && l_IsOverriden && HasAuthority)
+                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
                 {
-                    using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                    nWriter.SetLength(0); //* Limpa o escritor.
+                    using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
                     {
-                        nWriter.SetLength(0);
-                        using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
+                        if (OnNeutronSerializeView(nWriter, nReader, true)) //* Invoca o metódo.
                         {
-                            if (OnNeutronSerializeView(nWriter, nReader, true))
-                            {
-                                NeutronView._.Send(nWriter, NeutronView, ID, Protocol.Udp, Protocol.Udp);
-                            }
+                            if (IsClient)
+                                NeutronView._.Send(nWriter, NeutronView, ID, m_SendTo, m_BroadcastTo, m_ReceivingProtocol, m_SendingProtocol); //* Envia para a rede. Client->Server
+                            else Neutron.Server.OnSerializeView(NeutronView.Owner, NeutronView, ID, nWriter, m_SendTo, m_BroadcastTo, m_ReceivingProtocol); //* Envia para a rede. Server->Client
                         }
                     }
                 }
-                yield return new WaitForSeconds(0.01f);
+                yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND / m_SendRate); //* SendRate, envios por segundo.
             }
             #endregion
         }
-
+        /// <summary>
+        ///* Usado para personalizar a sincronização de variáveis ​​em um script monitorado por um NeutronView.<br/>
+        ///* É determinado automaticamente se as variáveis ​​que estão sendo serializadas devem ser enviadas ou recebidas.<br/>
+        ///* O Metódo Dispose() é chamado automaticamente, não é necessário o uso da instrução "Using".
+        /// </summary>
+        /// <param name="nWriter">* Fluxo usado para escrever os parâmetros a serem enviados.</param>
+        /// <param name="nReader">* Fluxo usado para ler os parâmetros recebidos.</param>
+        /// <param name="isWriting">* Define se você está escrevendo ou lendo os dados.</param>
+        /// <returns></returns>
         public virtual bool OnNeutronSerializeView(NeutronWriter nWriter, NeutronReader nReader, bool isWriting) => false;
         #endregion
     }

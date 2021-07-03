@@ -5,6 +5,7 @@ using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Json;
+using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -25,11 +25,11 @@ MonoBehaviour:
     DispatcherChunkSize: 40
   ClientSettings:
     FPS: 60
-    DispatcherChunkSize: 1
+    DispatcherChunkSize: 40
   ServerSettings:
     FPS: 60
     BackLog: 10
-    DispatcherChunkSize: 1
+    DispatcherChunkSize: 40
     PacketChunkSize: 1
     ProcessChunkSize: 1
     NeutronAntiCheat: 1

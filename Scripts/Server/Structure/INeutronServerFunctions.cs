@@ -116,7 +116,7 @@ namespace NeutronNetwork.Server
             }
         }
 
-        protected void DynamicHandler(Player nSender, Broadcast broadcast, SendTo sendTo, CacheMode cacheMode, int networkID, int attributeID, byte[] parameters, Protocol protocol)
+        protected void iRPCHandler(Player nSender, Broadcast broadcast, SendTo sendTo, CacheMode cacheMode, int networkID, int attributeID, byte[] parameters, Protocol nRecProtocol, Protocol protocol)
         {
             #region Logic
             if (nSender.IsInChannel() || nSender.IsInRoom())
@@ -223,7 +223,7 @@ namespace NeutronNetwork.Server
                     writer.Write(attributeID);
                     writer.Write(nSender.ID);
                     writer.WriteExactly(parameters);
-                    mSender.Send(writer, sendTo, broadcast, protocol);
+                    mSender.Send(writer, sendTo, broadcast, nRecProtocol);
                     MatchmakingHelper.SetCache(attributeID, writer.ToArray(), nSender, cacheMode, CachedPacket.iRPC);
                 }
                 return true;
@@ -233,7 +233,7 @@ namespace NeutronNetwork.Server
             #endregion
         }
 
-        protected void sRPCHandler(Player nSender, int networkID, int nonDynamicID, byte[] parameters)
+        protected void gRPCHandler(Player nSender, int networkID, int nonDynamicID, byte[] parameters)
         {
             #region Logic
             if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
@@ -649,23 +649,23 @@ namespace NeutronNetwork.Server
         {
             if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
             {
-                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.SetLength(0);
-                    writer.WritePacket(SystemPacket.ClientPacket);
-                    writer.WritePacket(clientPacket);
-                    writer.Write(nSender.ID);
-                    writer.WriteExactly(parameters);
+                    nWriter.SetLength(0);
+                    nWriter.WritePacket(SystemPacket.ClientPacket);
+                    nWriter.WritePacket(clientPacket);
+                    nWriter.Write(nSender.ID);
+                    nWriter.WriteExactly(parameters);
 
                     if (isMine)
-                        nPlayer.Send(writer, sendTo, broadcast, recProtocol);
-                    else nPlayer.Send(writer, SendTo.Me, Broadcast.Me, recProtocol);
+                        nPlayer.Send(nWriter, sendTo, broadcast, recProtocol);
+                    else nPlayer.Send(nWriter, SendTo.Me, Broadcast.Me, recProtocol);
                 }
             }
             else Debug.LogError("dsdsdsd");
         }
 
-        public void OnSerializeViewHandler(Player nSender, int networkID, int instanceID, byte[] parameters, Protocol recProtocol)
+        public void OnSerializeViewHandler(Player nSender, int networkID, int instanceID, byte[] parameters, SendTo sendTo, Broadcast broadcast, Protocol recProtocol)
         {
             if (SceneHelper.IsSceneObject(networkID))
             {
@@ -683,26 +683,60 @@ namespace NeutronNetwork.Server
                                     nWriter.SetLength(0);
                                     {
                                         if (neutronBehaviour.OnNeutronSerializeView(nWriter, nReader, false))
-                                        {
-
-                                        }
+                                            Broadcast(nSender);
                                     }
                                 }
                             }
                         });
                     }
                 }
+                else Broadcast(nSender);
             }
             else
             {
                 if (MatchmakingHelper.GetPlayer(networkID, out Player nPlayer))
                 {
-                    NeutronView neutronView = nPlayer.NeutronView;
-                    if (neutronView != null)
+                    NeutronView nView = nPlayer.NeutronView;
+                    if (nView != null)
                     {
+                        if (nView.NBs.TryGetValue(instanceID, out NeutronBehaviour neutronBehaviour))
+                        {
+                            NeutronDispatcher.Dispatch(() =>
+                            {
+                                using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
+                                {
+                                    nReader.SetBuffer(parameters);
+                                    using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                                    {
+                                        nWriter.SetLength(0);
+                                        {
+                                            if (neutronBehaviour.OnNeutronSerializeView(nWriter, nReader, false))
+                                                Broadcast(nSender);
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
+                    else Broadcast(nPlayer);
                 }
             }
+
+            #region Local Functions
+            void Broadcast(Player mSender)
+            {
+                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+                {
+                    nWriter.SetLength(0);
+                    nWriter.WritePacket(SystemPacket.SerializeView);
+                    nWriter.Write(nSender.ID);
+                    nWriter.Write(networkID);
+                    nWriter.Write(instanceID);
+                    nWriter.WriteExactly(parameters);
+                    mSender.Send(nWriter, sendTo, broadcast, recProtocol);
+                }
+            }
+            #endregion
         }
         #endregion
     }

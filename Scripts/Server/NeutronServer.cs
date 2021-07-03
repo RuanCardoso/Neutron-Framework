@@ -457,13 +457,14 @@ namespace NeutronNetwork.Server
                                 Broadcast broadcast = nReader.ReadPacket<Broadcast>();
                                 SendTo sendTo = nReader.ReadPacket<SendTo>();
                                 CacheMode cacheMode = nReader.ReadPacket<CacheMode>();
+                                Protocol recProtocol = nReader.ReadPacket<Protocol>();
                                 int networkID = nReader.ReadInt32();
                                 int attributeID = nReader.ReadInt32();
                                 byte[] parameters = nReader.ReadExactly();
                                 #endregion
 
                                 #region Logic
-                                DynamicHandler(nSender, broadcast, sendTo, cacheMode, networkID, attributeID, parameters, protocol);
+                                iRPCHandler(nSender, broadcast, sendTo, cacheMode, networkID, attributeID, parameters, recProtocol, protocol);
                                 #endregion
                             }
                             break;
@@ -476,7 +477,7 @@ namespace NeutronNetwork.Server
                                 #endregion
 
                                 #region Logic
-                                sRPCHandler(nSender, networkID, attributeID, parameters);
+                                gRPCHandler(nSender, networkID, attributeID, parameters);
                                 #endregion
                             }
                             break;
@@ -628,13 +629,15 @@ namespace NeutronNetwork.Server
                             {
                                 #region Reader
                                 Protocol recProtocol = nReader.ReadPacket<Protocol>();
+                                SendTo sendTo = nReader.ReadPacket<SendTo>();
+                                Broadcast broadcast = nReader.ReadPacket<Broadcast>();
                                 int networkID = nReader.ReadInt32();
                                 int instanceID = nReader.ReadInt32();
                                 byte[] parameters = nReader.ReadExactly();
                                 #endregion
 
                                 #region Logic
-                                OnSerializeViewHandler(nSender, networkID, instanceID, parameters, recProtocol);
+                                OnSerializeViewHandler(nSender, networkID, instanceID, parameters, sendTo, broadcast, recProtocol);
                                 #endregion
                             }
                             break;

@@ -1,4 +1,5 @@
 using NeutronNetwork.Attributes;
+using NeutronNetwork.Naughty.Attributes;
 using UnityEngine;
 
 namespace NeutronNetwork

@@ -4,6 +4,7 @@ using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Server.Internal;
 using UnityEngine;
 

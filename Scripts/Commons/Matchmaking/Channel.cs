@@ -11,6 +11,7 @@ using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Interfaces;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Naughty.Attributes;
 
 namespace NeutronNetwork
 {

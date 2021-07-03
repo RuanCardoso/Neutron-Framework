@@ -1,18 +1,19 @@
 ﻿using System.Linq;
-using System.Reflection;
 using NeutronNetwork.Client.Internal;
 using NeutronNetwork.Components;
+using NeutronNetwork.Naughty.Attributes.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 
 [CustomEditor(typeof(NeutronAnimator))]
-public class NeutronAnimatorEditor : Editor
+public class NeutronAnimatorEditor : NaughtyInspector
 {
     private NeutronAnimator neutronAnimatorTarget;
 
-    private void OnEnable()
+    protected override void OnEnable()
     {
+        base.OnEnable();
         neutronAnimatorTarget = (NeutronAnimator)target;
         if (neutronAnimatorTarget.m_Animator == null)
             neutronAnimatorTarget.m_Animator = neutronAnimatorTarget.GetComponent<Animator>();

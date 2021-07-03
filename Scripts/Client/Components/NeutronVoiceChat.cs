@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Naughty.Attributes;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
@@ -120,7 +121,7 @@ namespace NeutronNetwork.Components
                             options.Write(Frequency);
                             options.Write(audioClip.channels);
                             options.Write(samples);
-                            iRPC(10021, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                            //iRPC(10021, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                         }
                         tSyncInterval = 0;
                     }

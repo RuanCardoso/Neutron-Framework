@@ -23,12 +23,13 @@ namespace NeutronNetwork
         private List<FieldInfo> listOfFields = new List<FieldInfo>();
         #endregion
 
-        #region Neutron
-        [SerializeField] private CacheMode m_CacheMode = CacheMode.Overwrite;
-        [SerializeField] private SendTo m_SendTo = SendTo.All;
-        [SerializeField] private Broadcast m_Broadcast = global::Broadcast.Room;
-        [SerializeField] [Separator] private Protocol m_Protocol = Protocol.Tcp;
-        #endregion
+        // #region Neutron
+        // [SerializeField] private CacheMode m_CacheMode = CacheMode.Overwrite;
+        // [SerializeField] private SendTo m_SendTo = SendTo.All;
+        // [SerializeField] private Broadcast m_Broadcast = global::Broadcast.Room;
+        // [SerializeField] private Protocol m_RecProtocol = Protocol.Udp;
+        // [SerializeField] [Separator] private Protocol m_SendProtocol = Protocol.Tcp;
+        // #endregion
         JsonSerializerSettings m_JSS = new JsonSerializerSettings() { ObjectCreationHandling = ObjectCreationHandling.Replace };
 
         public override void OnNeutronStart()
@@ -89,7 +90,7 @@ namespace NeutronNetwork
             {
                 nWriter.SetLength(0);
                 nWriter.Write(cJson);
-                iRPC(NeutronConstants.NEUTRON_SYNCHRONIZE_BEHAVIOUR, nWriter, m_CacheMode, m_SendTo, m_Broadcast, m_Protocol);
+                iRPC(NeutronConstants.NEUTRON_SYNCHRONIZE_BEHAVIOUR, nWriter, m_CacheMode, m_SendTo, m_BroadcastTo, m_ReceivingProtocol, m_SendingProtocol);
             }
         }
 

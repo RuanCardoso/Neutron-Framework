@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Naughty.Attributes;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal

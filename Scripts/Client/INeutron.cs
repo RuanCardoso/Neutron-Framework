@@ -488,7 +488,7 @@ namespace NeutronNetwork
 
                                 #region Logic
                                 Player nPlayer = PlayerConnections[nPlayerId];
-                                sRPCHandler(nSRPCId, nPlayer, nParameters, false, IsMine(nPlayer));
+                                gRPCHandler(nSRPCId, nPlayer, nParameters, false, IsMine(nPlayer));
                                 #endregion
                             }
                             break;
@@ -639,6 +639,20 @@ namespace NeutronNetwork
                                     PoolReader.SetBuffer(nParameters);
                                     OnPlayerPacketReceived.Invoke(PoolReader, nPlayer, nClientPacket, this);
                                 }
+                                #endregion
+                            }
+                            break;
+                        case SystemPacket.SerializeView:
+                            {
+                                #region Reader
+                                int nPlayerId = nReader.ReadInt32();
+                                int nNetworkID = nReader.ReadInt32();
+                                int nInstanceID = nReader.ReadInt32();
+                                byte[] nParameters = nReader.ReadExactly();
+                                #endregion
+
+                                #region Logic
+                                OnSerializeViewHandler(nNetworkID, nInstanceID, nParameters);
                                 #endregion
                             }
                             break;
@@ -849,13 +863,15 @@ namespace NeutronNetwork
         /// <param name="ID">* A Instância que invocará o metódo.</param>
         /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
         /// <param name="nSendProtocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void Send(NeutronWriter nParameters, NeutronView nView, int nID, Protocol nRecProtocol, Protocol nSendProtocol)
+        public void Send(NeutronWriter nParameters, NeutronView nView, int nID, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
                 nWriter.SetLength(0);
                 nWriter.WritePacket(SystemPacket.SerializeView);
                 nWriter.WritePacket(nRecProtocol);
+                nWriter.WritePacket(nSendTo);
+                nWriter.WritePacket(nBroadcast);
                 nWriter.Write(nView.ID);
                 nWriter.Write(nID);
                 nWriter.Write(nParameters);
@@ -894,8 +910,9 @@ namespace NeutronNetwork
         /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
         /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nProtocol">* O protocolo que será usado para enviar os dados.</param>
-        public void iRPC(int nNetworkId, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nProtocol)
+        /// <param name="nRecProtocol">* O protocolo que será usado para receber o pacote.</param>
+        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
+        public void iRPC(int nNetworkId, int nIRPCId, NeutronWriter nParameters, CacheMode nCacheMode, SendTo nSendTo, Broadcast nBroadcast, Protocol nRecProtocol, Protocol nSendProtocol)
         {
             using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
             {
@@ -904,10 +921,11 @@ namespace NeutronNetwork
                 nWriter.WritePacket(nBroadcast);
                 nWriter.WritePacket(nSendTo);
                 nWriter.WritePacket(nCacheMode);
+                nWriter.WritePacket(nRecProtocol);
                 nWriter.Write(nNetworkId);
                 nWriter.Write(nIRPCId);
                 nWriter.Write(nParameters);
-                Send(nWriter, nProtocol);
+                Send(nWriter, nSendProtocol);
             }
         }
 

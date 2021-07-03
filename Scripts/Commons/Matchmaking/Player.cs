@@ -15,6 +15,7 @@ using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Threading;
 using UnityEngine;
+using NeutronNetwork.Naughty.Attributes;
 
 namespace NeutronNetwork
 {
@@ -35,12 +36,12 @@ namespace NeutronNetwork
         /// Current channel of player.
         /// </summary>
         public int CurrentChannel { get => currentChannel; set => currentChannel = value; }
-        [SerializeField, ReadOnly] private int currentChannel = -1;
+        [SerializeField] [ReadOnly] private int currentChannel = -1;
         /// <summary>
         /// Current room of player.
         /// </summary>
         public int CurrentRoom { get => currentRoom; set => currentRoom = value; }
-        [SerializeField, ReadOnly] private int currentRoom = -1;
+        [SerializeField] [ReadOnly] private int currentRoom = -1;
         /// <summary>
         /// Properties of player.
         /// </summary>

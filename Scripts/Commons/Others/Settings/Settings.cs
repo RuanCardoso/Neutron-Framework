@@ -1,6 +1,7 @@
 using System;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Server.Internal;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace NeutronNetwork.Constants
         public int MaxPlayers = 1000;
         public Serialization Serialization = Serialization.Json;
         public Compression Compression = Compression.Deflate;
+
         #region NotImplemented
         [ReadOnly] public bool Lan;
         #endregion

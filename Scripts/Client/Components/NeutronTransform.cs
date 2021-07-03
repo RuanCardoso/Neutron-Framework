@@ -4,6 +4,7 @@ using NeutronNetwork;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Naughty.Attributes;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
@@ -79,7 +80,7 @@ namespace NeutronNetwork.Components
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);
                     if (transform.position != position && synchronizePosition || transform.rotation != rotation && synchronizeRotation || transform.localScale != scale && synchronizeScale)
-                        iRPC(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
+                        //iRPC(10013, options, CacheMode.Overwrite, sendTo, broadcast, protocol);
                     if (sendTo == SendTo.Others || sendTo == SendTo.Me)
                         ResetTransforms();
                 }
