@@ -28,7 +28,7 @@ public class NeutronAnimatorEditor : NaughtyInspector
             if (controller != null)
             {
                 if (neutronAnimatorTarget.m_Parameters.Length != controller.parameters.Length)
-                    neutronAnimatorTarget.m_Parameters = controller.parameters.Select(x => new NeutronAnimatorParameter(x.name, x.type, ParameterMode.Sync)).ToArray();
+                    neutronAnimatorTarget.m_Parameters = controller.parameters.Select(x => new AnimatorParameter(x.name, x.type, SyncOnOff.Sync)).ToArray();
             }
         }
     }

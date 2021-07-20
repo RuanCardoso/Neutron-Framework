@@ -6,10 +6,18 @@ using NeutronNetwork.Server;
 
 public class NeutronEditor : EditorWindow
 {
-    [MenuItem("Neutron/Neutron/Settings")]
+    [MenuItem("Neutron/Settings/Neutron")]
     private static void OpenSettings()
     {
         Object asset = Resources.Load("Neutron Settings");
+        if (asset != null)
+            AssetDatabase.OpenAsset(asset);
+    }
+
+    [MenuItem("Neutron/Settings/Synchronization")]
+    private static void OpenSynchronization()
+    {
+        Object asset = Resources.Load("Neutron Synchronization");
         if (asset != null)
             AssetDatabase.OpenAsset(asset);
     }
@@ -30,5 +38,11 @@ public class NeutronEditor : EditorWindow
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
         }
         else Debug.LogError("A setup object has already been created.");
+    }
+
+    [MenuItem("Neutron/Documentation")]
+    private static void Help()
+    {
+        EditorUtility.DisplayDialog("Neutron", "Documentation will be released soon.", "OK");
     }
 }

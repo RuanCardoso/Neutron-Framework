@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9594f63414f01442ae09456262e8716, type: 3}
+  m_Name: Neutron Synchronization
+  m_EditorClassIdentifier: 
+  SynchronizationHandlers:
+    iRPC: []
+    gRPC: []
+    OnNeutronSerializeView: []
+  DefaultHandlers:
+    OnPlayerNicknameChanged:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerDisconnected:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerJoinedChannel:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerJoinedRoom:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerLeaveRoom:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerLeaveChannel:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerPropertiesChanged:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnRoomPropertiesChanged:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0
+    OnPlayerDestroyed:
+      sendTo: 0
+      broadcast: 5
+      cacheMode: 0
+      protocol: 0

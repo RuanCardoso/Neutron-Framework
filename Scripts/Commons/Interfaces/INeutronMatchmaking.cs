@@ -13,8 +13,8 @@ namespace NeutronNetwork.Internal.Interfaces
         #endregion
 
         #region Classes/Struct
-        Player Owner { get; set; }
-        SceneSettings SceneSettings { get; set; }
+        NeutronPlayer Owner { get; set; }
+        SceneView SceneSettings { get; set; }
         #endregion
 
         #region Collections
@@ -22,11 +22,11 @@ namespace NeutronNetwork.Internal.Interfaces
         #endregion
 
         #region Methods
-        bool AddPlayer(Player player);
-        bool RemovePlayer(Player player);
-        void AddCache(CachedBuffer buffer);
-        Player[] GetPlayers();
-        CachedBuffer[] GetCaches();
+        bool AddPlayer(NeutronPlayer player);
+        bool RemovePlayer(NeutronPlayer player);
+        void AddCache(NeutronCache buffer);
+        NeutronPlayer[] GetPlayers();
+        NeutronCache[] GetCaches();
         #endregion
     }
 }

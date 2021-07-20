@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-[CustomPropertyDrawer(typeof(SerializableVector3))]
+[CustomPropertyDrawer(typeof(NSVector3))]
 public class NeutronVector3Drawer : PropertyDrawer
 {
     private Vector3 serializableVector3;

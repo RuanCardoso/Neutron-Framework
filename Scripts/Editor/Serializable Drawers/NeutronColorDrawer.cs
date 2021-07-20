@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-[CustomPropertyDrawer(typeof(SerializableColor))]
+[CustomPropertyDrawer(typeof(NSColor))]
 public class NeutronColorDrawer : PropertyDrawer
 {
     private Color serializableColor;

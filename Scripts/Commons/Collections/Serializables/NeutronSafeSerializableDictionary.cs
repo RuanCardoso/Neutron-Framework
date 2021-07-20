@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using NeutronNetwork;
-using NeutronNetwork.Internal.Client;
 using NeutronNetwork.Interfaces;
 
 namespace NeutronNetwork.Internal.Wrappers
 {
     [Serializable]
-    public class NeutronSafeSerializableDictionary<TValue> : NeutronSafeDictionary<int, TValue>, ISerializationCallbackReceiver where TValue : INeutronNotify
+    public class NeutronSafeSerializableDictionary<TValue> : NeutronSafeDictionary<int, TValue>, ISerializationCallbackReceiver where TValue : INeutron
     {
         [SerializeField] private TValue[] m_Values;
         public void OnAfterDeserialize()

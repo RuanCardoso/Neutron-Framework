@@ -6,8 +6,8 @@ using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Server.Internal;
 using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Wrappers;
 using System.Net;
+using System.Threading.Tasks;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -23,12 +23,12 @@ namespace NeutronNetwork.Server
     ///* Esta classe é o núcleo do Neutron, aqui é o lado do servidor, você pode fazer oque quiser.
     ///* Desde que saiba oque está fazendo skksaksaksak, eu não sei, aqui é só sorte e paciência.
     ///* Um salve pra Unity Brasil.
-    [RequireComponent(typeof(NeutronConfig))]
+    [RequireComponent(typeof(NeutronMain))]
     [RequireComponent(typeof(NeutronDispatcher))]
-    [RequireComponent(typeof(NeutronEvents))]
+    [RequireComponent(typeof(EventsBehaviour))]
     [RequireComponent(typeof(NeutronStatistics))]
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_SERVER)]
-    public class NeutronServer : NeutronServerPublicFunctions
+    [DefaultExecutionOrder(ExecutionOrder.NEUTRON_SERVER)]
+    public class NeutronServer : ServerPackets
     {
         #region Events
         /// <summary>
@@ -38,45 +38,45 @@ namespace NeutronNetwork.Server
         /// <summary>
         ///* Este evento é acionado quando um jogador é conectado ao servidor.
         /// </summary>
-        public static NeutronEventNoReturn<Player> OnPlayerConnected = new NeutronEventNoReturn<Player>();
+        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerConnected = new NeutronEventNoReturn<NeutronPlayer>();
         #endregion
 
-        #region Variables
+        #region Fields
         /// <summary>
         ///* Obtém o status do servidor.
         /// </summary>
-        public static bool Initialized;
+        public static bool m_Initialized;
         #endregion
 
         #region Collections
         //* Esta fila irá armazenar os clientes para serem desinfileirados e processados, em um único Thread(Segmento).
-        private NeutronBlockingQueue<TcpClient> acceptedClients = new NeutronBlockingQueue<TcpClient>();
+        private NeutronBlockingQueue<TcpClient> m_AcceptedClients = new NeutronBlockingQueue<TcpClient>(NeutronConstants.BOUNDED_CAPACITY);
         //* Esta fila irá armazenar os pacotes recebidos dos clientes para serem desinfileirados e processados, em um único Thread(Segmento).
-        private NeutronBlockingQueue<DataBuffer> dataForProcessing = new NeutronBlockingQueue<DataBuffer>();
+        public NeutronBlockingQueue<NeutronData> m_DataForProcessing = new NeutronBlockingQueue<NeutronData>(NeutronConstants.BOUNDED_CAPACITY);
         //* Esta fila irá fornecer um pool de ID's e atribuirá um ID único para cada cliente novo.
         //* Quando um cliente for desconectado seu ID será reutilizado sendo adicionado a fila novamente.
-        public NeutronSafeQueue<int> generatedIds = new NeutronSafeQueue<int>();
+        public NeutronSafeQueue<int> m_PooledIds = new NeutronSafeQueue<int>();
         #endregion
 
         #region Threading
-        //* Este é um token de cancelamento, ele é passado para todos os Threads criados, é usado para parar os Threads quando o servidor for desligado.
-        private CancellationTokenSource _cts = new CancellationTokenSource();
+        //* Este é um token de cancelamento, ele é passado para todos os Threads, é usado para parar os Threads quando o servidor for desligado.
+        private CancellationTokenSource m_CTS = new CancellationTokenSource();
         #endregion
 
         #region Functions
-        private void InitilizeServer()
+        private void Initilize()
         {
             //* Esta região irá fornecer os ID para a lista.
             #region Provider
-            for (int i = 0; i < NeutronConfig.Settings.GlobalSettings.MaxPlayers; i++)
-                generatedIds.Enqueue((NeutronConstants.GENERATE_PLAYER_ID + i) + 1);
+            for (int i = 0; i < NeutronMain.Settings.GlobalSettings.MaxPlayers; i++)
+                m_PooledIds.Enqueue((NeutronConstants.GENERATE_PLAYER_ID + i) + 1);
             #endregion
 
             //* Marca o servidor como inicializado.
-            Initialized = true;
+            m_Initialized = true;
 
             #region Logger
-            NeutronLogger.Logger("The Server is ready, all protocols have been initialized.\r\n");
+            LogHelper.Info("The Server is ready, all protocols have been initialized.\r\n");
             #endregion
 
             //* Este thread será dedicado a aceitar e enfileirar os novos clientes.
@@ -90,22 +90,22 @@ namespace NeutronNetwork.Server
             acptTh.Start();
 
             //* Este thread será dedicado a desinfileirar os pacotes e processa-los.
-            Thread dataForProcessingTh = new Thread((e) => ServerDataProcessingStack())
+            Thread packetProcessingStackTh = new Thread((e) => PacketProcessingStack())
             {
                 Priority = System.Threading.ThreadPriority.Highest,
                 IsBackground = true,
-                Name = "Neutron dataForProcessingTh"
+                Name = "Neutron packetProcessingStackTh"
             };
-            dataForProcessingTh.Start();
+            packetProcessingStackTh.Start();
 
             //* Este thread será dedicado a desinfileirar os novos clientes e processa-los.
-            Thread stackProcessingAcceptedConnectionsTh = new Thread((e) => AcceptedConnectionsProcessingStack())
+            Thread clientsProcessingStackTh = new Thread((e) => ClientsProcessingStack())
             {
                 Priority = System.Threading.ThreadPriority.Normal,
                 IsBackground = true,
-                Name = "Neutron stackProcessingAcceptedConnectionsTh"
+                Name = "Neutron ClientsProcessingStackTh"
             };
-            stackProcessingAcceptedConnectionsTh.Start();
+            clientsProcessingStackTh.Start();
             #endregion
 
             #region Events
@@ -118,534 +118,483 @@ namespace NeutronNetwork.Server
         {
             try
             {
-                CancellationToken token = _cts.Token;
-                while (Initialized && !token.IsCancellationRequested)
+                CancellationToken l_Token = m_CTS.Token;
+                while (!l_Token.IsCancellationRequested)
                 {
-                    TcpClient tcpClient = await TcpSocket.AcceptTcpClientAsync(); //* Aceita a nova conexão,
+                    TcpClient l_Client = await TcpSocket.AcceptTcpClientAsync(); //* Aceita a nova conexão,
                     {
-                        acceptedClients.Add(tcpClient, token); //* Nova conexão é enfileirada para processamento.
+                        m_AcceptedClients.Add(l_Client, l_Token); //* Nova conexão é enfileirada para processamento.
                     }
                 }
             }
             catch (ObjectDisposedException) { }
-            catch (ThreadAbortException) { }
             catch (OperationCanceledException) { }
-            catch (Exception ex) { NeutronLogger.StackTrace(ex); }
-        }
-
-        //* Inicia o processamento dos pacotes.
-        private void ServerDataProcessingStack()
-        {
-            try
-            {
-                CancellationToken token = _cts.Token;
-                while (Initialized && !token.IsCancellationRequested)
-                {
-                    //! [OBSOLETE]: dataForProcessing.mEvent.Reset(); //* Permite fazer o bloqueio do Thread novamente.
-                    //! [OBSOLETE]: while (dataForProcessing.SafeCount > 0)
-                    {
-                        for (int i = 0; i < NeutronConfig.Settings.ServerSettings.PacketChunkSize; i++)
-                        {
-                            DataBuffer data = dataForProcessing.Take(token); //* Desinfileira os dados e bloqueia o thread se não houver mais dados.
-                            {
-                                PacketProcessing(data.player, data.buffer, data.protocol); //* Processa o pacote.
-                            }
-                        }
-                    }
-                    //! [OBSOLETE]: dataForProcessing.mEvent.WaitOne(); //* Bloqueia o Thread após processar todos os dados.
-                }
-            }
-            catch (OperationCanceledException) { }
-            catch (ArgumentNullException) { }
+            catch (Exception ex) { LogHelper.StackTrace(ex); }
         }
 
         //* Inicia o processamento dos clientes.
-        private void AcceptedConnectionsProcessingStack()
+        private void ClientsProcessingStack()
         {
             try
             {
-                CancellationToken token = _cts.Token;
-                while (Initialized && !token.IsCancellationRequested)
+                CancellationToken l_Token = m_CTS.Token;
+                while (!l_Token.IsCancellationRequested)
                 {
-                    //! [OBSOLETE]: acceptedClients.mEvent.Reset(); //* Permite fazer o bloqueio do Thread novamente.
-                    //! [OBSOLETE]: while (acceptedClients.SafeCount > 0)
+                    TcpClient l_Client = m_AcceptedClients.Take(l_Token); //* Desinfileira os clientes e bloqueia o thread se não houver mais dados.
+                    if (PlayerHelper.GetAvailableID(out int ID))
                     {
-                        TcpClient acceptedClient = acceptedClients.Take(token); //* Desinfileira os clientes e bloqueia o thread se não houver mais dados.
-                        if (PlayerHelper.GetAvailableID(out int ID))
+                        if (SocketHelper.LimitConnectionsByIP(l_Client)) //* Verifica se este cliente antigiu o limite de conexões ativas.
                         {
-                            if (SocketHelper.LimitConnectionsByIP(acceptedClient)) //* Verifica se este cliente antigiu o limite de conexões ativas.
+                            l_Client.NoDelay = NeutronMain.Settings.GlobalSettings.NoDelay;
+                            // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
+                            // TODO acceptedClient.SendTimeout = int.MaxValue;
+                            var l_Player = new NeutronPlayer(ID, l_Client, new CancellationTokenSource()); //* Cria uma instância do cliente.
+                            if (SocketHelper.AddPlayer(l_Player))
                             {
-                                acceptedClient.NoDelay = NeutronConfig.Settings.GlobalSettings.NoDelay;
-                                // TODO acceptedClient.ReceiveTimeout = int.MaxValue;
-                                // TODO acceptedClient.SendTimeout = int.MaxValue;
-                                var cancellationTokenSource = new CancellationTokenSource(); //* Um token para cancelar todas as operações em execução do cliente, após ele ser desconectado.
-                                var nPlayer = new Player(ID, acceptedClient, cancellationTokenSource); //* Cria uma instância do cliente.
-                                if (SocketHelper.AddPlayer(nPlayer))
+                                Interlocked.Increment(ref CurrentPlayers); //* Incrementa a quantidade de jogadores do servidor.
+                                //* Esta região cria um View, um View é usado para você criar uma comunicação personalizada com o cliente dono(owner).
+                                //* Exemplo, dentro do View você pode implementar uma função que envia um evento ou mensagem a cada X Segundos.
+                                #region View
+                                NeutronDispatcher.Dispatch(() =>
                                 {
-                                    //* Esta região cria um View, um View é usado para você criar uma comunicação personalizada com o cliente dono(owner).
-                                    //* Exemplo, dentro do View você pode implementar uma função que envia um evento ou mensagem a cada X Segundos.
-                                    #region View
-                                    NeutronDispatcher.Dispatch(() =>
-                                    {
-                                        GameObject iView = new GameObject($"View[{nPlayer.ID}]");
-                                        View View = iView.AddComponent<View>();
-                                        View.Owner = nPlayer;
-                                        SceneHelper.MoveToContainer(iView, "[Container] -> Server");
-                                    });
-                                    OnPlayerConnected.Invoke(nPlayer);
-                                    #endregion
-                                    Interlocked.Increment(ref CurrentPlayers);
+                                    GameObject iView = new GameObject($"View[{l_Player.ID}]");
+                                    View View = iView.AddComponent<View>();
+                                    View.Owner = l_Player;
+                                    SceneHelper.MoveToContainer(iView, "[Container] -> Server");
+                                });
+                                #endregion
+                                LogHelper.Info($"Incoming client, IP: [{((IPEndPoint)l_Player.m_TcpClient.Client.RemoteEndPoint).Address}] | TCP: [{((IPEndPoint)l_Player.m_TcpClient.Client.RemoteEndPoint).Port}] | UDP: [{((IPEndPoint)l_Player.m_UdpClient.Client.LocalEndPoint).Port}] -:[{CurrentPlayers}]");
 
-                                    #region Logger
-                                    NeutronLogger.Logger($"Incoming client, IP: [{nPlayer.RemoteEndPoint().Address}] | TCP: [{nPlayer.RemoteEndPoint().Port}] | UDP: [{((IPEndPoint)nPlayer.udpClient.Client.LocalEndPoint).Port}] -:[0]");
-                                    #endregion
-
-                                    //* Este thread será dedicado a desinfileirar e enviar os dados do seu cliente.
-                                    //! Obs: Um Thread novo pra cada cliente é criado, poderiamos usar o ThreadPool? 
-                                    //* Não, este metódo bloqueia o thread, não queremos bloquear os threads do pool de threads, né?
-                                    //* Porque o pool de threads está sendo usado para receber os dados de forma assíncrona, bloquea-los com este metódo causará gargalos em threads que estão recebendo dados.
-                                    Thread procTh = new Thread(() => OnProcessData(nPlayer, cancellationTokenSource.Token))
-                                    {
-                                        IsBackground = true,
-                                        Name = $"procTh[{ID}]",
-                                    };
-                                    procTh.Start();
-
-                                    //* Usa o pool de threads para receber os dados do cliente de forma assíncrona.
-                                    //* O Pool de threads só deverá ser usado com metódos que não bloqueiam, para evitar gargalos no recebimento de dados.
-                                    ThreadPool.QueueUserWorkItem((e) =>
-                                    {
-                                        OnReceiveData(nPlayer, Protocol.Tcp, e);
-                                        OnReceiveData(nPlayer, Protocol.Udp, e);
-                                    }, cancellationTokenSource.Token);
-                                }
-                                else
+                                //* Usa o pool de threads para receber os dados do cliente de forma assíncrona.
+                                //* O Pool de threads só deverá ser usado com metódos que não bloqueiam, para evitar gargalos no recebimento de dados.
+                                ThreadPool.QueueUserWorkItem((e) =>
                                 {
-                                    #region Logger
-                                    NeutronLogger.LoggerError("Failed to add Player!");
-                                    #endregion
-                                    acceptedClient.Close();
-                                    continue;
-                                }
+                                    OnReceivingData(l_Player, Protocol.Tcp);
+                                    OnReceivingData(l_Player, Protocol.Udp);
+                                });
+                                OnPlayerConnected.Invoke(l_Player);
                             }
                             else
                             {
-                                #region Logger
-                                NeutronLogger.LoggerError("Client not allowed!");
-                                #endregion
-                                acceptedClient.Close();
+                                if (!LogHelper.Error("Failed to add Player!"))
+                                    l_Client.Close();
                                 continue;
                             }
                         }
                         else
                         {
-                            #region Logger
-                            NeutronLogger.LoggerError("Max Players Reached");
-                            #endregion
-                            acceptedClient.Close();
+                            if (!LogHelper.Error("Client not allowed!"))
+                                l_Client.Close();
                             continue;
                         }
                     }
-                    //! [OBSOLETE]: acceptedClients.mEvent.WaitOne(); //* Bloqueia o Thread após processar todos os dados.
+                    else
+                    {
+                        if (!LogHelper.Error("Max Players Reached"))
+                            l_Client.Close();
+                        continue;
+                    }
                 }
             }
+            catch (ObjectDisposedException) { }
             catch (OperationCanceledException) { }
-            catch (ArgumentNullException) { }
+            catch (Exception ex) { LogHelper.StackTrace(ex); }
+        }
+
+        //* Inicia o processamento dos pacotes.
+        private void PacketProcessingStack()
+        {
+#if NEUTRON_DEBUG || UNITY_EDITOR
+            ServerDataProcessingStackManagedThreadId = ThreadHelper.GetThreadID();
+#endif
+            try
+            {
+                CancellationToken l_Token = m_CTS.Token;
+                while (!l_Token.IsCancellationRequested)
+                {
+                    for (int i = 0; i < NeutronMain.Settings.ServerSettings.PacketsProcessedPerTick; i++)
+                    {
+                        NeutronData l_Data = m_DataForProcessing.Take(l_Token); //* Desinfileira os dados e bloqueia o thread se não houver mais dados.
+                        {
+                            RunPacket(l_Data.Player, l_Data.Buffer); //* Processa o pacote.
+                        }
+                    }
+                }
+            }
+            catch (ObjectDisposedException) { }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { LogHelper.StackTrace(ex); }
         }
 
         //* Aqui os dados são enviados aos seus clientes.
-        private void OnProcessData(Player nPlayer, object toToken)
+        public async void OnSendingData(NeutronPlayer nPlayer, NeutronData nData)
         {
             try
             {
-                CancellationToken token = (CancellationToken)toToken;
-                NeutronBlockingQueue<DataBuffer> queueData = nPlayer.qData;
-                NetworkStream netStream = nPlayer.tcpClient.GetStream();
+                #region Lag Simulation
+                if (NeutronMain.Settings.LagSimulationSettings.Outbound)
+                    await Task.Delay(NeutronMain.Settings.LagSimulationSettings.InOutDelay);
+                #endregion
 
-                while (Initialized && !token.IsCancellationRequested)
+                CancellationToken l_Token = nPlayer.m_CTS.Token;
+                NetworkStream l_NetStream = nPlayer.m_TcpClient.GetStream();
+
+                using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
                 {
-                    //! [OBSOLETE]: queueData.mEvent.Reset(); //* Permite fazer o bloqueio do Thread novamente.
-                    //! [OBSOLETE]: while (queueData.SafeCount > 0)
+                    int l_Length = nData.Buffer.Length;
+
+                    //* Cabeçalho da mensagem/dados.
+                    #region Header
+                    nWriter.SetLength(0);
+                    nWriter.WriteFixedLength(l_Length); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro(4bytes).
+                    nWriter.Write(nData.Buffer); //* Os dados que serão enviados junto com o pre-fixo.
+                    byte[] l_Message = nWriter.ToArray();
+                    #endregion
+
+                    switch (nData.Protocol)
                     {
-                        for (int i = 0; i < NeutronConfig.Settings.ServerSettings.ProcessChunkSize; i++)
-                        {
-                            DataBuffer data = queueData.Take(token); //* Desinfileira os dados e bloqueia o thread se não houver mais dados.
+                        case Protocol.Tcp:
                             {
-                                using (NeutronWriter header = Neutron.PooledNetworkWriters.Pull())
+                                await l_NetStream.WriteAsync(l_Message, 0, l_Message.Length, l_Token);
                                 {
-                                    int dataLength = data.buffer.Length;
-
-                                    //* Cabeçalho da mensagem/dados.
-                                    #region Header
-                                    header.SetLength(0);
-                                    header.WriteFixedLength(dataLength); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro(4bytes).
-                                    header.Write(data.buffer); //* Os dados que serão enviados junto com o pre-fixo.
-                                    byte[] nBuffer = header.ToArray();
-                                    #endregion
-
-                                    //* Envia os dados, o envio de dados bloqueia o thread, este é uo motivo de não ser usado o ThreadPool.
-                                    //! A Função assíncrona de envio trava a API devido ao bloqueio de Thread do ManualResetEvent.
-                                    switch (data.protocol)
+                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                    NeutronStatistics.m_ServerTCP.AddOutgoing(l_Length);
+                                }
+                            }
+                            break;
+                        case Protocol.Udp:
+                            {
+                                if (nPlayer.rPEndPoint != null) //* Verifica se o IP de destino não é nulo, se o ip de destino for nulo, o servidor não enviará os dados.
+                                {
+                                    await nPlayer.m_UdpClient.SendAsync(nData.Buffer, l_Length, nPlayer.rPEndPoint);
                                     {
-                                        case Protocol.Tcp:
-                                            {
-                                                netStream.Write(nBuffer, 0, nBuffer.Length);
-                                                {
-                                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                                    NeutronStatistics.m_ServerTCP.AddOutgoing(dataLength);
-                                                }
-                                            }
-                                            break;
-                                        case Protocol.Udp:
-                                            {
-                                                if (nPlayer.rPEndPoint != null) //* Verifica se o IP de destino não é nulo, se o ip de destino for nulo, o servidor não enviará os dados.
-                                                {
-                                                    nPlayer.udpClient.Send(data.buffer, dataLength, nPlayer.rPEndPoint);
-                                                    {
-                                                        //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                                        NeutronStatistics.m_ServerUDP.AddOutgoing(dataLength);
-                                                    }
-                                                }
-                                            }
-                                            break;
+                                        //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                        NeutronStatistics.m_ServerUDP.AddOutgoing(l_Length);
                                     }
                                 }
                             }
-                        }
+                            break;
                     }
-                    //! [OBSOLETE]: queueData.mEvent.WaitOne(); //* Bloqueia o Thread após processar todos os dados.
                 }
             }
+            catch (SocketException) { }
             catch (ObjectDisposedException) { }
-            catch (ThreadAbortException) { }
             catch (OperationCanceledException) { }
-            catch (ArgumentNullException) { }
-            catch (Exception ex) { NeutronLogger.StackTrace(ex); }
+            catch (Exception) { }
         }
 
         //* Recebe/Ler os dados dos clientes.
-        private async void OnReceiveData(Player nPlayer, Protocol protocol, object toToken)
+        private async void OnReceivingData(NeutronPlayer nPlayer, Protocol nProtocol)
         {
             try
             {
-                byte[] header = new byte[sizeof(int)]; //* aqui será armazenado o pre-fixo do cabeçalho, que é o tamanho da mensagem enviada pelo cliente.
+                CancellationToken l_Token = nPlayer.m_CTS.Token;
+                NetworkStream l_NetStream = nPlayer.m_TcpClient.GetStream();
 
-                CancellationToken token = (CancellationToken)toToken;
-                NetworkStream netStream = nPlayer.tcpClient.GetStream();
+                byte[] l_HeaderBuffer = new byte[sizeof(int)]; //* aqui será armazenado o pre-fixo do cabeçalho, que é o tamanho da mensagem enviada pelo cliente.
 
-                while (Initialized && !token.IsCancellationRequested)
+                while (!m_CTS.Token.IsCancellationRequested && !l_Token.IsCancellationRequested)
                 {
-                    if (protocol == Protocol.Tcp)
+                    if (nProtocol == Protocol.Tcp)
                     {
-                        if (await SocketHelper.ReadAsyncBytes(netStream, header, 0, sizeof(int), token)) //* ler o pre-fixo, um inteiro, 4 bytes(sizeof(int)) e armazena no buffer.
+                        if (await SocketHelper.ReadAsyncBytes(l_NetStream, l_HeaderBuffer, 0, sizeof(int), l_Token)) //* ler o pre-fixo, um inteiro, 4 bytes(sizeof(int)) e armazena no buffer.
                         {
-                            int size = BitConverter.ToInt32(header, 0); //* converte o buffer do pre-fixo de volta em inteiro.
-                            if (size > MAX_RECEIVE_MESSAGE_SIZE || size <= 0) //* Verifica se o tamanho da mensagem é válido.
+                            int l_MessageSize = BitConverter.ToInt32(l_HeaderBuffer, 0); //* converte o buffer do pre-fixo de volta em inteiro.
+                            if (l_MessageSize > MAX_RECEIVE_MESSAGE_SIZE || l_MessageSize <= 0) //* Verifica se o tamanho da mensagem é válido.
                                 DisconnectHandler(nPlayer);
                             else
                             {
-                                byte[] message = new byte[size]; //* cria um buffer com o tamanho da mensagem/pre-fixo.
-                                if (await SocketHelper.ReadAsyncBytes(netStream, message, 0, size, token)) //* ler a mensagem e armazena no buffer de mensagem.
+                                byte[] l_MessageBuffer = new byte[l_MessageSize]; //* cria um buffer com o tamanho da mensagem/pre-fixo.
+                                if (await SocketHelper.ReadAsyncBytes(l_NetStream, l_MessageBuffer, 0, l_MessageSize, l_Token)) //* ler a mensagem e armazena no buffer de mensagem.
                                 {
-                                    dataForProcessing.Add(new DataBuffer(message, nPlayer, Protocol.Tcp), token); //* Adiciona os dados na fila para processamento.
+                                    m_DataForProcessing.Add(new NeutronData(l_MessageBuffer, nPlayer, Protocol.Tcp), l_Token); //* Adiciona os dados na fila para processamento.
                                     {
                                         //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
-                                        NeutronStatistics.m_ServerTCP.AddIncoming(size);
+                                        NeutronStatistics.m_ServerTCP.AddIncoming(l_MessageSize);
                                     }
                                 }
-                                else DisconnectHandler(nPlayer); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
+                                else
+                                    DisconnectHandler(nPlayer); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
                             }
                         }
-                        else DisconnectHandler(nPlayer);
+                        else
+                            DisconnectHandler(nPlayer);
                     }
-                    else if (protocol == Protocol.Udp)
+                    else if (nProtocol == Protocol.Udp)
                     {
-                        if (!token.IsCancellationRequested)
+                        var l_Datagram = await nPlayer.m_UdpClient.ReceiveAsync(); //* Recebe os dados enviados pelo cliente.
+                        if (l_Datagram.Buffer.Length > 0)
                         {
-                            var udpReceiveResult = await nPlayer.udpClient.ReceiveAsync(); //* Recebe os dados enviados pelo cliente.
-                            if (udpReceiveResult.Buffer.Length > 0)
-                            {
-                                //* Esta região funciona como um "Handshake", o cliente envia algum pacote vazio após a conexão, após o servidor receber este pacote, atribui o ip de destino, que é para onde os dados serão enviados.
-                                //! Se o ip de destino for nulo, o servidor não enviará os dados, porque não tem destino, não houve "Handshake".
-                                //! A tentativa de envio sem o "Handshake" causará a exceção de "An existing connection was forcibly closed by the remote host"
-                                #region Handshake
-                                if (nPlayer.rPEndPoint == null) //* verifica se o ip de destino é nulo, se for, ele é atribuído com o ip de destino.
-                                    nPlayer.rPEndPoint = udpReceiveResult.RemoteEndPoint; //* ip de destino do cliente, para onde o servidor irá enviar os dados.
-                                #endregion
+                            //* Esta região funciona como um "Handshake", o cliente envia algum pacote vazio após a conexão, após o servidor receber este pacote, atribui o ip de destino, que é para onde os dados serão enviados.
+                            //! Se o ip de destino for nulo, o servidor não enviará os dados, porque não tem destino, não houve "Handshake".
+                            //! A tentativa de envio sem o "Handshake" causará a exceção de "An existing connection was forcibly closed by the remote host"
+                            #region Handshake
+                            if (nPlayer.rPEndPoint == null) //* verifica se o ip de destino é nulo, se for, ele é atribuído com o ip de destino.
+                                nPlayer.rPEndPoint = l_Datagram.RemoteEndPoint; //* ip de destino do cliente, para onde o servidor irá enviar os dados.
+                            #endregion
 
-                                dataForProcessing.Add(new DataBuffer(udpReceiveResult.Buffer, nPlayer, Protocol.Udp), token); //* Adiciona os dados na fila para processamento.
-                                {
-                                    //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
-                                    NeutronStatistics.m_ServerUDP.AddIncoming(udpReceiveResult.Buffer.Length);
-                                }
+                            m_DataForProcessing.Add(new NeutronData(l_Datagram.Buffer, nPlayer, Protocol.Udp), l_Token); //* Adiciona os dados na fila para processamento.
+                            {
+                                //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
+                                NeutronStatistics.m_ServerUDP.AddIncoming(l_Datagram.Buffer.Length);
                             }
                         }
                     }
                 }
             }
             catch (ObjectDisposedException) { }
-            catch (ThreadAbortException) { }
-            catch (SocketException) { }
             catch (OperationCanceledException) { }
-            catch (Exception ex)
-            {
-                if (!NeutronLogger.LoggerError("OnReceiveData exception!"))
-                    NeutronLogger.StackTrace(ex);
-            }
+            catch (SocketException) { }
+            catch (Exception ex) { LogHelper.StackTrace(ex); }
         }
         #endregion
 
         #region Packets
         //* Aqui os pacotes serão processados, seus parâmetros serão lidos, e executado sua respectiva função.
-        void PacketProcessing(Player nSender, byte[] buffer, Protocol protocol)
+        void RunPacket(NeutronPlayer nSender, byte[] nData)
         {
 #if UNITY_SERVER || UNITY_EDITOR
-            try
+            using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
             {
-                using (NeutronReader nReader = Neutron.PooledNetworkReaders.Pull())
+                nReader.SetBuffer(nData);
+                switch (nReader.ReadPacket<Packet>()) //* Ler o pacote recebido
                 {
-                    nReader.SetBuffer(buffer);
-                    switch (nReader.ReadPacket<SystemPacket>()) //* Ler o pacote recebido
-                    {
-                        case SystemPacket.Handshake:
-                            {
-                                #region Logic
-                                HandshakeHandler(nSender);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.Nickname:
-                            {
-                                #region Reader
-                                string nickname = nReader.ReadString();
-                                #endregion
+                    case Packet.Handshake:
+                        {
+                            #region Logic
+                            HandshakeHandler(nSender, nReader.ReadDouble());
+                            #endregion
+                        }
+                        break;
+                    case Packet.Nickname:
+                        {
+                            #region Reader
+                            string nickname = nReader.ReadString();
+                            #endregion
 
-                                #region Logic
-                                NicknameHandler(nSender, nickname);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.Chat:
-                            {
-                                #region Defaults
-                                Broadcast broadcast = default(Broadcast);
-                                int networkID = default(int);
-                                #endregion
+                            #region Logic
+                            NicknameHandler(nSender, nickname);
+                            #endregion
+                        }
+                        break;
+                    case Packet.Chat:
+                        {
+                            #region Defaults
+                            TunnelingTo broadcast = default(TunnelingTo);
+                            int networkID = default(int);
+                            #endregion
 
-                                #region Reader
-                                ChatPacket chatPacket = nReader.ReadPacket<ChatPacket>();
-                                switch (chatPacket)
-                                {
-                                    case ChatPacket.Global:
-                                        broadcast = nReader.ReadPacket<Broadcast>();
-                                        break;
-                                    case ChatPacket.Private:
-                                        networkID = nReader.ReadInt32();
-                                        break;
-                                }
-                                string message = nReader.ReadString();
-                                #endregion
+                            #region Reader
+                            ChatPacket chatPacket = nReader.ReadPacket<ChatPacket>();
+                            switch (chatPacket)
+                            {
+                                case ChatPacket.Global:
+                                    broadcast = nReader.ReadPacket<TunnelingTo>();
+                                    break;
+                                case ChatPacket.Private:
+                                    networkID = nReader.ReadInt32();
+                                    break;
+                            }
+                            string message = nReader.ReadString();
+                            #endregion
 
-                                #region Logic
-                                ChatHandler(nSender, chatPacket, broadcast, networkID, message);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.iRPC:
-                            {
-                                #region Reader
-                                Broadcast broadcast = nReader.ReadPacket<Broadcast>();
-                                SendTo sendTo = nReader.ReadPacket<SendTo>();
-                                CacheMode cacheMode = nReader.ReadPacket<CacheMode>();
-                                Protocol recProtocol = nReader.ReadPacket<Protocol>();
-                                int networkID = nReader.ReadInt32();
-                                int attributeID = nReader.ReadInt32();
-                                byte[] parameters = nReader.ReadExactly();
-                                #endregion
+                            #region Logic
+                            ChatHandler(nSender, chatPacket, broadcast, networkID, message);
+                            #endregion
+                        }
+                        break;
+                    case Packet.iRPC:
+                        {
+                            #region Reader
+                            TunnelingTo broadcast = nReader.ReadPacket<TunnelingTo>();
+                            TargetTo sendTo = nReader.ReadPacket<TargetTo>();
+                            Cache cacheMode = nReader.ReadPacket<Cache>();
+                            Protocol recProtocol = nReader.ReadPacket<Protocol>();
+                            int networkID = nReader.ReadInt32();
+                            int attributeID = nReader.ReadInt32();
+                            byte[] parameters = nReader.ReadExactly();
+                            #endregion
 
-                                #region Logic
-                                iRPCHandler(nSender, broadcast, sendTo, cacheMode, networkID, attributeID, parameters, recProtocol, protocol);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.gRPC:
-                            {
-                                #region Reader
-                                int networkID = nReader.ReadInt32();
-                                int attributeID = nReader.ReadInt32();
-                                byte[] parameters = nReader.ReadExactly();
-                                #endregion
+                            #region Logic
+                            iRPCHandler(nSender, broadcast, sendTo, cacheMode, networkID, attributeID, parameters, recProtocol);
+                            #endregion
+                        }
+                        break;
+                    case Packet.gRPC:
+                        {
+                            #region Reader
+                            int networkID = nReader.ReadInt32();
+                            int attributeID = nReader.ReadInt32();
+                            byte[] parameters = nReader.ReadExactly();
+                            #endregion
 
-                                #region Logic
-                                gRPCHandler(nSender, networkID, attributeID, parameters);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.GetChannels:
-                            {
-                                #region Logic
-                                GetChannelsHandler(nSender);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.JoinChannel:
-                            {
-                                #region Reader
-                                int channelID = nReader.ReadInt32();
-                                #endregion
+                            #region Logic
+                            gRPCHandler(nSender, networkID, attributeID, parameters);
+                            #endregion
+                        }
+                        break;
+                    case Packet.GetChannels:
+                        {
+                            #region Logic
+                            GetChannelsHandler(nSender);
+                            #endregion
+                        }
+                        break;
+                    case Packet.JoinChannel:
+                        {
+                            #region Reader
+                            int channelID = nReader.ReadInt32();
+                            #endregion
 
-                                #region Logic
-                                JoinChannelHandler(nSender, channelID);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.GetChached:
-                            {
-                                #region Reader
-                                CachedPacket cachedPacket = nReader.ReadPacket<CachedPacket>();
-                                int packetID = nReader.ReadInt32();
-                                bool includeMe = nReader.ReadBoolean();
-                                #endregion
+                            #region Logic
+                            JoinChannelHandler(nSender, channelID);
+                            #endregion
+                        }
+                        break;
+                    case Packet.GetChached:
+                        {
+                            #region Reader
+                            CachedPacket cachedPacket = nReader.ReadPacket<CachedPacket>();
+                            int packetID = nReader.ReadInt32();
+                            bool includeMe = nReader.ReadBoolean();
+                            #endregion
 
-                                #region Logic
-                                GetCacheHandler(nSender, cachedPacket, packetID, includeMe);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.CreateRoom:
-                            {
-                                #region Reader
-                                string roomName = nReader.ReadString();
-                                int maxPlayers = nReader.ReadInt32();
-                                string password = nReader.ReadString();
-                                bool isVisible = nReader.ReadBoolean();
-                                bool joinOrCreate = nReader.ReadBoolean();
-                                string options = nReader.ReadString();
-                                #endregion
+                            #region Logic
+                            GetCacheHandler(nSender, cachedPacket, packetID, includeMe);
+                            #endregion
+                        }
+                        break;
+                    case Packet.CreateRoom:
+                        {
+                            #region Reader
+                            string roomName = nReader.ReadString();
+                            int maxPlayers = nReader.ReadInt32();
+                            string password = nReader.ReadString();
+                            bool isVisible = nReader.ReadBoolean();
+                            bool joinOrCreate = nReader.ReadBoolean();
+                            string options = nReader.ReadString();
+                            #endregion
 
-                                #region Logic
-                                CreateRoomHandler(nSender, roomName, maxPlayers, password, isVisible, joinOrCreate, options);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.GetRooms:
-                            {
-                                #region Logic
-                                GetRoomsHandler(nSender);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.JoinRoom:
-                            {
-                                #region Reader
-                                int roomID = nReader.ReadInt32();
-                                #endregion
+                            #region Logic
+                            CreateRoomHandler(nSender, roomName, maxPlayers, password, isVisible, joinOrCreate, options);
+                            #endregion
+                        }
+                        break;
+                    case Packet.GetRooms:
+                        {
+                            #region Logic
+                            GetRoomsHandler(nSender);
+                            #endregion
+                        }
+                        break;
+                    case Packet.JoinRoom:
+                        {
+                            #region Reader
+                            int roomID = nReader.ReadInt32();
+                            #endregion
 
-                                #region Logic
-                                JoinRoomHandler(nSender, roomID);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.Leave:
-                            {
-                                #region Reader
-                                MatchmakingPacket subPacket = nReader.ReadPacket<MatchmakingPacket>();
-                                #endregion
+                            #region Logic
+                            JoinRoomHandler(nSender, roomID);
+                            #endregion
+                        }
+                        break;
+                    case Packet.Leave:
+                        {
+                            #region Reader
+                            MatchmakingPacket subPacket = nReader.ReadPacket<MatchmakingPacket>();
+                            #endregion
 
-                                #region Logic
-                                if (subPacket == MatchmakingPacket.Room)
-                                    LeaveRoomHandler(nSender);
-                                else if (subPacket == MatchmakingPacket.Channel)
-                                    LeaveChannelHandler(nSender);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.DestroyPlayer:
-                            {
-                                #region Logic
-                                DestroyPlayerHandler(nSender);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.SetPlayerProperties:
-                            {
-                                #region Reader
-                                string properties = nReader.ReadString();
-                                #endregion
+                            #region Logic
+                            if (subPacket == MatchmakingPacket.Room)
+                                LeaveRoomHandler(nSender);
+                            else if (subPacket == MatchmakingPacket.Channel)
+                                LeaveChannelHandler(nSender);
+                            #endregion
+                        }
+                        break;
+                    case Packet.DestroyPlayer:
+                        {
+                            #region Logic
+                            DestroyPlayerHandler(nSender);
+                            #endregion
+                        }
+                        break;
+                    case Packet.SetPlayerProperties:
+                        {
+                            #region Reader
+                            string properties = nReader.ReadString();
+                            #endregion
 
-                                #region Logic
-                                SetPlayerPropertiesHandler(nSender, properties);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.SetRoomProperties:
+                            #region Logic
+                            SetPlayerPropertiesHandler(nSender, properties);
+                            #endregion
+                        }
+                        break;
+                    case Packet.SetRoomProperties:
+                        {
+                            #region Reader
+                            string properties = nReader.ReadString();
+                            #endregion
+
+                            #region Logic
+                            SetRoomPropertiesHandler(nSender, properties);
+                            #endregion
+                        }
+                        break;
+                    case Packet.Ping:
+                        {
+                            #region Reader
+                            double time = nReader.ReadDouble();
+                            #endregion
+
+                            #region Logic
+                            PingHandler(nSender, time);
+                            #endregion
+                        }
+                        break;
+                    case Packet.CustomPacket:
+                        {
+                            #region Defaults
+                            bool isMine = false;
+                            TargetTo sendTo = default(TargetTo);
+                            TunnelingTo broadcast = default(TunnelingTo);
+                            #endregion
+
+                            #region Reader
+                            int networkID = nReader.ReadInt32();
+                            CustomPacket clientPacket = nReader.ReadPacket<CustomPacket>();
+                            if ((isMine = PlayerHelper.IsMine(nSender, networkID)))
                             {
-                                #region Reader
-                                string properties = nReader.ReadString();
-                                #endregion
-
-                                #region Logic
-                                SetRoomPropertiesHandler(nSender, properties);
-                                #endregion
+                                sendTo = nReader.ReadPacket<TargetTo>();
+                                broadcast = nReader.ReadPacket<TunnelingTo>();
                             }
-                            break;
-                        case SystemPacket.Heartbeat:
-                            {
-                                #region Reader
-                                double time = nReader.ReadDouble();
-                                #endregion
+                            Protocol recProtocol = nReader.ReadPacket<Protocol>();
+                            byte[] parameters = nReader.ReadExactly();
+                            #endregion
 
-                                #region Logic
-                                HeartbeatHandler(nSender, time);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.ClientPacket:
-                            {
-                                #region Defaults
-                                bool isMine = false;
-                                SendTo sendTo = default(SendTo);
-                                Broadcast broadcast = default(Broadcast);
-                                #endregion
+                            #region Logic
+                            ClientPacketHandler(nSender, isMine, networkID, parameters, clientPacket, sendTo, broadcast, recProtocol);
+                            #endregion
+                        }
+                        break;
+                    case Packet.OnAutoSync:
+                        {
+                            #region Reader
+                            Protocol recProtocol = nReader.ReadPacket<Protocol>();
+                            TargetTo sendTo = nReader.ReadPacket<TargetTo>();
+                            TunnelingTo broadcast = nReader.ReadPacket<TunnelingTo>();
+                            int networkID = nReader.ReadInt32();
+                            int instanceID = nReader.ReadInt32();
+                            byte[] parameters = nReader.ReadExactly();
+                            #endregion
 
-                                #region Reader
-                                int networkID = nReader.ReadInt32();
-                                ClientPacket clientPacket = nReader.ReadPacket<ClientPacket>();
-                                if ((isMine = PlayerHelper.IsMine(nSender, networkID)))
-                                {
-                                    sendTo = nReader.ReadPacket<SendTo>();
-                                    broadcast = nReader.ReadPacket<Broadcast>();
-                                }
-                                Protocol recProtocol = nReader.ReadPacket<Protocol>();
-                                byte[] parameters = nReader.ReadExactly();
-                                #endregion
-
-                                #region Logic
-                                ClientPacketHandler(nSender, isMine, networkID, parameters, clientPacket, sendTo, broadcast, recProtocol);
-                                #endregion
-                            }
-                            break;
-                        case SystemPacket.SerializeView:
-                            {
-                                #region Reader
-                                Protocol recProtocol = nReader.ReadPacket<Protocol>();
-                                SendTo sendTo = nReader.ReadPacket<SendTo>();
-                                Broadcast broadcast = nReader.ReadPacket<Broadcast>();
-                                int networkID = nReader.ReadInt32();
-                                int instanceID = nReader.ReadInt32();
-                                byte[] parameters = nReader.ReadExactly();
-                                #endregion
-
-                                #region Logic
-                                OnSerializeViewHandler(nSender, networkID, instanceID, parameters, sendTo, broadcast, recProtocol);
-                                #endregion
-                            }
-                            break;
-                    }
+                            #region Logic
+                            OnSerializeViewHandler(nSender, networkID, instanceID, parameters, sendTo, broadcast, recProtocol);
+                            #endregion
+                        }
+                        break;
                 }
             }
-            catch (ObjectDisposedException) { }
-            catch (Exception ex) { NeutronLogger.StackTrace(ex); }
 #endif
         }
         #endregion
@@ -656,45 +605,42 @@ namespace NeutronNetwork.Server
 #if UNITY_SERVER
             Console.Clear();
 #endif
+
 #if UNITY_EDITOR
-            BuildTargetGroup targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
-            ApiCompatibilityLevel Acl = PlayerSettings.GetApiCompatibilityLevel(targetGroup);
-            if (Acl != ApiCompatibilityLevel.NET_Standard_2_0)
-                Init();
-            else NeutronLogger.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
-#else
-#if !NET_STANDARD_2_0
-            Init();
-#else
-NeutronLogger.LoggerError(".NET Standard is not supported, change to .NET 4.x.");
-#endif
-#endif
-            void Init()
+            var l_TargetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
+            var l_ACL = PlayerSettings.GetApiCompatibilityLevel(l_TargetGroup);
+            if (l_ACL != ApiCompatibilityLevel.NET_Standard_2_0)
             {
-                if (!IsReady)
-                    NeutronLogger.LoggerError("The server could not be initialized ):");
-                else InitilizeServer();
+                if (IsReady)
+                    Initilize();
             }
+            else
+                LogHelper.Error(".NET Standard is not supported, change to .NET 4.x.");
+#else
+            if (IsReady)
+                Initilize();
+#endif
         }
 
-        private void OnApplicationQuit()
+        private async void OnApplicationQuit()
         {
-            using (_cts)
+            using (m_CTS)
             {
-                //* Desliga o servidor.
-                Initialized = false;
-                #region Dispose
-                SocketHelper.Dispose();
-                #endregion
-
-                #region Token
-                _cts.Cancel();
-                #endregion
-
-                #region Dispose
-                acceptedClients.Dispose();
-                dataForProcessing.Dispose();
-                #endregion
+                if (m_Initialized)
+                {
+                    m_Initialized = false;
+                    m_CTS.Cancel();
+                    await Task.Delay(50);
+                    foreach (var l_Player in PlayersById.Values)
+                    {
+                        l_Player.m_CTS.Cancel();
+                        await Task.Delay(20);
+                        l_Player.Dispose();
+                    }
+                    m_AcceptedClients.Dispose();
+                    m_DataForProcessing.Dispose();
+                    TcpSocket.Stop();
+                }
             }
         }
         #endregion

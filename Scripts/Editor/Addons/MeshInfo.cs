@@ -5,25 +5,34 @@ using System.Linq;
 
 public class MeshInfo : EditorWindow
 {
+    private int m_VertexCount;
+    private int m_SubmeshCount;
+    private int m_TriangleCount;
+    private int m_EdgeCount;
+    private int m_FaceCount;
 
-    private int vertexCount;
-    private int submeshCount;
-    private int triangleCount;
-    private int edgeCount;
-    private int faceCount;
-
-    [MenuItem("Neutron/Tools/Mesh Info")]
+    [MenuItem("Neutron/Addons/Mesh Info")]
     static void Init()
     {
         var Window = GetWindow(typeof(MeshInfo), true, "Mesh Info");
-        Window.maxSize = new Vector2(200, 150);
-        Window.minSize = new Vector2(200, 150);
+        Window.maxSize = new Vector2(240, 210);
+        Window.minSize = new Vector2(240, 210);
     }
 
-    void OnSelectionChange() => Repaint();
-
-    void OnGUI()
+    private void OnGUI()
     {
+        BeginWindows();
+        GUILayout.Window(3, new Rect(5, 5, 230, 195), Draw, "Mesh Info");
+        EndWindows();
+    }
+
+    private void Draw(int unusedWindowID)
+    {
+        #region Disabled
+        GUI.FocusControl(null);
+        #endregion
+
+        #region Logic
         MeshFilter[][] gameObjects = Selection.gameObjects.Select(x => x.GetComponentsInChildren<MeshFilter>()).ToArray();
         if (gameObjects != null)
         {
@@ -36,43 +45,47 @@ public class MeshInfo : EditorWindow
                     {
                         if (meshFilter != null)
                         {
-                            #region Geometry
-                            int vertex = meshFilter.sharedMesh.vertexCount;
-                            int triangles = meshFilter.sharedMesh.triangles.Length;
-                            #endregion
+                            int l_Vertex = meshFilter.sharedMesh.vertexCount;
+                            int l_Triangles = meshFilter.sharedMesh.triangles.Length;
 
-                            #region Calcs
-                            triangleCount += triangles / 3;
-                            vertexCount += vertex;
-                            #region Debug
-                            faceCount = triangleCount;
-                            edgeCount = (faceCount / 2) * 5;
-                            #endregion
-                            #endregion
+                            m_VertexCount += l_Vertex;
+                            m_TriangleCount += l_Triangles / 3;
+                            m_FaceCount = m_TriangleCount;
+                            m_EdgeCount = m_TriangleCount * 3 - (m_FaceCount / 2);
                         }
                         else continue;
                     }
                 }
                 else continue;
             }
-            EditorGUILayout.LabelField($"Selected Objects: {Selection.gameObjects.Length}");
+            #endregion
+
+            #region Layout
+            EditorGUILayout.LabelField($"Selected Objects: {Selection.gameObjects.Length}", GUI.skin.box);
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-            GUILayout.BeginVertical("", GUI.skin.button);
-            EditorGUILayout.LabelField($"Vertices: {vertexCount}");
-            EditorGUILayout.LabelField($"Triangles: {triangleCount}");
-            EditorGUILayout.LabelField($"Edges: {edgeCount}");
-            EditorGUILayout.LabelField($"Faces: {faceCount}");
-            EditorGUILayout.LabelField($"SubMeshes: {submeshCount}");
+            GUILayout.BeginVertical();
+            EditorGUILayout.LabelField($"Vertices: {m_VertexCount} | Only:  {m_VertexCount / 3}", GUI.skin.textField);
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField($"Triangles: {m_TriangleCount}", GUI.skin.textField);
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField($"Edges: {m_EdgeCount} | Only:  {(m_TriangleCount * 3) / 3}", GUI.skin.textField);
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField($"Faces(Tris): {m_FaceCount} | Quads: {m_FaceCount / 2}", GUI.skin.textField);
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField($"SubMeshes: {m_SubmeshCount}", GUI.skin.textField);
             GUILayout.EndVertical();
+            #endregion
         }
     }
 
-    void Reset()
+    private void OnSelectionChange() => Repaint();
+
+    private void Reset()
     {
-        vertexCount = 0;
-        triangleCount = 0;
-        submeshCount = 0;
-        edgeCount = 0;
-        faceCount = 0;
+        m_VertexCount = 0;
+        m_TriangleCount = 0;
+        m_SubmeshCount = 0;
+        m_EdgeCount = 0;
+        m_FaceCount = 0;
     }
 }

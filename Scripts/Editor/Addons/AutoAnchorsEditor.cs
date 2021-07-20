@@ -49,7 +49,7 @@ public class AutoAnchorsEditor : Editor
         return (gridLayoutGroup != null || verticalLayoutGroup != null || horizontalLayoutGroup != null);
     }
 
-    [MenuItem("Neutron/Tools/UI/Auto Anchors On Selected Game Objects _F1")]
+    [MenuItem("Neutron/Addons/UI/Auto Anchors On Selected Game Objects _F1")]
     private static void AnchorSelectedObjects()
     {
         RectTransform[] rectTransforms = Selection.gameObjects.Select(x => x.GetComponent<RectTransform>()).ToArray();
@@ -61,7 +61,7 @@ public class AutoAnchorsEditor : Editor
         }
     }
 
-    [MenuItem("Neutron/Tools/UI/Auto Anchors On All Game Objects _F2")]
+    [MenuItem("Neutron/Addons/UI/Auto Anchors On All Game Objects _F2")]
     private static void AnchorAll()
     {
         RectTransform[] rectTransforms = GameObject.FindObjectsOfType<RectTransform>();
@@ -73,7 +73,7 @@ public class AutoAnchorsEditor : Editor
         }
     }
 
-    [MenuItem("Neutron/Tools/UI/Auto Anchors On Selected Game Objects And Match _F3")]
+    [MenuItem("Neutron/Addons/UI/Auto Anchors On Selected Game Objects And Match _F3")]
     private static void Match()
     {
         RectTransform[] rectTransforms = Selection.gameObjects.Select(x => x.GetComponent<RectTransform>()).ToArray();

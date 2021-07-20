@@ -10,8 +10,8 @@ namespace NeutronNetwork
     ///* Este é o seu objeto na rede e também é o seu objeto de rede, o seu RG.
     /// </summary>
     [AddComponentMenu("Neutron/Neutron View")]
-    [DefaultExecutionOrder(NeutronExecutionOrder.NEUTRON_VIEW)]
-    public class NeutronView : NeutronViewBehaviour
+    [DefaultExecutionOrder(ExecutionOrder.NEUTRON_VIEW)]
+    public class NeutronView : ViewBehaviour
     {
         #region MonoBehaviour
         private new void Awake()
