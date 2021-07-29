@@ -1,4 +1,3 @@
-using NeutronNetwork.Internal.Wrappers;
 using System;
 using UnityEngine;
 
@@ -22,9 +21,11 @@ public class NeutronPool<T> : MonoBehaviour
         {
             if (objects.TryDequeue(out T obj))
                 return obj;
-            else return objectGenerator();
+            else
+                return objectGenerator();
         }
-        else return objectGenerator();
+        else
+            return objectGenerator();
     }
     public void Push(T obj) => objects.Enqueue(obj);
     public int Count() => objects.Count;

@@ -1,17 +1,16 @@
-using System;
-using System.Collections.Generic;
 using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Server.Internal;
+using System;
 using UnityEngine;
 
 namespace NeutronNetwork.Constants
 {
     [Serializable]
-    public class NGlobalSettings
+    public class NeutronGlobalSettings
     {
         public string[] Addresses = { "localhost" };
         public int Port = 1418;
-        public int MaxPlayers = 300;
+        [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
         [Range(1, 60)] public int ActionsProcessedPerFrame = 1;
         public Serialization Serialization = Serialization.Json;
         public Compression Compression = Compression.None;
@@ -21,13 +20,13 @@ namespace NeutronNetwork.Constants
     }
 
     [Serializable]
-    public class NEditorSettings
+    public class NeutronEditorSettings
     {
         [Range(1, 256)] public int FPS = 60;
     }
 
     [Serializable]
-    public class NServerSettings
+    public class NeutronServerSettings
     {
         [Range(1, 256)] public int FPS = 128;
         [Range(1, 30)] public int PacketsProcessedPerTick = 1;
@@ -36,7 +35,7 @@ namespace NeutronNetwork.Constants
     }
 
     [Serializable]
-    public class NLagSettings
+    public class NeutronLagSettings
     {
         [AllowNesting] [ReadOnly] public bool Inbound;
         public bool Outbound;
@@ -46,17 +45,19 @@ namespace NeutronNetwork.Constants
     }
 
     [Serializable]
-    public class NClientSettings
+    public class NeutronClientSettings
     {
         [Range(1, 256)] public int FPS = 90;
         [Range(0.1F, 1)] public float PingRate = 0.2F;
     }
 
     [Serializable]
-    public class NDefaultHandlerSettings
+    public class NeutronDefaultHandlerSettings
     {
+        [AllowNesting] [ReadOnly] public NeutronDefaultHandlerOptions OnGetAllPlayersOnConnection = new NeutronDefaultHandlerOptions(TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerNicknameChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerDisconnected = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public NeutronDefaultHandlerOptions OnPlayerCreatedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerJoinedChannel = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerJoinedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerLeaveRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
@@ -64,13 +65,5 @@ namespace NeutronNetwork.Constants
         public NeutronDefaultHandlerOptions OnPlayerPropertiesChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnRoomPropertiesChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerDestroyed = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-    }
-
-    [Serializable]
-    public class NHandlerSettings
-    {
-        // public List<NHandlerRPC> iRPC;
-        // [HorizontalLine] public List<NHandlerRPC> gRPC;
-        // [HorizontalLine] public List<NHandlerRPC> OnSerializeNeutronView;
     }
 }

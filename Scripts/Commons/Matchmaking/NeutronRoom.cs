@@ -1,13 +1,10 @@
-﻿using NeutronNetwork.Attributes;
-using NeutronNetwork.Interfaces;
+﻿using NeutronNetwork.Interfaces;
 using NeutronNetwork.Internal;
-using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Json;
 using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using UnityEngine;
 
@@ -16,59 +13,71 @@ namespace NeutronNetwork
     [Serializable]
     public class NeutronRoom : MatchmakingBehaviour, INeutronSerializable, INeutron, IEquatable<NeutronRoom>, IEqualityComparer<NeutronRoom>
     {
+        #region Fields
+        [SerializeField] [HorizontalLine] private bool _hasPassword;
+        [SerializeField] [AllowNesting] [ShowIf("_hasPassword")] private string _password;
+        [SerializeField] private bool _isVisible;
+        #endregion
+
+        #region Properties
         /// <summary>
-        ///* Unique room ID.
+        ///* Retorna o identificador da sala.
         /// </summary>
-        public int ID { get => m_ID; set => m_ID = value; }
+        public int ID { get => _id; set => _id = value; }
         /// <summary>
-        ///* Check if room has password.
+        ///* Retorna se a sala é protegida por senha.
         /// </summary>
-        public bool HasPassword { get => m_HasPassword; set => m_HasPassword = value; }
-        [SerializeField, ReadOnly] private bool m_HasPassword;
+        public bool HasPassword { get => _hasPassword; set => _hasPassword = value; }
         /// <summary>
-        ///* Check if room is visible.
+        ///* Retorna se a sala está visível para outros jogadores.
         /// </summary>
-        public bool IsVisible { get => m_IsVisible; set => m_IsVisible = value; }
-        [SerializeField] private bool m_IsVisible;
+        public bool IsVisible { get => _isVisible; set => _isVisible = value; }
+        /// <summary>
+        ///* Define a senha da sala, disponível somente ao lado do servidor. 
+        /// </summary>
+        public string Password { get => _password; set => _password = value; }
+        #endregion
 
         public NeutronRoom() { } //* the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
-        public NeutronRoom(int ID, string roomName, int maxPlayers, bool hasPassword, bool isVisible, string options)
+        public NeutronRoom(int id, string roomName, int maxPlayers, bool hasPassword, bool isVisible, string options)
         {
-            this.ID = ID;
-            this.Name = roomName;
-            this.MaxPlayers = maxPlayers;
-            this.HasPassword = hasPassword;
-            this.IsVisible = isVisible;
-            this._ = options;
+            ID = id;
+            Name = roomName;
+            MaxPlayers = maxPlayers;
+            HasPassword = hasPassword;
+            IsVisible = isVisible;
+            Properties = options;
         }
 
         public NeutronRoom(SerializationInfo info, StreamingContext context)
         {
             ID = info.GetInt32("ID");
             Name = info.GetString("NM");
-            CountOfPlayers = info.GetInt32("CP");
+            PlayerCount = info.GetInt32("CP");
             MaxPlayers = info.GetInt32("MP");
             HasPassword = info.GetBoolean("HP");
             IsVisible = info.GetBoolean("IV");
-            _ = info.GetString("_");
-            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(_);
+            Properties = info.GetString("_");
+            //////////////////////////////////////// Instantiate ////////////////////////////////////
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
+            SceneView = new SceneView();
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("ID", ID);
             info.AddValue("NM", Name);
-            info.AddValue("CP", CountOfPlayers);
+            info.AddValue("CP", PlayerCount);
             info.AddValue("MP", MaxPlayers);
             info.AddValue("HP", HasPassword);
             info.AddValue("IV", IsVisible);
-            info.AddValue("_", _);
+            info.AddValue("_", Properties);
         }
 
-        public Boolean Equals(NeutronRoom other)
+        public Boolean Equals(NeutronRoom room)
         {
-            return this.ID == other.ID;
+            return this.ID == room.ID;
         }
 
         public Boolean Equals(NeutronRoom x, NeutronRoom y)

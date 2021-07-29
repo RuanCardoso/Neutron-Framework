@@ -1,5 +1,4 @@
 using System;
-using NeutronNetwork;
 
 namespace NeutronNetwork.Internal.Wrappers
 {

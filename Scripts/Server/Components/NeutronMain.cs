@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using NeutronNetwork.Constants;
+﻿using NeutronNetwork.Constants;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Components
@@ -12,12 +12,9 @@ namespace NeutronNetwork.Internal.Components
         public static Synchronization Synchronization { get; set; }
         #endregion
 
-        #region Fields -> Primitives
-        private int m_Framerate;
-        #endregion
-
         #region Fields
         public static Stopwatch Chronometer = new Stopwatch();
+        private int _framerate;
         #endregion
 
         private void Awake()
@@ -47,16 +44,16 @@ namespace NeutronNetwork.Internal.Components
         private void Framerate()
         {
 #if UNITY_EDITOR
-            m_Framerate = NeutronMain.Settings.EditorSettings.FPS;
+            _framerate = NeutronMain.Settings.EditorSettings.FPS;
 #elif UNITY_SERVER
-            m_Framerate = NeutronMain.Settings.ServerSettings.FPS;
+            _framerate = NeutronMain.Settings.ServerSettings.FPS;
 #else
-            m_Framerate = NeutronMain.Settings.ClientSettings.FPS;
+            _framerate = NeutronMain.Settings.ClientSettings.FPS;
 #endif
-            if (m_Framerate > 0)
+            if (_framerate > 0)
             {
                 QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = m_Framerate;
+                Application.targetFrameRate = _framerate;
             }
         }
 

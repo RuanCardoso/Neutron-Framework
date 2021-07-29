@@ -1,9 +1,8 @@
+using NeutronNetwork.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using NeutronNetwork;
-using NeutronNetwork.Interfaces;
 
 namespace NeutronNetwork.Internal.Wrappers
 {

@@ -2,6 +2,12 @@
 using NeutronNetwork.Json;
 using UnityEngine;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -13,7 +19,7 @@ namespace NeutronNetwork
 
         #region Fields
         private string _json;
-        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings()
+        private readonly JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings()
         {
             ObjectCreationHandling = ObjectCreationHandling.Replace
         };
@@ -51,7 +57,8 @@ namespace NeutronNetwork
         {
             if (isWriting)
                 return true;
-            else return OnValidateProperties();
+            else
+                return OnValidateProperties();
         }
         /// <summary>
         ///* Usado para validar as propriedades ao lado do servidor.

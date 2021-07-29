@@ -1,19 +1,18 @@
-﻿using System;
+﻿using NeutronNetwork.Client;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Json;
+using NeutronNetwork.Server;
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading;
-using UnityEngine;
-using NeutronNetwork.Json;
 using System.Threading.Tasks;
-using System.Collections;
-using NeutronNetwork.Client;
-using NeutronNetwork.Constants;
-using NeutronNetwork.Server;
-using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Helpers;
-using System.Linq;
+using UnityEngine;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -59,9 +58,9 @@ namespace NeutronNetwork
         public static NeutronServer Server {
             get {
 #if !UNITY_EDITOR && !UNITY_SERVER
-                NeutronLogger.Print("You cannot access the server's methods and properties on the client, except within the Unity Editor.");
+                LogHelper.Error("You cannot access the server's methods and properties on the client, except within the Unity Editor.");
 #endif
-                return ServerBase._;
+                return ServerBase.This;
             }
         }
         /// <summary>
@@ -81,21 +80,9 @@ namespace NeutronNetwork
 
         #region Properties -> Instance
         /// <summary>
-        ///* Retorna seu identificador de rede, disponível apenas quando o jogador é instaciado.
-        /// </summary>
-        public NeutronView NeutronView { get; set; }
-        /// <summary>
         ///* Retorna o objeto que representa seu jogador.
         /// </summary>
         public NeutronPlayer Player { get; set; }
-        /// <summary>
-        ///* Retorna a sala em que você está ingressado.
-        /// </summary>
-        public NeutronRoom Room { get; set; }
-        /// <summary>
-        ///* Retorna o canal em que você está ingressado.
-        /// </summary>
-        public NeutronChannel Channel { get; set; }
         /// <summary>
         ///* Retorna a duração em milissegundos (ms) que uma solicitação de rede leva para ir de um ponto de partida a um destino e voltar.
         /// </summary>
@@ -116,79 +103,71 @@ namespace NeutronNetwork
         public string Nickname { get; private set; }
         #endregion
 
-        #region Fields -> Events
+        #region Properties -> Events
         /// <summary>
         ///* Este evento é acionado quando uma tentativa de conexão retorna seu estado.<br/>
         /// </summary>
-        public NeutronEventNoReturn<bool, Neutron> OnNeutronConnected = new NeutronEventNoReturn<bool, Neutron>();
+        public NeutronEventNoReturn<bool, Neutron> OnNeutronConnected { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador se conecta ao servidor.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerConnected = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerConnected { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador se desconecta do servidor.<br/>
         /// </summary>
-        public NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron> OnPlayerDisconnected = new NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron> OnPlayerDisconnected { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador envia uma mensagem e esta mensagem é recebida.<br/>
         /// </summary>
-        public NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron> OnMessageReceived = new NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<string, NeutronPlayer, bool, Neutron> OnMessageReceived { get; set; }
         /// <summary>
         ///* Este evento é acionado quando a lista de canais disponíveis é recebida ou atualizada.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronChannel[], Neutron> OnChannelsReceived = new NeutronEventNoReturn<NeutronChannel[], Neutron>();
+        public NeutronEventNoReturn<NeutronChannel[], Neutron> OnChannelsReceived { get; set; }
         /// <summary>
         ///* Este evento é acionado quando a lista de salas disponíveis é recebida ou atualizada.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronRoom[], Neutron> OnRoomsReceived = new NeutronEventNoReturn<NeutronRoom[], Neutron>();
+        public NeutronEventNoReturn<NeutronRoom[], Neutron> OnRoomsReceived { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador sai do canal.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerLeftChannel = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronChannel, NeutronPlayer, bool, Neutron> OnPlayerLeftChannel { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador sai da sala.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerLeftRoom = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronRoom, NeutronPlayer, bool, Neutron> OnPlayerLeftRoom { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador cria uma sala.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronRoom, Neutron> OnPlayerCreatedRoom = new NeutronEventNoReturn<NeutronRoom, Neutron>();
+        public NeutronEventNoReturn<NeutronRoom, NeutronPlayer, bool, Neutron> OnPlayerCreatedRoom { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador entra na sala.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerJoinedRoom = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronRoom, NeutronPlayer, bool, Neutron> OnPlayerJoinedRoom { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador entra no canal.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerJoinedChannel = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
-        /// <summary>
-        ///* Este evento é acionado quando algum jogador é instanciado.<br/>
-        /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, GameObject, bool, Neutron> OnPlayerInstantiated = new NeutronEventNoReturn<NeutronPlayer, GameObject, bool, Neutron>();
-        /// <summary>
-        ///* Este evento é acionado quando algum jogador é destruído.<br/>
-        /// </summary>
-        public NeutronEventNoReturn<Neutron> OnPlayerDestroyed = new NeutronEventNoReturn<Neutron>();
+        public NeutronEventNoReturn<NeutronChannel, NeutronPlayer, bool, Neutron> OnPlayerJoinedChannel { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador troca seu nickname.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerNicknameChanged = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronPlayer, string, bool, Neutron> OnPlayerNicknameChanged { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador atualiza suas propriedades.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerPropertiesChanged = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnPlayerPropertiesChanged { get; set; }
         /// <summary>
         ///* Este evento é acionado quando alguma sala atualiza suas propriedades.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnRoomPropertiesChanged = new NeutronEventNoReturn<NeutronPlayer, bool, Neutron>();
+        public NeutronEventNoReturn<NeutronPlayer, bool, Neutron> OnRoomPropertiesChanged { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador envia um pacote personalizado.<br/>
         /// </summary>
-        public NeutronEventNoReturn<NeutronReader, NeutronPlayer, CustomPacket, Neutron> OnPlayerPacketReceived = new NeutronEventNoReturn<NeutronReader, NeutronPlayer, CustomPacket, Neutron>();
+        public NeutronEventNoReturn<NeutronReader, NeutronPlayer, CustomPacket, Neutron> OnPlayerCustomPacketReceived { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum pacote apresenta uma falha.<br/>
         /// </summary>
-        public NeutronEventNoReturn<Packet, string, Neutron> OnFail = new NeutronEventNoReturn<Packet, string, Neutron>();
+        public NeutronEventNoReturn<Packet, string, Neutron> OnFail { get; set; }
         #endregion
 
         #region Methods -> Instance
@@ -207,7 +186,7 @@ namespace NeutronNetwork
             return;
 #endif
             Initialize(); //* Inicializa o cliente.
-            TcpSocket.NoDelay = NeutronMain.Settings.GlobalSettings.NoDelay; //* Define um valor que desabilita o atraso ao enviar ou receber buffers que não estão cheios.
+            TcpClient.NoDelay = NeutronMain.Settings.GlobalSettings.NoDelay; //* Define um valor que desabilita o atraso ao enviar ou receber buffers que não estão cheios.
 
             //* Simulação de perda de pacotes.
             if (NeutronMain.Settings.LagSimulationSettings.Drop)
@@ -237,30 +216,24 @@ namespace NeutronNetwork
 
             if (!IsConnected)
             {
-                var connectTask = TcpSocket.ConnectAsync(_host, port);
-                var timeoutTask = Task.Delay(new TimeSpan(0, 0, timeout));
+                bool result = await TcpClient.ConnectAsync(_host, port).RunWithTimeout(new TimeSpan(0, 0, timeout));
 
-                await await Task.WhenAny(connectTask, timeoutTask);
-
-                if (timeoutTask.IsCompleted)
+                if (!result)
                 {
                     if (!LogHelper.Error("An attempt to establish a connection to the server failed."))
                         Dispose();
                 }
-                else if (connectTask.IsCompleted)
+                else if (result)
                 {
-                    IsConnected = TcpSocket.Connected;
-                    OnNeutronConnected.Invoke(IsConnected, this);
-
+                    IsConnected = TcpClient.Connected;
                     //* Envia um pacote de reconhecimento pro servidor e ele responde com suas informações.
                     #region Handshake
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        writer.SetLength(0);
                         writer.WritePacket(Packet.Handshake);
                         writer.Write(Time);
                         Send(writer);
-                        writer.SetLength(0);
+                        writer.SetLength(0); //* Limpa o escritor.
                         writer.WritePacket(Packet.Empty);
                         for (int i = 0; i < 10; i++)
                             Send(writer, Protocol.Udp);
@@ -282,10 +255,12 @@ namespace NeutronNetwork
                     clientTh.Start();
                     #endregion
 
-                    StartCoroutine(Ping(Protocol.Udp, NeutronMain.Settings.ClientSettings.PingRate));
+                    NeutronSchedule.Schedule.StartCoroutine(Ping(Protocol.Udp, NeutronMain.Settings.ClientSettings.PingRate));
                 }
+                OnNeutronConnected?.Invoke(IsConnected, this);
             }
-            else LogHelper.Error("Connection Refused!");
+            else
+                LogHelper.Error("Connection Refused!");
         }
 
         //* Metódo que ler os dados recebidos do servidor.
@@ -294,7 +269,7 @@ namespace NeutronNetwork
             try
             {
                 CancellationToken token = _cts.Token;
-                NetworkStream netStream = TcpSocket.GetStream();
+                NetworkStream netStream = TcpClient.GetStream();
 
                 byte[] hBuffer = new byte[sizeof(int)]; //* aqui será armazenado o pre-fixo do cabeçalho, que é o tamanho da mensagem enviada pelo servidor.
 
@@ -327,7 +302,7 @@ namespace NeutronNetwork
                     }
                     else if (protocol == Protocol.Udp)
                     {
-                        var datagram = await UdpSocket.ReceiveAsync();  //* Recebe os dados enviados pelo servidor.
+                        var datagram = await UdpClient.ReceiveAsync();  //* Recebe os dados enviados pelo servidor.
                         if (datagram.Buffer.Length > 0)
                         {
                             RunPacket(datagram.Buffer); //* Processa os dados recebidos.
@@ -365,7 +340,7 @@ namespace NeutronNetwork
                                 double clientTime = reader.ReadDouble();
 #if !UNITY_SERVER
                                 double diff = Math.Abs(Time - clientTime);
-                                if (!Application.isEditor || !NeutronServer.m_Initialized)
+                                if (!Application.isEditor || !NeutronServer.Initialized)
                                 {
                                     if (ClientType == global::Client.Virtual && Client != null)
                                     { }
@@ -374,10 +349,10 @@ namespace NeutronNetwork
                                         double finalDiff = Math.Abs((serverTime - Time) + diff);
                                         if (serverTime > Time)
                                         {
-                                            if (finalDiff > NeutronConstants.RESYNCHRONIZATION_TOLERANCE)
+                                            if (finalDiff > OthersHelper.GetSettings().RESYNC_TOLERANCE)
                                                 DiffTime += finalDiff;
                                         }
-                                        else if (finalDiff > NeutronConstants.NETWORK_TIME_DESYNCHRONIZATION_TOLERANCE)
+                                        else if (finalDiff > OthersHelper.GetSettings().NET_TIME_DESYNC_TOLERANCE)
                                             DiffTime -= finalDiff;
                                     }
                                 }
@@ -387,8 +362,8 @@ namespace NeutronNetwork
                                 else
                                 {
                                     RoundTripTime = _rtts.Sum() / _rtts.Count;
-                                    if (!(RoundTripTime < NeutronConstants.MAX_LATENCY))
-                                        OnFail.Invoke(Packet.Ping, "Your ping is too high.", this);
+                                    if (!(RoundTripTime < OthersHelper.GetSettings().MAX_LATENCY))
+                                        OnFail?.Invoke(Packet.Ping, "Your ping is too high.", this);
                                     _rtts.Clear();
                                 }
                                 ++_pingAmountReceived;
@@ -405,7 +380,7 @@ namespace NeutronNetwork
                                 else
                                 {
                                     double diff = Math.Abs(Time - clientTime);
-                                    if (!Application.isEditor || !NeutronServer.m_Initialized)
+                                    if (!Application.isEditor || !NeutronServer.Initialized)
                                     {
                                         if (serverTime > Time)
                                             DiffTime = Math.Abs((serverTime - Time) + diff);
@@ -426,16 +401,16 @@ namespace NeutronNetwork
                                 #region Logic
                                 Player = player;
                                 Player.IsConnected = true;
-                                PlayerConnections[Player.ID] = Player;
-                                foreach (var cPlayer in players)
+                                Players[Player.ID] = Player;
+                                foreach (var currentPlayer in players)
                                 {
-                                    cPlayer.IsConnected = true;
-                                    if (cPlayer.Equals(Player))
+                                    currentPlayer.IsConnected = true;
+                                    if (currentPlayer.Equals(Player))
                                         continue;
                                     else
-                                        PlayerConnections[cPlayer.ID] = cPlayer;
+                                        Players[currentPlayer.ID] = currentPlayer;
                                 }
-                                OnPlayerConnected.Invoke(Player, IsMine(Player), this);
+                                OnPlayerConnected?.Invoke(Player, IsMine(Player), this);
                                 #endregion
                             }
                             break;
@@ -447,11 +422,11 @@ namespace NeutronNetwork
 
                                 #region Logic
                                 player.IsConnected = true;
-                                PlayerConnections[player.ID] = player;
+                                Players[player.ID] = player;
                                 #endregion
 
                                 #region Event
-                                OnPlayerConnected.Invoke(player, IsMine(player), this);
+                                OnPlayerConnected?.Invoke(player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -463,12 +438,12 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 player.IsConnected = false;
                                 #endregion
 
                                 #region Event
-                                OnPlayerDisconnected.Invoke(reason, player, IsMine(player), this);
+                                OnPlayerDisconnected?.Invoke(reason, player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -480,11 +455,11 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 #endregion
 
                                 #region Event
-                                OnMessageReceived.Invoke(message, player, IsMine(player), this);
+                                OnMessageReceived?.Invoke(message, player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -498,7 +473,7 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 iRPCHandler(rpcId, viewID, parameters, true, player);
                                 #endregion
                             }
@@ -512,7 +487,7 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 gRPCHandler(rpcId, player, parameters, false, IsMine(player));
                                 #endregion
                             }
@@ -524,7 +499,7 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                OnChannelsReceived.Invoke(channels, this);
+                                OnChannelsReceived?.Invoke(channels, this);
                                 #endregion
                             }
                             break;
@@ -532,11 +507,12 @@ namespace NeutronNetwork
                             {
                                 #region Reader
                                 int playerId = reader.ReadInt32();
+                                NeutronChannel channel = reader.ReadExactly<NeutronChannel>();
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
-                                OnPlayerJoinedChannel.Invoke(player, IsMine(player), this);
+                                NeutronPlayer player = Players[playerId];
+                                OnPlayerJoinedChannel?.Invoke(channel, player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -548,11 +524,11 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 if (packet == MatchmakingPacket.Channel)
-                                    OnPlayerLeftChannel.Invoke(player, IsMine(player), this);
+                                    OnPlayerLeftChannel?.Invoke(reader.ReadExactly<NeutronChannel>(), player, IsMine(player), this);
                                 else if (packet == MatchmakingPacket.Room)
-                                    OnPlayerLeftRoom.Invoke(player, IsMine(player), this);
+                                    OnPlayerLeftRoom?.Invoke(reader.ReadExactly<NeutronRoom>(), player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -568,18 +544,20 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Event
-                                OnFail.Invoke(systemPacket, message, this);
+                                OnFail?.Invoke(systemPacket, message, this);
                                 #endregion
                             }
                             break;
                         case Packet.CreateRoom:
                             {
                                 #region Reader
+                                int playerId = reader.ReadInt32();
                                 NeutronRoom room = reader.ReadExactly<NeutronRoom>();
                                 #endregion
 
                                 #region Logic
-                                OnPlayerCreatedRoom.Invoke(room, this);
+                                NeutronPlayer player = Players[playerId];
+                                OnPlayerCreatedRoom?.Invoke(room, player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -590,7 +568,7 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                OnRoomsReceived.Invoke(rooms, this);
+                                OnRoomsReceived?.Invoke(rooms, this);
                                 #endregion
                             }
                             break;
@@ -598,18 +576,18 @@ namespace NeutronNetwork
                             {
                                 #region Reader
                                 int playerId = reader.ReadInt32();
+                                NeutronRoom room = reader.ReadExactly<NeutronRoom>();
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
-                                OnPlayerJoinedRoom.Invoke(player, IsMine(player), this);
+                                NeutronPlayer player = Players[playerId];
+                                OnPlayerJoinedRoom?.Invoke(room, player, IsMine(player), this);
                                 #endregion
                             }
                             break;
                         case Packet.DestroyPlayer:
                             {
                                 #region Logic
-                                OnPlayerDestroyed.Invoke(this);
                                 #endregion
                             }
                             break;
@@ -617,11 +595,12 @@ namespace NeutronNetwork
                             {
                                 #region Reader
                                 int playerId = reader.ReadInt32();
+                                string nickname = reader.ReadString();
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
-                                OnPlayerNicknameChanged.Invoke(player, IsMine(player), this);
+                                NeutronPlayer player = Players[playerId];
+                                OnPlayerNicknameChanged?.Invoke(player, nickname, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -632,8 +611,8 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
-                                OnPlayerPropertiesChanged.Invoke(player, IsMine(player), this);
+                                NeutronPlayer player = Players[playerId];
+                                OnPlayerPropertiesChanged?.Invoke(player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -644,8 +623,8 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
-                                OnRoomPropertiesChanged.Invoke(player, IsMine(player), this);
+                                NeutronPlayer player = Players[playerId];
+                                OnRoomPropertiesChanged?.Invoke(player, IsMine(player), this);
                                 #endregion
                             }
                             break;
@@ -658,11 +637,11 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                NeutronPlayer player = PlayerConnections[playerId];
+                                NeutronPlayer player = Players[playerId];
                                 using (NeutronReader pReader = PooledNetworkReaders.Pull())
                                 {
                                     pReader.SetBuffer(parameters);
-                                    OnPlayerPacketReceived.Invoke(pReader, player, packet, this);
+                                    OnPlayerCustomPacketReceived?.Invoke(pReader, player, packet, this);
                                 }
                                 #endregion
                             }
@@ -670,6 +649,7 @@ namespace NeutronNetwork
                         case Packet.OnAutoSync:
                             {
                                 #region Reader
+                                RegisterType registerType = reader.ReadPacket<RegisterType>();
                                 int playerId = reader.ReadInt32();
                                 int viewID = reader.ReadInt32();
                                 int instanceId = reader.ReadInt32();
@@ -677,7 +657,8 @@ namespace NeutronNetwork
                                 #endregion
 
                                 #region Logic
-                                OnSerializeViewHandler(viewID, instanceId, parameters);
+                                NeutronPlayer player = Players[playerId];
+                                OnAutoSyncHandler(player, viewID, instanceId, parameters, registerType);
                                 #endregion
                             }
                             break;
@@ -699,7 +680,6 @@ namespace NeutronNetwork
                 ++_pingAmount;
                 using (NeutronWriter writer = PooledNetworkWriters.Pull())
                 {
-                    writer.SetLength(0); // * Reseta o escritor, apaga os dados antigos.
                     writer.WritePacket(Packet.Ping);
                     writer.Write(Time);
                     Send(writer, protocol);
@@ -725,7 +705,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Leave);
                 writer.WritePacket(packet);
                 Send(writer);
@@ -744,7 +723,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Chat);
                 writer.WritePacket(ChatPacket.Global);
                 writer.WritePacket(tunnelingTo);
@@ -765,7 +743,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Chat);
                 writer.WritePacket(ChatPacket.Private);
                 writer.Write(player.ID);
@@ -789,7 +766,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.CustomPacket);
                 writer.Write(Player.ID);
                 writer.WritePacket(packet);
@@ -816,7 +792,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.CustomPacket);
                 writer.Write(player.ID);
                 writer.WritePacket(packet);
@@ -841,7 +816,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.CustomPacket);
                 writer.Write(view.ID);
                 writer.WritePacket(packet);
@@ -858,13 +832,13 @@ namespace NeutronNetwork
         /// <param name="id">* A Instância que invocará o metódo.</param>
         /// <param name="recProtocol">* O protocolo que será usado para receber o pacote.</param>
         /// <param name="sendProtocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void Send(NeutronWriter parameters, NeutronView view, int id, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol recProtocol, Protocol sendProtocol)
+        public void OnAutoSynchronization(NeutronWriter parameters, NeutronView view, int id, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol recProtocol, Protocol sendProtocol)
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.OnAutoSync);
                 writer.WritePacket(recProtocol);
+                writer.WritePacket(view.RegisterType);
                 writer.WritePacket(targetTo);
                 writer.WritePacket(tunnelingTo);
                 writer.Write(view.ID);
@@ -888,7 +862,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.gRPC);
                 writer.Write(viewId);
                 writer.Write(rpcId);
@@ -913,18 +886,17 @@ namespace NeutronNetwork
         public void iRPC(int viewId, int rpcId, NeutronWriter parameters, Cache cache, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol recProtocol, Protocol sendProtocol)
 #pragma warning restore IDE1006 // Estilos de Nomenclatura
         {
-            using (NeutronWriter nWriter = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                nWriter.SetLength(0);
-                nWriter.WritePacket(Packet.iRPC);
-                nWriter.WritePacket(tunnelingTo);
-                nWriter.WritePacket(targetTo);
-                nWriter.WritePacket(cache);
-                nWriter.WritePacket(recProtocol);
-                nWriter.Write(viewId);
-                nWriter.Write(rpcId);
-                nWriter.Write(parameters);
-                Send(nWriter, sendProtocol);
+                writer.WritePacket(Packet.iRPC);
+                writer.WritePacket(tunnelingTo);
+                writer.WritePacket(targetTo);
+                writer.WritePacket(cache);
+                writer.WritePacket(recProtocol);
+                writer.Write(viewId);
+                writer.Write(rpcId);
+                writer.Write(parameters);
+                Send(writer, sendProtocol);
             }
         }
 
@@ -939,7 +911,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Nickname);
                 writer.Write(nickname);
                 Send(writer);
@@ -959,7 +930,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.JoinChannel);
                 writer.Write(channelId);
                 Send(writer);
@@ -978,7 +948,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.JoinRoom);
                 writer.Write(roomId);
                 Send(writer);
@@ -1001,7 +970,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.CreateRoom);
                 writer.Write(roomName);
                 writer.Write(maxPlayers);
@@ -1026,7 +994,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.GetChached);
                 writer.WritePacket(packet);
                 writer.Write(packetId);
@@ -1045,7 +1012,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.GetChannels);
                 Send(writer);
             }
@@ -1061,7 +1027,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.GetRooms);
                 Send(writer);
             }
@@ -1077,7 +1042,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.SetPlayerProperties);
                 writer.Write(JsonConvert.SerializeObject(properties));
                 Send(writer);
@@ -1094,7 +1058,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.SetRoomProperties);
                 writer.Write(JsonConvert.SerializeObject(properties));
                 Send(writer);
@@ -1109,7 +1072,6 @@ namespace NeutronNetwork
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.DestroyPlayer);
                 Send(writer);
             }
@@ -1123,11 +1085,10 @@ namespace NeutronNetwork
         ///* Para mais detalhes, consulte a documentação.<br/>
         /// </summary>
         /// <param name="clientType">* O tipo de cliente que a instância usará.</param>
-        /// <param name="ownerGameObject">* O objeto que é dono dessa instância.</param>
         /// <returns>Retorna uma instância do tipo Neutron.</returns>
-        public static Neutron CreateClient(global::Client clientType, GameObject ownerGameObject)
+        public static Neutron CreateClient(global::Client clientType)
         {
-            Neutron instance = ownerGameObject.AddComponent<Neutron>();
+            Neutron instance = new Neutron();
             instance.Initialize(clientType);
             if (clientType == global::Client.Player)
                 Client = instance;
@@ -1137,43 +1098,31 @@ namespace NeutronNetwork
         /// <summary>
         ///* Cria um objeto em rede.
         /// </summary>
-        /// <param name="isServer">* Define se o ambiente a ser instaciado é o servidor ou o cliente.</param>
+        /// <param name="isServer">* Define se o lado a ser instaciado é o servidor ou o cliente.</param>
         /// <param name="prefab">* O Prefab que será usado para criar o objeto em rede.</param>
         /// <param name="position">* A posição que o objeto usará no momento de sua criação.</param>
         /// <param name="rotation">* A rotação que o objeto usará no momento de sua criação.</param>
         /// <returns>Retorna uma instância do tipo NeutronView.</returns>
         public static NeutronView Spawn(bool isServer, GameObject prefab, Vector3 position, Quaternion rotation)
         {
-            NeutronView Spawn() => Instantiate(prefab, position, rotation).GetComponent<NeutronView>();
+            NeutronView Spawn() => MonoBehaviour.Instantiate(prefab, position, rotation).GetComponent<NeutronView>();
             #region Logic
-            if (prefab.TryGetComponent<NeutronView>(out NeutronView neutronView))
+            if (prefab.TryGetComponent(out NeutronView neutronView))
             {
-                switch (neutronView.Ambient)
+                switch (neutronView.Side)
                 {
                     case Side.Both:
-                        {
-                            return Spawn();
-                        }
+                        return Spawn();
                     case Side.Server:
-                        {
-                            if (isServer)
-                                return Spawn();
-                            else return null;
-                        }
+                        return isServer ? Spawn() : null;
                     case Side.Client:
-                        {
-                            if (!isServer)
-                                return Spawn();
-                            else return null;
-                        }
+                        return !isServer ? Spawn() : null;
                     default:
                         return null;
                 }
             }
-            else if (!LogHelper.Error("\"Neutron View\" object not found, failed to instantiate in network."))
-                return null;
             else
-                return null;
+                return !LogHelper.Error("\"Neutron View\" object not found, failed to instantiate in network.") ? null : (NeutronView)null;
             #endregion
         }
         #endregion

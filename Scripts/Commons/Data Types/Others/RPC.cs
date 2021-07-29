@@ -1,6 +1,7 @@
+using NeutronNetwork;
 using System;
 using System.Reflection;
-using NeutronNetwork;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class RPC
@@ -9,22 +10,29 @@ public class RPC
     private MonoBehaviour _instance;
     private MethodInfo _method;
     private Type _type;
-    private MethodType methodType;
+    private MethodType _methodType;
     #endregion
 
     #region Properties
     public iRPC IRPC { get; }
     public gRPC GRPC { get; }
+    public MethodType Type => _methodType;
     #endregion
 
     #region Delegates iRPC
     private Action<NeutronReader, bool, NeutronPlayer> iRPCVoid;
+    ////////////////////////////////// Funcs /////////////////////////////////////////////////////
     #endregion
 
     #region Delegates gRPC
     private Action<NeutronReader, bool, bool, NeutronPlayer, Neutron> gRPCVoid;
+    ////////////////////////////////// Funcs /////////////////////////////////////////////////////
+    private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<int>> gRPCIntAsync;
+    private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<bool>> gRPCBoolAsync;
+    private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<NeutronView>> gRPCViewAsync;
+
+    private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, int> gRPCInt;
     private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, bool> gRPCBool;
-    private Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, NeutronView> gRPCView;
     #endregion
 
     public RPC(MonoBehaviour instance, MethodInfo method, iRPC iRPC)
@@ -56,7 +64,7 @@ public class RPC
                 if (_type == typeof(void))
                 {
                     iRPCVoid = (Action<NeutronReader, bool, NeutronPlayer>)_method.CreateDelegate(typeof(Action<NeutronReader, bool, NeutronPlayer>), _instance);
-                    methodType = MethodType.Void;
+                    _methodType = MethodType.Void;
                 }
             }
             else if (attribute is gRPC)
@@ -64,17 +72,32 @@ public class RPC
                 if (_type == typeof(void))
                 {
                     gRPCVoid = (Action<NeutronReader, bool, bool, NeutronPlayer, Neutron>)_method.CreateDelegate(typeof(Action<NeutronReader, bool, bool, NeutronPlayer, Neutron>), _instance);
-                    methodType = MethodType.Void;
+                    _methodType = MethodType.Void;
+                }
+                else if (_type == typeof(int))
+                {
+                    gRPCInt = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, int>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, int>), _instance);
+                    _methodType = MethodType.Int;
                 }
                 else if (_type == typeof(bool))
                 {
                     gRPCBool = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, bool>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, bool>), _instance);
-                    methodType = MethodType.Bool;
+                    _methodType = MethodType.Bool;
                 }
-                else if (_type == typeof(NeutronView))
+                else if (_type == typeof(Task<int>))
                 {
-                    gRPCView = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, NeutronView>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, NeutronView>), _instance);
-                    methodType = MethodType.View;
+                    gRPCIntAsync = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<int>>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<int>>), _instance);
+                    _methodType = MethodType.Async | MethodType.Int;
+                }
+                else if (_type == typeof(Task<bool>))
+                {
+                    gRPCBoolAsync = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<bool>>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<bool>>), _instance);
+                    _methodType = MethodType.Async | MethodType.Bool;
+                }
+                else if (_type == typeof(Task<NeutronView>))
+                {
+                    gRPCViewAsync = (Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<NeutronView>>)_method.CreateDelegate(typeof(Func<NeutronReader, bool, bool, NeutronPlayer, Neutron, Task<NeutronView>>), _instance);
+                    _methodType = MethodType.Async | MethodType.View;
                 }
                 else
                     LogHelper.Error($"Type not supported! {_type}");
@@ -89,11 +112,11 @@ public class RPC
     }
 
     /// <summary>
-    /// Invoca o iRPC.
+    /// Invoca o iRPC de modo assícrnono.
     /// </summary>
     public object Invoke(NeutronReader reader, bool isMine, NeutronPlayer player)
     {
-        switch (methodType)
+        switch (_methodType)
         {
             case MethodType.Void:
                 {
@@ -101,47 +124,34 @@ public class RPC
                     return null;
                 }
             default:
-                {
-                    if (!LogHelper.Error("Type not supported! [iRPC]"))
-                        return null;
-                    else
-                        return null;
-                }
+                return null;
         }
     }
 
     /// <summary>
-    /// Invoca o gRPC.
+    /// Invoca o gRPC de modo assícrnono.
     /// </summary>
-    public object Invoke(NeutronReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
+    public async Task<object> Invoke(NeutronReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
     {
-        switch (methodType)
+        switch (_methodType)
         {
             case MethodType.Void:
                 {
                     gRPCVoid(reader, isServer, isMine, player, neutron);
                     return null;
                 }
+            case MethodType.Int:
+                return gRPCInt(reader, isServer, isMine, player, neutron);
             case MethodType.Bool:
                 return gRPCBool(reader, isServer, isMine, player, neutron);
-            case MethodType.View:
-                return gRPCView(reader, isServer, isMine, player, neutron);
+            case MethodType.Async | MethodType.Bool:
+                return await gRPCBoolAsync(reader, isServer, isMine, player, neutron);
+            case MethodType.Async | MethodType.View:
+                return await gRPCViewAsync(reader, isServer, isMine, player, neutron);
+            case MethodType.Async | MethodType.Int:
+                return await gRPCIntAsync(reader, isServer, isMine, player, neutron);
             default:
-                {
-                    if (!LogHelper.Error("Type not supported! [gRPC]"))
-                        return null;
-                    else
-                        return null;
-                }
+                return null;
         }
-    }
-
-    private enum MethodType
-    {
-        Void,
-        Bool,
-        View,
-        Object,
-        String
     }
 }

@@ -1,37 +1,34 @@
-using NeutronNetwork.Attributes;
-using NeutronNetwork.Naughty.Attributes;
 using UnityEngine;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork
 {
-    /// <summary>
-    ///* Todos os jogadores terão este script, ao lado do servidor.<br/>
-    ///* Você basicamente pode fazer oque quiser aqui, ex: enviar os canais pro jogador a cada X Segundos.
-    ///* Melhor você herdar para não perder suas implementações.
-    /// </summary>
     public class View : MonoBehaviour
     {
-        [SerializeField] [ReadOnly] private NeutronPlayer m_Owner;
+        [SerializeField] private NeutronPlayer _owner;
         /// <summary>
         ///* O Jogador dono deste objeto, é pra ele que você vai enviar as paradas.
         /// </summary>
-        public NeutronPlayer Owner { get => m_Owner; set => m_Owner = value; }
+        public NeutronPlayer Owner { get => _owner; set => _owner = value; }
 
-        #region MonoBehaviour
-        private void Awake()
+        public virtual void Awake()
         {
 
         }
 
-        private void Start()
+        public virtual void Start()
         {
 
         }
 
-        private void Update()
+        public virtual void Update()
         {
 
         }
-        #endregion
     }
 }

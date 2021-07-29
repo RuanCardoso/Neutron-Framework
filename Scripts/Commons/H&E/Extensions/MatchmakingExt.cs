@@ -1,18 +1,20 @@
-using NeutronNetwork.Helpers;
-using NeutronNetwork.Server.Internal;
-
 namespace NeutronNetwork.Extensions
 {
     public static class MatchmakingExt
     {
         public static bool IsInChannel(this NeutronPlayer player)
         {
-            return player.CurrentChannel > -1;
+            return player.Channel != null;
         }
 
         public static bool IsInRoom(this NeutronPlayer player)
         {
-            return player.CurrentRoom > -1;
+            return player.Room != null;
+        }
+
+        public static bool IsInMatchmaking(this NeutronPlayer player)
+        {
+            return player.Matchmaking != null;
         }
     }
 }

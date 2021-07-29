@@ -1,22 +1,22 @@
-using NeutronNetwork;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Components;
 using System;
+using System.Threading.Tasks;
 
 namespace NeutronNetwork.Helpers
 {
     public static class PlayerHelper
     {
 #pragma warning disable IDE1006 // Estilos de Nomenclatura
-        public static bool iRPC(byte[] parameters, bool isMine, RPC remoteProceduralCall, NeutronPlayer sender, NeutronView neutronView)
+        public static bool iRPC(byte[] parameters, bool isMine, RPC remoteProceduralCall, NeutronPlayer player)
 #pragma warning restore IDE1006 // Estilos de Nomenclatura
         {
-            var pool = Neutron.PooledNetworkReaders.Pull();
-            pool.SetBuffer(parameters);
+            var reader = Neutron.PooledNetworkReaders.Pull();
+            reader.SetBuffer(parameters);
 
-            object obj = remoteProceduralCall.Invoke(pool, isMine, sender);
+            object obj = remoteProceduralCall.Invoke(reader, isMine, player);
             if (obj != null)
             {
                 Type objType = obj.GetType();
@@ -27,94 +27,92 @@ namespace NeutronNetwork.Helpers
         }
 
 #pragma warning disable IDE1006 // Estilos de Nomenclatura
-        public static bool gRPC(int sRPCId, NeutronPlayer sender, byte[] parameters, RPC remoteProceduralCall, bool isServer, bool isMine, Neutron localInstance = null)
+        public static async Task<bool> gRPC(int id, NeutronPlayer player, byte[] buffer, RPC remoteProceduralCall, bool isServer, bool isMine, Neutron instance = null)
 #pragma warning restore IDE1006 // Estilos de Nomenclatura
         {
-            var pool = Neutron.PooledNetworkReaders.Pull();
-            pool.SetBuffer(parameters);
+            NeutronReader reader = Neutron.PooledNetworkReaders.Pull();
+            reader.SetBuffer(buffer);
 
-            object obj = remoteProceduralCall.Invoke(pool, isServer, isMine, sender, localInstance);
-            if (obj != null)
+            object method = await remoteProceduralCall.Invoke(reader, isServer, isMine, player, instance);
+            switch (remoteProceduralCall.Type)
             {
-                Type objType = obj.GetType();
-                if (objType == typeof(NeutronView))
-                {
-                    NeutronView objectToInst = (NeutronView)obj;
-                    if (!isServer)
-                        SceneHelper.MoveToContainer(objectToInst.gameObject, "[Container] -> Player[Main]");
-                    else
+                case MethodType.Async | MethodType.View:
+                case MethodType.View:
                     {
-                        if (!sender.IsInRoom())
-                            SceneHelper.MoveToContainer(objectToInst.gameObject, $"[Container] -> Channel[{sender.CurrentChannel}]");
-                        else if (sender.IsInChannel()) SceneHelper.MoveToContainer(objectToInst.gameObject, $"[Container] -> Room[{sender.CurrentRoom}]");
-                    }
-                    if (sRPCId == NeutronConstants.CREATE_PLAYER)
-                        NeutronRegister.RegisterPlayer(sender, objectToInst, isServer, localInstance);
-                    else if (sRPCId == NeutronConstants.CREATE_OBJECT)
-                    {
-                        using (NeutronReader defaultOptions = Neutron.PooledNetworkReaders.Pull())
+                        NeutronView neutronView = (NeutronView)method;
+                        return await NeutronSchedule.ScheduleTaskAsync<bool>(() =>
                         {
-                            defaultOptions.SetBuffer(parameters);
-                            defaultOptions.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
-                            NeutronRegister.RegisterObject(sender, objectToInst, defaultOptions.ReadInt32(), isServer, localInstance);
-                        }
+                            if (id == Settings.CREATE_PLAYER)
+                                return neutronView.OnNeutronRegister(player, isServer, RegisterType.Player, instance);
+                            else if (id == Settings.CREATE_OBJECT)
+                            {
+                                using (NeutronReader idReader = new NeutronReader())
+                                {
+                                    idReader.SetBuffer(buffer);
+                                    idReader.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
+                                    return neutronView.OnNeutronRegister(player, isServer, RegisterType.Dynamic, instance, idReader.ReadInt16());
+                                }
+                            }
+                            else
+                                return LogHelper.Error($"ID not implemented!");
+                        });
                     }
-                    else return true;
-                }
-                else if (objType == typeof(bool))
-                    return (bool)obj;
-                else LogHelper.Error("invalid type hehehe");
+                case MethodType.Async | MethodType.Bool:
+                case MethodType.Bool:
+                    return (bool)method;
+                case MethodType.Async | MethodType.Int:
+                case MethodType.Int:
+                    return Convert.ToBoolean((int)method);
+                case MethodType.Async | MethodType.Void:
+                case MethodType.Void:
+                    return true;
+                default:
+                    return LogHelper.Error($"Type not implemented!");
             }
-            //else NeutronLogger.LoggerError("Invalid gRPC ID, there is no attribute with this ID.");
-            return true;
         }
 
-        public static void Disconnect(NeutronPlayer nPlayer, string reason)
+        public static void Disconnect(NeutronPlayer player, string reason)
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Disconnection);
-                writer.Write(nPlayer.ID);
+                writer.Write(player.ID);
                 writer.Write(reason);
-                nPlayer.Send(writer, NeutronMain.Synchronization.DefaultHandlers.OnPlayerDisconnected);
+                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerDisconnected);
             }
         }
 
-        public static void Message(NeutronPlayer nSocket, Packet packet, string message)
+        public static void Message(NeutronPlayer player, Packet packet, string message)
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.SetLength(0);
                 writer.WritePacket(Packet.Fail);
                 writer.WritePacket(packet);
                 writer.Write(message);
-                nSocket.Send(writer);
+                player.Send(writer);
             }
         }
 
-        public static string GetNickname(int ID)
+        public static string GenerateNickname(int id)
         {
-            return $"Player#{ID}";
+            return $"Player#{id}";
         }
 
-        public static bool IsMine(NeutronPlayer nSender, int networkID)
+        public static bool IsMine(NeutronPlayer player, int viewId)
         {
-            return nSender.ID == networkID;
+            return player.ID == viewId;
         }
 
-        public static bool GetAvailableID(out int ID)
+        public static bool GetAvailableID(out int id)
         {
-            #region Provider
-            if (Neutron.Server.m_PooledIds.Count > 0)
+            if (Neutron.Server._pooledIds.Count > 0)
             {
-                if (!Neutron.Server.m_PooledIds.TryDequeue(out ID))
-                    ID = 0;
+                if (!Neutron.Server._pooledIds.TryDequeue(out id))
+                    id = 0;
             }
-            else ID = 0;
-            #endregion
-
-            return ID > NeutronConstants.GENERATE_PLAYER_ID;
+            else
+                id = 0;
+            return id > Settings.GENERATE_PLAYER_ID;
         }
     }
 }

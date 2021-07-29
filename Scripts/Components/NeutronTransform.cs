@@ -75,7 +75,6 @@ namespace NeutronNetwork.Components
             {
                 using (var options = Neutron.PooledNetworkWriters.Pull())
                 {
-                    options.SetLength(0);
                     if (synchronizePosition) options.Write(transform.position);
                     if (synchronizeRotation) options.Write(transform.rotation);
                     if (synchronizeScale) options.Write(transform.localScale);

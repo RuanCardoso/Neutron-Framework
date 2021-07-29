@@ -35,14 +35,14 @@ public class NeutronProfilerEditor : EditorWindow
 
     private void OnEnable()
     {
-        if (NeutronStatistics.OnChangedStatistics.OnEvent == null)
-            NeutronStatistics.OnChangedStatistics.Add(OnChanged);
+        if (NeutronStatistics.OnChangedStatistics == null)
+            NeutronStatistics.OnChangedStatistics += OnChanged;
     }
 
     private void OnDisable()
     {
-        if (NeutronStatistics.OnChangedStatistics.OnEvent != null)
-            NeutronStatistics.OnChangedStatistics.Remove(OnChanged);
+        if (NeutronStatistics.OnChangedStatistics != null)
+            NeutronStatistics.OnChangedStatistics -= OnChanged;
     }
 
     private void OnGUI()
@@ -99,7 +99,7 @@ public class NeutronProfilerEditor : EditorWindow
         EditorGUILayout.LabelField($"Outgoing: {OthersHelper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{OthersHelper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}]");
     }
 
-    private void OnChanged(NSP[] nProfilers)
+    private void OnChanged(InOutData[] nProfilers)
     {
         nProfilers[0].Get(out int ClientBytesOutgoingTCP, out int ClientBytesIncomingTCP);
         {

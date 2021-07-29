@@ -1,5 +1,11 @@
 ﻿using System;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork
 {
     /// <summary>
@@ -12,8 +18,6 @@ namespace NeutronNetwork
 #pragma warning restore IDE1006
     {
         public byte ID { get; set; }
-        public bool RunInMonoBehaviour { get; set; }
-        public bool RunInServer { get; set; }
         public bool SendAfterProcessing { get; set; }
         public Cache Cache { get; set; }
         public TargetTo TargetTo { get; set; }
@@ -32,11 +36,9 @@ namespace NeutronNetwork
         /// <param name="targetTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
         /// <param name="tunnelingTo">* O Túnel que será usado para a transmissão.</param>
         /// <param name="protocol">* O protocolo que será usado para receber o gRPC.</param>
-        public gRPC(byte id, bool runInMonoBehaviour = false, bool runInServer = true, bool sendAfterProcessing = false, Cache cache = Cache.None, TargetTo targetTo = TargetTo.Me, TunnelingTo tunnelingTo = TunnelingTo.Me, Protocol protocol = Protocol.Tcp)
+        public gRPC(byte id, bool sendAfterProcessing = false, Cache cache = Cache.None, TargetTo targetTo = TargetTo.Me, TunnelingTo tunnelingTo = TunnelingTo.Me, Protocol protocol = Protocol.Tcp)
         {
             ID = id;
-            RunInMonoBehaviour = runInMonoBehaviour;
-            RunInServer = runInServer;
             SendAfterProcessing = sendAfterProcessing;
             Cache = cache;
             TargetTo = targetTo;

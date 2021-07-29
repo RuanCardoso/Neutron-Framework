@@ -1,9 +1,10 @@
+using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Json;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.Serialization.Formatters.Binary;
-using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Json;
+using System.Text;
 
 namespace NeutronNetwork.Helpers
 {
@@ -79,7 +80,7 @@ namespace NeutronNetwork.Helpers
             else return data;
         }
 
-        public static byte[] Serialize(this object message)
+        public static byte[] Serialize(this object obj)
         {
             try
             {
@@ -88,20 +89,14 @@ namespace NeutronNetwork.Helpers
                 {
                     case Serialization.Json:
                         {
-                            string jsonString = JsonConvert.SerializeObject(message);
-                            using (NeutronWriter jsonWriter = Neutron.PooledNetworkWriters.Pull())
-                            {
-                                jsonWriter.SetLength(0);
-                                jsonWriter.Write(jsonString);
-                                return jsonWriter.ToArray();
-                            }
+                            return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj));
                         }
                     case Serialization.Binary:
                         {
                             BinaryFormatter formatter = new BinaryFormatter();
                             using (MemoryStream mStream = new MemoryStream())
                             {
-                                formatter.Serialize(mStream, message);
+                                formatter.Serialize(mStream, obj);
                                 return mStream.ToArray();
                             }
                         }
@@ -112,7 +107,7 @@ namespace NeutronNetwork.Helpers
             catch (Exception ex) { LogHelper.StackTrace(ex); return null; }
         }
 
-        public static T Deserialize<T>(this byte[] message)
+        public static T Deserialize<T>(this byte[] buffer)
         {
             try
             {
@@ -121,17 +116,12 @@ namespace NeutronNetwork.Helpers
                 {
                     case Serialization.Json:
                         {
-                            using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
-                            {
-                                reader.SetBuffer(message);
-
-                                return JsonConvert.DeserializeObject<T>(reader.ReadString());
-                            }
+                            return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(buffer));
                         }
                     case Serialization.Binary:
                         {
                             BinaryFormatter formatter = new BinaryFormatter();
-                            using (MemoryStream mStream = new MemoryStream(message))
+                            using (MemoryStream mStream = new MemoryStream(buffer))
                             {
                                 return (T)formatter.Deserialize(mStream);
                             }

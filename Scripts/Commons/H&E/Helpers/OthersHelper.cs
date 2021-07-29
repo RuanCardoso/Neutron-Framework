@@ -1,16 +1,19 @@
-using System.Collections.Generic;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Server.Internal;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace NeutronNetwork.Helpers
 {
     public static class OthersHelper
     {
-        private static readonly Random Rnd = new Random();
-
         #region Fields
         private static readonly string[] SizeSuffixes = { "B/s", "kB/s", "mB/s", "gB/s" };
         private static int[] ClassifiedOdds;
+        private static readonly System.Random Rnd = new System.Random();
         #endregion
 
         #region Collections
@@ -53,7 +56,7 @@ namespace NeutronNetwork.Helpers
             ClassifiedOdds = new int[percent];
             //Limpa a lista.
             Numbers.Clear();
-            // Adicionar 100 némeros para fazer a jogada de 0% a 100%.
+            // Adicionar 100 números para fazer a jogada de 0% a 100%.
             for (int i = 1; i <= 100; i++)
                 Numbers.Add(i);
             // Bagunça a lista.
@@ -63,12 +66,34 @@ namespace NeutronNetwork.Helpers
                 ClassifiedOdds[i] = Numbers[i];
         }
 
+        public static int GenerateDynamicObjectId(NeutronPlayer player)
+        {
+            return Math.Abs(Rnd.Next(2771, (Settings.GENERATE_PLAYER_ID - 1)) + (int)(player.ID / (Settings.GENERATE_PLAYER_ID)));
+        }
+
         public static bool Odds()
         {
             if (ClassifiedOdds == null)
                 return LogHelper.Error("ClassifiedOdds it cannot be null.");
             return
                 !ClassifiedOdds.Contains(Rnd.Next(1, 100));
+        }
+
+        public static void SetColor(NeutronView neutronView, Color color)
+        {
+            Renderer renderer = neutronView.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+                renderer.material.color = color;
+        }
+
+        public static NeutronDefaultHandlerSettings GetDefaultHandler()
+        {
+            return NeutronMain.Synchronization.DefaultHandlers;
+        }
+
+        public static Settings GetSettings()
+        {
+            return NeutronMain.Settings;
         }
 
 #if !UNITY_2019_2_OR_NEWER

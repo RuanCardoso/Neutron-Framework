@@ -1,5 +1,5 @@
-﻿using System.Collections;
-using NeutronNetwork.Constants;
+﻿using NeutronNetwork.Constants;
+using System.Collections;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal.Components
@@ -7,20 +7,20 @@ namespace NeutronNetwork.Internal.Components
     public class NeutronStatistics : MonoBehaviour
     {
         #region Client;
-        public static NSP m_ClientTCP = new NSP();
-        public static NSP m_ClientUDP = new NSP();
+        public static InOutData m_ClientTCP = new InOutData();
+        public static InOutData m_ClientUDP = new InOutData();
         #endregion
 
         #region Server;
-        public static NSP m_ServerTCP = new NSP();
-        public static NSP m_ServerUDP = new NSP();
+        public static InOutData m_ServerTCP = new InOutData();
+        public static InOutData m_ServerUDP = new InOutData();
         #endregion
 
         #region Events
-        public static NeutronEventNoReturn<NSP[]> OnChangedStatistics = new NeutronEventNoReturn<NSP[]>();
+        public static NeutronEventNoReturn<InOutData[]> OnChangedStatistics;
         #endregion
 
-        private NSP[] m_Profilers = new[] { m_ClientTCP, m_ClientUDP, m_ServerTCP, m_ServerUDP };
+        private InOutData[] m_Profilers = new[] { m_ClientTCP, m_ClientUDP, m_ServerTCP, m_ServerUDP };
 
         private void Start()
         {
@@ -31,8 +31,8 @@ namespace NeutronNetwork.Internal.Components
         {
             while (true)
             {
-                yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND);
-                OnChangedStatistics.Invoke(m_Profilers);
+                yield return new WaitForSeconds(Settings.ONE_PER_SECOND);
+                OnChangedStatistics?.Invoke(m_Profilers);
                 #region Reset
                 foreach (var l_Profiler in m_Profilers)
                     l_Profiler.Reset();

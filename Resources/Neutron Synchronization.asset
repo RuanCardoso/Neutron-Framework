@@ -12,53 +12,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9594f63414f01442ae09456262e8716, type: 3}
   m_Name: Neutron Synchronization
   m_EditorClassIdentifier: 
-  SynchronizationHandlers:
-    iRPC: []
-    gRPC: []
-    OnNeutronSerializeView: []
   DefaultHandlers:
+    OnGetAllPlayersOnConnection:
+      _targetTo: 2
+      _tunnelingTo: 1
+      _protocol: 0
     OnPlayerNicknameChanged:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerDisconnected:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerJoinedChannel:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerJoinedRoom:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerLeaveRoom:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerLeaveChannel:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerPropertiesChanged:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnRoomPropertiesChanged:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0
     OnPlayerDestroyed:
-      sendTo: 0
-      broadcast: 5
-      cacheMode: 0
-      protocol: 0
+      _targetTo: 0
+      _tunnelingTo: 5
+      _protocol: 0

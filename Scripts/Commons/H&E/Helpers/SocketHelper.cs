@@ -1,78 +1,72 @@
+using NeutronNetwork.Extensions;
+using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Interfaces;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using NeutronNetwork;
-using NeutronNetwork.Extensions;
-using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Internal.Interfaces;
-using NeutronNetwork.Server;
-using NeutronNetwork.Server.Internal;
-using UnityEngine;
 
 namespace NeutronNetwork.Helpers
 {
     public static class SocketHelper
     {
-        public static bool GetPlayer(TcpClient nSocket, out NeutronPlayer nPlayer)
+        public static bool GetPlayer(TcpClient client, out NeutronPlayer player)
         {
-            return Neutron.Server.PlayersBySocket.TryGetValue(nSocket, out nPlayer);
+            return Neutron.Server.PlayersBySocket.TryGetValue(client, out player);
         }
 
-        public static bool AddPlayer(NeutronPlayer nPlayer)
+        public static bool AddPlayer(NeutronPlayer player)
         {
-            return Neutron.Server.PlayersBySocket.TryAdd(nPlayer.m_TcpClient, nPlayer)
-                && MatchmakingHelper.AddPlayer(nPlayer);
+            return Neutron.Server.PlayersBySocket.TryAdd(player.TcpClient, player)
+                && MatchmakingHelper.AddPlayer(player);
         }
 
-        public static bool RemovePlayerFromServer(NeutronPlayer nPlayer)
+        public static bool RemovePlayerFromServer(NeutronPlayer player)
         {
-            bool tryRemove = Neutron.Server.PlayersBySocket.TryRemove(nPlayer.m_TcpClient, out NeutronPlayer __)
-                && Neutron.Server.PlayersById.TryRemove(nPlayer.ID, out NeutronPlayer _);
+            bool tryRemove = Neutron.Server.PlayersBySocket.TryRemove(player.TcpClient, out NeutronPlayer __)
+                && Neutron.Server.PlayersById.TryRemove(player.ID, out NeutronPlayer _);
             if (tryRemove)
             {
-                Neutron.Server.m_PooledIds.Enqueue(nPlayer.ID);
-                if (nPlayer.rPEndPoint != null)
+                Neutron.Server._pooledIds.Enqueue(player.ID);
+                if (player.RemoteEndPoint != null)
                 {
-                    string addr = nPlayer.rPEndPoint.Address.ToString();
+                    string addr = player.RemoteEndPoint.Address.ToString();
                     if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
                         Neutron.Server.RegisteredConnectionsByIp[addr] = --value;
                 }
 
-                PlayerHelper.Disconnect(nPlayer, "Exited");
+                PlayerHelper.Disconnect(player, "Exited");
                 //MatchmakingHelper.DestroyPlayer(nPlayer);
 
-                if (nPlayer.IsInRoom())
+                if (player.IsInRoom())
                 {
-                    INeutronMatchmaking matchmaking = nPlayer.Matchmaking;
+                    INeutronMatchmaking matchmaking = player.Matchmaking;
                     if (matchmaking != null)
                     {
-                        if (matchmaking.RemovePlayer(nPlayer))
-                            MatchmakingHelper.Leave(nPlayer, leaveChannel: false);
-                        if (nPlayer.IsInChannel())
+                        if (matchmaking.Remove(player))
+                            MatchmakingHelper.Leave(player, leaveChannel: false);
+                        if (player.IsInChannel())
                         {
-                            matchmaking = nPlayer.Matchmaking;
-                            if (matchmaking.RemovePlayer(nPlayer))
-                                MatchmakingHelper.Leave(nPlayer, leaveRoom: false);
+                            matchmaking = player.Matchmaking;
+                            if (matchmaking.Remove(player))
+                                MatchmakingHelper.Leave(player, leaveRoom: false);
                         }
                     }
-                    else LogHelper.Error("Matchmaking not found!");
+                    else
+                        LogHelper.Error("Matchmaking not found!");
                 }
                 else
                 {
-                    INeutronMatchmaking matchmaking = nPlayer.Matchmaking;
+                    INeutronMatchmaking matchmaking = player.Matchmaking;
                     if (matchmaking != null)
                     {
-                        if (matchmaking.RemovePlayer(nPlayer))
-                            MatchmakingHelper.Leave(nPlayer, leaveRoom: false);
+                        if (matchmaking.Remove(player))
+                            MatchmakingHelper.Leave(player, leaveRoom: false);
                     }
                 }
-                Interlocked.Decrement(ref Neutron.Server.CurrentPlayers);
+                Interlocked.Decrement(ref Neutron.Server.PlayerCount);
             }
             return tryRemove;
         }
@@ -105,45 +99,47 @@ namespace NeutronNetwork.Helpers
             });
         }
 
-        //The Server cannot transmit all data to nothing.
-        public static void Redirect(NeutronPlayer nSender, Protocol nProtocol, TargetTo nSendTo, byte[] nBuffer, NeutronPlayer[] nPlayers)
+        public static void Redirect(NeutronPlayer player, Protocol protocol, TargetTo targetTo, byte[] buffer, NeutronPlayer[] players)
         {
-            NeutronData dataBuffer = new NeutronData(nBuffer, nProtocol);
-            if (nSendTo == TargetTo.Me)
-                if (!nSender.IsServer)
-                    Neutron.Server.OnSendingData(nSender, dataBuffer);
-                else LogHelper.Error("The Server cannot transmit data to itself.");
+            NeutronData dataBuffer = new NeutronData(buffer, protocol);
+            if (targetTo == TargetTo.Me)
+                if (!player.IsServer)
+                    Neutron.Server.OnSendingData(player, dataBuffer);
+                else
+                    LogHelper.Error("The Server cannot transmit data to itself.");
             else
             {
-                if (nPlayers != null)
+                if (players != null)
                 {
-                    for (int i = 0; i < nPlayers.Length; i++)
+                    for (int i = 0; i < players.Length; i++)
                     {
-                        switch (nSendTo)
+                        switch (targetTo)
                         {
                             case TargetTo.All:
-                                Neutron.Server.OnSendingData(nPlayers[i], dataBuffer);
+                                Neutron.Server.OnSendingData(players[i], dataBuffer);
                                 break;
                             case TargetTo.Others:
-                                if (nPlayers[i].Equals(nSender))
+                                if (players[i].Equals(player))
                                     continue;
                                 else
-                                    Neutron.Server.OnSendingData(nPlayers[i], dataBuffer);
+                                    Neutron.Server.OnSendingData(players[i], dataBuffer);
                                 break;
                         }
                     }
                 }
+                else
+                    LogHelper.Error("The Server cannot transmit all data to nothing.");
             }
         }
 
-        public static bool LimitConnectionsByIP(TcpClient Socket)
+        public static bool AllowConnection(TcpClient client)
         {
-            string addr = ((IPEndPoint)Socket.Client.RemoteEndPoint).Address.ToString();
+            string addr = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
             if (addr != IPAddress.Loopback.ToString())
             {
                 if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int count))
                 {
-                    if (count > NeutronServer.LIMIT_OF_CONNECTIONS_BY_IP)
+                    if (count > NeutronMain.Settings.LIMIT_OF_CONN_BY_IP)
                         return false;
                     else
                     {
@@ -153,23 +149,25 @@ namespace NeutronNetwork.Helpers
                         }
                     }
                 }
-                else return Neutron.Server.RegisteredConnectionsByIp.TryAdd(addr, 1);
+                else
+                    return Neutron.Server.RegisteredConnectionsByIp.TryAdd(addr, 1);
             }
-            else return true;
+            else
+                return true;
         }
 
-        public static bool IsConnected(this TcpClient socket)
+        public static bool Poll(this TcpClient client)
         {
             try
             {
-                return !(socket.Client.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
+                return !(client.Client.Poll(1, SelectMode.SelectRead) && client.Available == 0);
             }
             catch (SocketException) { return false; }
         }
 
-        public static int GetFreePort(Protocol type)
+        public static int GetFreePort(Protocol protocol)
         {
-            switch (type)
+            switch (protocol)
             {
                 case Protocol.Udp:
                     {

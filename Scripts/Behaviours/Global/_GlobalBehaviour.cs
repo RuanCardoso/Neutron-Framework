@@ -4,6 +4,12 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork
 {
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CONNECTION)]

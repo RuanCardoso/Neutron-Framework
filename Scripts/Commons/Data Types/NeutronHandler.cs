@@ -1,5 +1,5 @@
-using System;
 using NeutronNetwork.Constants;
+using System;
 using UnityEngine;
 
 namespace NeutronNetwork.Server.Internal
@@ -10,14 +10,12 @@ namespace NeutronNetwork.Server.Internal
         #region Fields
         [SerializeField] private TargetTo _targetTo;
         [SerializeField] private TunnelingTo _tunnelingTo;
-        /*[SerializeField] */private Cache _cache;
         [SerializeField] private Protocol _protocol;
         #endregion
 
         #region Properties
         public TargetTo TargetTo { get => _targetTo; set => _targetTo = value; }
         public TunnelingTo TunnelingTo { get => _tunnelingTo; set => _tunnelingTo = value; }
-        public Cache Cache { get => _cache; set => _cache = value; }
         public Protocol Protocol { get => _protocol; set => _protocol = value; }
         #endregion
 
@@ -66,7 +64,7 @@ namespace NeutronNetwork.Server.Internal
         [SerializeField] private Cache _cache;
         [SerializeField] private Protocol _recProtocol;
         [SerializeField] private Protocol _sendProtocol;
-        [SerializeField] [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)] private int _sendRate = 15; //* Quantidade de sincronizações por segundo.
+        [SerializeField] [Range(Settings.MIN_SEND_RATE, Settings.MAX_SEND_RATE)] private int _sendRate = 15; //* Quantidade de sincronizações por segundo.
 
         public TargetTo TargetTo { get => _targetTo; set => _targetTo = value; }
         public TunnelingTo TunnelingTo { get => _tunnelingTo; set => _tunnelingTo = value; }

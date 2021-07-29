@@ -1,108 +1,142 @@
-using System.Collections.Generic;
-using System.Linq;
-using NeutronNetwork.Attributes;
-using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
-using NeutronNetwork.Server.Internal;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal
 {
-    public class MatchmakingBehaviour : INeutronMatchmaking
+    public class MatchmakingBehaviour : INeutronMatchmaking, ISerializationCallbackReceiver
     {
-        private int m_UniqueBufferID = 0;
-        [SerializeField] [ReadOnly] protected int m_ID;
+#if UNITY_EDITOR
+#pragma warning disable IDE0052
+        [SerializeField] [HideInInspector] private string Title = "Neutron";
+#pragma warning restore IDE0052
+#endif
+        #region Fields
+        [SerializeField] [ReadOnly] [AllowNesting] protected int _id;
+        [SerializeField] private string _name;
+        [SerializeField] [ReadOnly] [AllowNesting] private int _playerCount; // Only show in inspector.
+        [SerializeField] private int _maxPlayers; // Thread safe. Immutable
+        [SerializeField] [ResizableTextArea] private string _properties = "{\"Neutron\":\"Neutron\"}";
+        [SerializeField] [HorizontalLine] private PlayerDictionary _players;
+        [SerializeField] private SceneView _sceneView;
+        #endregion
+
+        #region Fields -> Not Serialized
+        private readonly Dictionary<(int, int), NeutronCache> _cachedPackets = new Dictionary<(int, int), NeutronCache>();
+        private int _cacheId;
+        #endregion
+
+        #region Properties
         /// <summary>
-        ///* Name of channel.
+        ///* Define o nome do atual Matchmaking.
         /// </summary>
-        public string Name { get => m_Name; set => m_Name = value; }
-        [SerializeField] private string m_Name;
+        public string Name { get => _name; set => _name = value; }
         /// <summary>
-        ///* Current amount of players serialized in inspector.
+        ///* Retorna a quantidade atual de jogadores do atual Matchmaking.
         /// </summary>
-        public int CountOfPlayers { get => m_CountOfPlayers; set => m_CountOfPlayers = value; }
-        [SerializeField, ReadOnly] private int m_CountOfPlayers; // Only show in inspector.
+        public int PlayerCount { get => _playerCount; set => _playerCount = value; }
         /// <summary>
-        ///* Max Players of channel.
+        ///* Define a quantidade máxima de jogadores do atual Matchmaking.
         /// </summary>
-        public int MaxPlayers { get => m_MaxPlayers; set => m_MaxPlayers = value; }
-        [SerializeField] private int m_MaxPlayers; // Thread safe. Immutable
+        public int MaxPlayers { get => _maxPlayers; set => _maxPlayers = value; }
         /// <summary>
-        ///* Properties of channel(JSON).
+        ///* Define as propridades do atual Matchmaking.
         /// </summary>
-        public string _ { get => m_Properties; set => m_Properties = value; }
-        [SerializeField] [HorizontalLineDown] private string m_Properties = "{\"Neutron\":\"Neutron\"}";
+        public string Properties { get => _properties; set => _properties = value; }
         /// <summary>
-        ///* Owner of room.
+        ///* O jogador dono do atual Matchmaking.
         /// </summary>
         public NeutronPlayer Owner { get; set; }
         /// <summary>
-        ///* Properties of channel.
+        ///* As propriedades do atual Matchmaking.
         /// </summary>
         public Dictionary<string, object> Get { get; set; }
         /// <summary>
-        ///* cache of players.
+        ///* O cache de pacotes do atual Matchmaking.
         /// </summary>
-        private Dictionary<(int, int), NeutronCache> CachedPackets => m_CachedPackets;
-        private Dictionary<(int, int), NeutronCache> m_CachedPackets = new Dictionary<(int, int), NeutronCache>();
+        private Dictionary<(int, int), NeutronCache> CachedPackets => _cachedPackets;
         /// <summary>
-        ///* list of players.
+        ///* A lista de jogadores do atual Matchmaking.
         /// </summary>
-        private PlayerDictionary Players => m_Players;
-        [SerializeField] [ReadOnly] private PlayerDictionary m_Players;
+        private PlayerDictionary PlayerDictionary => _players;
         /// <summary>
-        ///* Scene settings.
+        ///* O SceneView do atual Matchmaking.
         /// </summary>
-        public SceneView SceneSettings { get => m_SceneSettings; set => m_SceneSettings = value; }
-        [SerializeField] [HorizontalLineDown] private SceneView m_SceneSettings;
+        public SceneView SceneView { get => _sceneView; set => _sceneView = value; }
+        #endregion
 
-        public bool AddPlayer(NeutronPlayer player)
+        public bool Add(NeutronPlayer player)
         {
-            if (CountOfPlayers >= MaxPlayers)
+            if (PlayerCount >= MaxPlayers)
                 return LogHelper.Error("Matchmaking: failed to enter, exceeded the maximum players limit.");
             else
             {
                 bool TryValue;
-                if ((TryValue = Players.TryAdd(player.ID, player)))
-                    CountOfPlayers++;
+                if ((TryValue = PlayerDictionary.TryAdd(player.ID, player)))
+                    PlayerCount++;
                 return TryValue;
             }
         }
 
-        public bool RemovePlayer(NeutronPlayer player)
+        public void Add(NeutronCache neutronCache)
+        {
+            int id = neutronCache.Owner.ID;
+            switch (neutronCache.Cache)
+            {
+                case Cache.Overwrite:
+                    {
+                        (int, int) key = (id, neutronCache.Id);
+                        if (CachedPackets.ContainsKey(key))
+                            CachedPackets[key] = neutronCache;
+                        else
+                            CachedPackets.Add(key, neutronCache);
+                    }
+                    break;
+                case Cache.New:
+                    {
+                        (int, int) key = (id, ++_cacheId);
+                        CachedPackets.Add(key, neutronCache);
+                    }
+                    break;
+            }
+        }
+
+        public bool Remove(NeutronPlayer player)
         {
             bool TryValue;
-            if ((TryValue = Players.TryRemove(player.ID, out NeutronPlayer _)))
-                CountOfPlayers--;
+            if ((TryValue = PlayerDictionary.TryRemove(player.ID, out NeutronPlayer _)))
+            {
+                var cachedPackets = CachedPackets.Where(x => x.Value.Owner.Equals(player)).ToList();
+                foreach (var neutronCache in cachedPackets)
+                    CachedPackets.Remove(neutronCache.Key);
+                PlayerCount--;
+            }
             return TryValue;
         }
 
-        public NeutronPlayer[] GetPlayers()
+        public NeutronPlayer[] Players()
         {
-            return Players.Values.ToArray();
+            return PlayerDictionary.Values.ToArray();
         }
 
-        public void AddCache(NeutronCache buffer)
-        {
-            if (buffer.Cache == Cache.Overwrite)
-            {
-                (int, int) generateUniqueKey = (buffer.Id, buffer.Owner.ID);
-                if (CachedPackets.ContainsKey(generateUniqueKey))
-                    CachedPackets[generateUniqueKey] = buffer;
-                else CachedPackets.Add(generateUniqueKey, buffer);
-            }
-            else if (buffer.Cache == Cache.New)
-            {
-                (int, int) generateUniqueKey = (buffer.Owner.ID, ++m_UniqueBufferID);
-                CachedPackets.Add(generateUniqueKey, buffer);
-            }
-        }
-
-        public NeutronCache[] GetCaches()
+        public NeutronCache[] Caches()
         {
             return CachedPackets.Values.ToArray();
+        }
+
+        public void OnBeforeSerialize()
+        {
+
+        }
+
+        public void OnAfterDeserialize()
+        {
+#if UNITY_EDITOR
+            Title = _name;
+#endif
         }
     }
 }

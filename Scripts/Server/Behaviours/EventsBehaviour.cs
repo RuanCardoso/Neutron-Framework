@@ -1,8 +1,8 @@
-﻿using System;
-using UnityEngine;
-using NeutronNetwork.Internal.Interfaces;
-using NeutronNetwork.Constants;
+﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Interfaces;
+using System;
+using UnityEngine;
 
 namespace NeutronNetwork.Server.Internal
 {
@@ -13,27 +13,27 @@ namespace NeutronNetwork.Server.Internal
     public class EventsBehaviour : MonoBehaviour
     {
         #region MonoBehaviour
-        public void OnEnable()
+        public virtual void OnEnable()
         {
             #region Common Events
-            NeutronServer.m_OnAwake.Add(OnServerAwake);
-            NeutronServer.m_OnPlayerDisconnected.Add(OnPlayerDisconnected);
+            NeutronServer.OnAwake += OnServerAwake;
+            NeutronServer.OnPlayerDisconnected += OnPlayerDisconnected;
             #endregion
 
             #region Other
-            MatchmakingHelper.OnCustomBroadcast.Add(OnCustomBroadcast);
+            MatchmakingHelper.OnCustomBroadcast += OnCustomBroadcast;
             #endregion
         }
 
-        public void OnDisable()
+        public virtual void OnDisable()
         {
             #region Common Events
-            NeutronServer.m_OnAwake.Add(OnServerAwake);
-            NeutronServer.m_OnPlayerDisconnected.Add(OnPlayerDisconnected);
+            NeutronServer.OnAwake -= OnServerAwake;
+            NeutronServer.OnPlayerDisconnected -= OnPlayerDisconnected;
             #endregion
 
             #region Other
-            MatchmakingHelper.OnCustomBroadcast.Add(OnCustomBroadcast);
+            MatchmakingHelper.OnCustomBroadcast -= OnCustomBroadcast;
             #endregion
         }
 
@@ -45,23 +45,23 @@ namespace NeutronNetwork.Server.Internal
         #endregion
 
         #region Handlers
-        public virtual void OnPlayerDisconnected(NeutronPlayer nPlayer)
+        public virtual void OnPlayerDisconnected(NeutronPlayer player)
         {
-            if (nPlayer.rPEndPoint != null)
-                LogHelper.Info($"The Player [{nPlayer.rPEndPoint.ToString()}] Has been disconnected from server.");
+            if (player.RemoteEndPoint != null)
+                LogHelper.Info($"The Player [{player.RemoteEndPoint}] Has been disconnected from server.");
         }
 
-        public virtual void OnCheatDetected(NeutronPlayer nPlayer, string cheatName)
+        public virtual void OnCheatDetected(NeutronPlayer player, string name)
         {
-            LogHelper.Info($"Usando hack porraaaaaaaa -> {nPlayer.Nickname}");
+            LogHelper.Info($"Usando hack porraaaaaaaa -> {player.Nickname}");
         }
 
-        public virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer nPlayer, TunnelingTo broadcast)
+        public virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer player, TunnelingTo tunnelingTo)
         {
-            switch (broadcast)
+            switch (tunnelingTo)
             {
                 default:
-                    LogHelper.Error("Broadcast Packet not implemented! " + broadcast);
+                    LogHelper.Error("Broadcast Packet not implemented! " + tunnelingTo);
                     return null;
             }
         }
@@ -74,8 +74,8 @@ namespace NeutronNetwork.Server.Internal
         {
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
-                SetOwner(channel, channel.ID);
-                SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.Owner, channel.SceneSettings.enablePhysics, channel.SceneSettings.sceneObjects, Neutron.Server.PhysicsMode);
+                SetOwner(channel, channel);
+                SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.Owner, channel.SceneView.HasPhysics, channel.SceneView.GameObjects, Neutron.Server.Physics);
                 CreateDefaultRoomsContainer(channel);
             }
         }
@@ -84,13 +84,13 @@ namespace NeutronNetwork.Server.Internal
         {
             foreach (NeutronRoom room in channel.GetRooms())
             {
-                channel.CountOfRooms++;
-                SetOwner(room, channel.ID, room.ID);
-                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Owner, room.SceneSettings.enablePhysics, room.SceneSettings.sceneObjects, Neutron.Server.PhysicsMode);
+                channel.RoomCount++;
+                SetOwner(room, channel, room);
+                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Owner, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
             }
         }
 
-        private void SetOwner<T>(T AmbientType, int currentChannel, int currentRoom = -1) where T : INeutronMatchmaking
+        private void SetOwner<T>(T AmbientType, NeutronChannel currentChannel, NeutronRoom currentRoom = null) where T : INeutronMatchmaking
         {
             Type type = AmbientType.GetType();
             if (AmbientType.Owner == null)
@@ -102,11 +102,11 @@ namespace NeutronNetwork.Server.Internal
                 if (owner != null)
                 {
                     if (type == typeof(NeutronChannel))
-                        owner.CurrentChannel = currentChannel;
+                        owner.Channel = currentChannel;
                     else if (type == typeof(NeutronRoom))
                     {
-                        owner.CurrentChannel = currentChannel;
-                        owner.CurrentRoom = currentRoom;
+                        owner.Channel = currentChannel;
+                        owner.Room = currentRoom;
                     }
                 }
                 owner.Matchmaking = MatchmakingHelper.Matchmaking(owner);

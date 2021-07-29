@@ -1,6 +1,13 @@
 ﻿using NeutronNetwork.Internal.Attributes;
 using System;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
+
 #region Byte
 /// <summary>
 ///* Define pacotes personalizados para extender o Neutron com funcionalidades proprias.
@@ -147,6 +154,10 @@ public enum Protocol : byte
     ///! Em breve dará suporte a transmissão confiável e ordenada(RUDP).
     /// </summary>
     Udp,
+    /// <summary>
+    /// 
+    /// </summary>
+    ReliableUdp
 }
 
 /// <summary>
@@ -167,6 +178,17 @@ public enum Cache : byte
     ///* É criado um novo cache para armazenar os dados.
     /// </summary>
     New
+}
+
+/// <summary>
+///* Define o tipo de objeto.
+/// </summary>
+[Network]
+public enum RegisterType : byte
+{
+    Player,
+    Dynamic,
+    Scene
 }
 #endregion
 
@@ -288,4 +310,16 @@ public enum Side : int
     Both
 }
 
+[Flags]
+public enum MethodType : int
+{
+    Void = 0,
+    Bool = 1,
+    View = 2,
+    Int = 4,
+    Object = 8,
+    String = 16,
+    Async = 32,
+    Task = 64
+}
 #endregion

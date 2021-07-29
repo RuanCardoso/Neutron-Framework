@@ -11,6 +11,12 @@ using System.Reflection;
 using System.Linq;
 using System.Threading.Tasks;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork
 {
     //* Classe base de todos os objetos.
@@ -47,12 +53,12 @@ namespace NeutronNetwork
         ///* Retorna se o objeto é seu, HasAuthority é uma alternativa.
         /// </summary>
         /// <returns></returns>
-        protected bool IsMine => IsClient && NeutronView._.IsMine(NeutronView.Owner);
+        protected bool IsMine => IsClient && NeutronView.This.IsMine(NeutronView.Player);
         /// <summary>
         ///* Retorna se você é o dono(master) da sala.<br/>
         /// </summary>
         /// <returns></returns>
-        protected bool IsMasterClient => IsClient && NeutronView._.IsMasterClient();
+        protected bool IsMasterClient => IsClient && NeutronView.This.IsMasterClient();
         /// <summary>
         ///* Retorna se o objeto é o objeto do lado do servidor, HasAuthority é uma alternativa.
         /// </summary>
@@ -288,9 +294,9 @@ namespace NeutronNetwork
             var Options = _runtimeSyncOptions[id];
             int uniqueID = id ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(NeutronView.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
+                NeutronView.This.iRPC(NeutronView.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(NeutronView.ID, uniqueID, writer, NeutronView.Owner, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
+                Neutron.Server.iRPC(NeutronView.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
         }
 
         /// <summary>
@@ -311,9 +317,9 @@ namespace NeutronNetwork
             var Options = _runtimeSyncOptions[id];
             int uniqueID = id ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(player.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
+                NeutronView.This.iRPC(player.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(player.ID, uniqueID, writer, NeutronView.Owner, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
+                Neutron.Server.iRPC(player.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
         }
 
         /// <summary>
@@ -334,9 +340,9 @@ namespace NeutronNetwork
             var Options = _runtimeSyncOptions[id];
             int uniqueID = id ^ ID;
             if (IsClient)
-                NeutronView._.iRPC(view.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
+                NeutronView.This.iRPC(view.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
             else if (IsServer)
-                Neutron.Server.iRPC(view.ID, uniqueID, writer, NeutronView.Owner, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
+                Neutron.Server.iRPC(view.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
         }
         #endregion
 
@@ -348,19 +354,18 @@ namespace NeutronNetwork
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.SetLength(0); //* Limpa o escritor.
                     using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
                     {
                         if (OnAutoSynchronization(writer, reader, true)) //* Invoca o metódo.
                         {
                             if (IsClient)
-                                NeutronView._.Send(writer, NeutronView, ID, option.TargetTo, option.TunnelingTo, option.RecProtocol, option.SendProtocol); //* Envia para a rede. Client->Server
+                                NeutronView.This.OnAutoSynchronization(writer, NeutronView, ID, option.TargetTo, option.TunnelingTo, option.RecProtocol, option.SendProtocol); //* Envia para a rede. Client->Server
                             else
-                                Neutron.Server.OnSerializeView(NeutronView.Owner, NeutronView, ID, writer, option.TargetTo, option.TunnelingTo, option.SendProtocol); //* Envia para a rede. Server->Client
+                                Neutron.Server.OnAutoSynchronization(NeutronView.Player, NeutronView, ID, writer, option.TargetTo, option.TunnelingTo, option.SendProtocol); //* Envia para a rede. Server->Client
                         }
                     }
                 }
-                yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND / option.SendRate); //* SendRate, envios por segundo.
+                yield return new WaitForSeconds(Settings.ONE_PER_SECOND / option.SendRate); //* SendRate, envios por segundo.
             }
         }
         /// <summary>

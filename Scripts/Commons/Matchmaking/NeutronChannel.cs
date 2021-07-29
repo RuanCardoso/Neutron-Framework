@@ -1,115 +1,117 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
-using NeutronNetwork.Internal.Attributes;
-using System.Runtime.Serialization;
-using NeutronNetwork.Json;
-using System.Linq;
+﻿using NeutronNetwork.Interfaces;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
-using NeutronNetwork.Interfaces;
-using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Json;
 using NeutronNetwork.Naughty.Attributes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using UnityEngine;
 
 namespace NeutronNetwork
 {
     [Serializable]
     public class NeutronChannel : MatchmakingBehaviour, INeutronSerializable, INeutron, IEquatable<NeutronChannel>, IEqualityComparer<NeutronChannel>
     {
+        #region Fields
+        [SerializeField] [ReadOnly] [HorizontalLine] [AllowNesting] private int roomCount;
+        [SerializeField] private int _maxRooms;
+        [SerializeField] [HorizontalLine] private RoomDictionary _rooms;
+        #endregion
+
+        #region Properties
         /// <summary>
-        ///* ID of channel.
+        ///* Retorna o identificador do canal.
         /// </summary>
-        public int ID { get => m_ID; set => m_ID = value; }
+        public int ID { get => _id; set => _id = value; }
         /// <summary>
-        ///* Current amount of rooms.
+        ///* Retorna a quantidade de salas neste canal.
         /// </summary>
-        public int CountOfRooms { get => m_CountOfRooms; set => m_CountOfRooms = value; }
-        [SerializeField] [ReadOnly] private int m_CountOfRooms;
+        public int RoomCount { get => roomCount; set => roomCount = value; }
         /// <summary>
-        ///* Max rooms of channel.
+        ///* Quantidade máxima de salas permitida neste canal.
         /// </summary>
-        public int MaxRooms { get => m_MaxRooms; private set => m_MaxRooms = value; }
-        [SerializeField] [HorizontalLineDown] private int m_MaxRooms;
-        /// <summary>
-        ///* list of rooms.
-        /// </summary>
-        [SerializeField] private RoomDictionary Rooms;
+        public int MaxRooms { get => _maxRooms; private set => _maxRooms = value; }
+        #endregion
 
         public NeutronChannel() { }
 
-        public NeutronChannel(int ID, string Name, int maxPlayers, string properties)
+        public NeutronChannel(int id, string name, int maxPlayers, string properties)
         {
-            this.ID = ID;
-            this.Name = Name;
-            this.MaxPlayers = maxPlayers;
-            this._ = properties;
+            ID = id;
+            Name = name;
+            MaxPlayers = maxPlayers;
+            Properties = properties;
         }
 
-        public NeutronChannel(SerializationInfo info, StreamingContext context)
+        public NeutronChannel(SerializationInfo info, StreamingContext context) // deserialization
         {
             ID = info.GetInt32("ID");
             Name = info.GetString("NM");
-            CountOfPlayers = info.GetInt32("CP");
-            m_CountOfRooms = info.GetInt32("CR");
+            PlayerCount = info.GetInt32("CP");
+            roomCount = info.GetInt32("CR");
             MaxPlayers = info.GetInt32("MP");
             MaxRooms = info.GetInt32("MR");
-            _ = info.GetString("_");
-            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(_);
+            Properties = info.GetString("_");
+            //////////////////////////////////////// Instantiate ////////////////////////////////////
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
+            SceneView = new SceneView();
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        public void GetObjectData(SerializationInfo info, StreamingContext context) // serialization
         {
             info.AddValue("ID", ID);
             info.AddValue("NM", Name);
-            info.AddValue("CP", CountOfPlayers);
-            info.AddValue("CR", CountOfRooms);
+            info.AddValue("CP", PlayerCount);
+            info.AddValue("CR", RoomCount);
             info.AddValue("MP", MaxPlayers);
             info.AddValue("MR", MaxRooms);
-            info.AddValue("_", _);
+            info.AddValue("_", Properties);
         }
 
         public bool AddRoom(NeutronRoom room)
         {
-            if (m_CountOfRooms >= MaxRooms)
+            if (roomCount >= MaxRooms)
                 return LogHelper.Error("Matchmaking: failed to enter, exceeded the maximum rooms limit.");
             else
             {
-                bool TryValue = false;
-                if ((TryValue = Rooms.TryAdd(room.ID, room)))
-                    m_CountOfRooms++;
+                bool TryValue;
+                if ((TryValue = _rooms.TryAdd(room.ID, room)))
+                    roomCount++;
                 return TryValue;
             }
         }
 
-        public bool RoomExists(string name)
+        public bool GetRoom(string name)
         {
-            //lock (SyncRooms)
+            foreach (var room in _rooms.Values)
             {
-                foreach (var room in Rooms.Values)
-                {
-                    if (room.Name == name) return true;
-                    else continue;
-                }
-                return false;
+                if (room.Name == name)
+                    return true;
+                else
+                    continue;
             }
+            return false;
         }
 
         public NeutronRoom GetRoom(int index)
         {
-            if (Rooms.TryGetValue(index, out NeutronRoom l_Room))
-                return l_Room;
-            else return null;
+            if (_rooms.TryGetValue(index, out NeutronRoom room))
+                return room;
+            else
+                return null;
         }
 
         public NeutronRoom[] GetRooms()
         {
-            return Rooms.Values.ToArray();
+            return _rooms.Values.ToArray();
         }
 
-        public Boolean Equals(NeutronChannel other)
+        public Boolean Equals(NeutronChannel channel)
         {
-            return this.ID == other.ID;
+            return this.ID == channel.ID;
         }
 
         public Boolean Equals(NeutronChannel x, NeutronChannel y)

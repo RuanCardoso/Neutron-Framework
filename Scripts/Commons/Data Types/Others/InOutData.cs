@@ -2,7 +2,7 @@ using System.Threading;
 
 namespace NeutronNetwork.Internal
 {
-    public class NSP
+    public class InOutData
     {
         #region Fields
         private int _bytesOutgoing;

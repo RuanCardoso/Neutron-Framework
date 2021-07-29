@@ -1,27 +1,30 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using NeutronNetwork.Constants;
+﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
-using UnityEngine;
+using NeutronNetwork.Server;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
 
+/// <summary>
+///* Criado por: Ruan Cardoso(Brasil)
+///* Os br também são pica.
+///* Email: cardoso.ruan050322@gmail.com
+///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
+/// </summary>
 namespace NeutronNetwork.Client
 {
-    public class ClientBehaviour : MonoBehaviour
+    public class ClientBehaviour/* : MonoBehaviour*/
     {
         #region Socket
-        protected TcpClient TcpSocket;
-        protected UdpClient UdpSocket;
+        protected TcpClient TcpClient;
+        protected UdpClient UdpClient;
         #endregion
 
         #region Collections
-        public NeutronQueue<Action> ActionsDispatcher = new NeutronQueue<Action>();
-        public NeutronSafeDictionary<int, NeutronView> NetworkObjects = new NeutronSafeDictionary<int, NeutronView>();
-        public NeutronSafeDictionary<int, NeutronPlayer> PlayerConnections = new NeutronSafeDictionary<int, NeutronPlayer>();
+        //public NeutronSafeDictionary<int, NeutronView> Views = new NeutronSafeDictionary<int, NeutronView>();
+        public NeutronSafeDictionary<int, NeutronPlayer> Players = new NeutronSafeDictionary<int, NeutronPlayer>();
         #endregion
 
         #region Variables
@@ -34,32 +37,30 @@ namespace NeutronNetwork.Client
 
         public void Initialize()
         {
-            NeutronPlayer pServer = new NeutronPlayer(0)
-            {
-                IsServer = true,
-                Nickname = "Server",
-            };
-
             #region Provider
-            if (PlayerConnections.TryAdd(0, pServer))
+            if (Players.TryAdd(0, NeutronServer.Player))
             {
                 for (int i = 0; i < NeutronMain.Settings.GlobalSettings.MaxPlayers; i++)
                 {
-                    int Key = (NeutronConstants.GENERATE_PLAYER_ID + i) + 1;
-                    PlayerConnections.TryAdd(Key, new NeutronPlayer(Key));
+                    int id = Settings.GENERATE_PLAYER_ID + i + 1;
+                    if (Players.TryAdd(id, new NeutronPlayer()
+                    {
+                        ID = id,
+                    }))
+                    { }
                 }
             }
             #endregion
 
-            TcpSocket = new TcpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Tcp)));
-            UdpSocket = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
+            TcpClient = new TcpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Tcp)));
+            UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
         }
 
         public void Dispose()
         {
             _cts.Cancel();
-            TcpSocket.Dispose();
-            UdpSocket.Dispose();
+            TcpClient.Dispose();
+            UdpClient.Dispose();
         }
 
         private void OnApplicationQuit()

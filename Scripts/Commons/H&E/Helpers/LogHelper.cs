@@ -68,9 +68,9 @@ namespace NeutronNetwork
 
         public static void StackTrace(Exception ex)
         {
-            Error($"Error: {ex.Message}");
             Debug.LogException(ex);
             Error($"Stacktrace: {ex.StackTrace}");
+            Error($"Error: {ex.Message}");
         }
     }
 }

@@ -1,5 +1,5 @@
-using System;
 using NeutronNetwork;
+using System;
 
 [Serializable]
 public class NeutronData
