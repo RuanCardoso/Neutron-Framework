@@ -9,11 +9,10 @@ namespace NeutronNetwork.Internal
 {
     public class MatchmakingBehaviour : INeutronMatchmaking, ISerializationCallbackReceiver
     {
-#if UNITY_EDITOR
 #pragma warning disable IDE0052
         [SerializeField] [HideInInspector] private string Title = "Neutron";
 #pragma warning restore IDE0052
-#endif
+
         #region Fields
         [SerializeField] [ReadOnly] [AllowNesting] protected int _id;
         [SerializeField] private string _name;
@@ -134,9 +133,7 @@ namespace NeutronNetwork.Internal
 
         public void OnAfterDeserialize()
         {
-#if UNITY_EDITOR
             Title = _name;
-#endif
         }
     }
 }
