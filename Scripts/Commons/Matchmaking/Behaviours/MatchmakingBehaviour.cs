@@ -1,13 +1,17 @@
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Json;
 using NeutronNetwork.Naughty.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using UnityEngine;
 
 namespace NeutronNetwork.Internal
 {
-    public class MatchmakingBehaviour : INeutronMatchmaking, ISerializationCallbackReceiver
+    [Serializable]
+    public class MatchmakingBehaviour : INeutronMatchmaking, INeutronSerializable, ISerializationCallbackReceiver
     {
 #pragma warning disable IDE0052
         [SerializeField] [HideInInspector] private string Title = "Neutron";
@@ -48,29 +52,62 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* O jogador dono do atual Matchmaking.
         /// </summary>
-        public NeutronPlayer Owner { get; set; }
+        public NeutronPlayer Player { get; set; }
         /// <summary>
         ///* As propriedades do atual Matchmaking.
         /// </summary>
-        public Dictionary<string, object> Get { get; set; }
+        public Dictionary<string, object> Get { get; }
         /// <summary>
         ///* O cache de pacotes do atual Matchmaking.
         /// </summary>
-        private Dictionary<(int, int), NeutronCache> CachedPackets => _cachedPackets;
+        public Dictionary<(int, int), NeutronCache> CachedPackets => _cachedPackets;
         /// <summary>
         ///* A lista de jogadores do atual Matchmaking.
         /// </summary>
-        private PlayerDictionary PlayerDictionary => _players;
+        public PlayerDictionary PlayerDictionary { get => _players; set => _players = value; }
         /// <summary>
         ///* O SceneView do atual Matchmaking.
         /// </summary>
         public SceneView SceneView { get => _sceneView; set => _sceneView = value; }
         #endregion
+        public MatchmakingBehaviour() { } //* the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
+
+        public MatchmakingBehaviour(string roomName, int maxPlayers, string properties)
+        {
+            Name = roomName;
+            MaxPlayers = maxPlayers;
+            Properties = properties;
+            ////////////////////// Initialize Instances ////////////////
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
+            SceneView = new SceneView();
+            PlayerDictionary = new PlayerDictionary();
+        }
+
+        public MatchmakingBehaviour(SerializationInfo info, StreamingContext context)
+        {
+            Name = info.GetString("name");
+            PlayerCount = info.GetInt32("playerCount");
+            MaxPlayers = info.GetInt32("maxPlayers");
+            Properties = info.GetString("properties");
+            ////////////////////// Initialize Instances ////////////////
+            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
+            SceneView = new SceneView();
+            _players = new PlayerDictionary();
+        }
+
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("name", Name);
+            info.AddValue("playerCount", PlayerCount);
+            info.AddValue("maxPlayers", MaxPlayers);
+            info.AddValue("properties", Properties);
+        }
 
         public bool Add(NeutronPlayer player)
         {
             if (PlayerCount >= MaxPlayers)
-                return LogHelper.Error("Matchmaking: failed to enter, exceeded the maximum players limit.");
+                return
+                    LogHelper.Error("Failed to enter, exceeded the maximum players limit.");
             else
             {
                 bool TryValue;
@@ -121,6 +158,11 @@ namespace NeutronNetwork.Internal
             return PlayerDictionary.Values.ToArray();
         }
 
+        public NeutronPlayer[] Players(Func<NeutronPlayer, bool> predicate)
+        {
+            return PlayerDictionary.Values.Where(predicate).ToArray();
+        }
+
         public NeutronCache[] Caches()
         {
             return CachedPackets.Values.ToArray();
@@ -128,7 +170,9 @@ namespace NeutronNetwork.Internal
 
         public void OnBeforeSerialize()
         {
-
+#if UNITY_EDITOR
+            Title = _name;
+#endif
         }
 
         public void OnAfterDeserialize()

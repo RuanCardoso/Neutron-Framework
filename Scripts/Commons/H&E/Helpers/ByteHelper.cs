@@ -10,127 +10,130 @@ namespace NeutronNetwork.Helpers
 {
     public static class ByteHelper
     {
+        public static NeutronEventWithReturn<object, byte[]> OnCustomSerialization;
+        public static NeutronEventWithReturn<byte[], object> OnCustomDeserialization;
+        public static NeutronEventWithReturn<byte[], byte[]> OnCustomCompression;
+        public static NeutronEventWithReturn<byte[], byte[]> OnCustomDecompression;
         public static byte[] Compress(this byte[] data)
         {
-            Compression compression = NeutronMain.Settings.GlobalSettings.Compression;
-            if (compression == Compression.Deflate)
+            Compression compression = OthersHelper.GetSettings().GlobalSettings.Compression;
+            switch (compression)
             {
-                using (MemoryStream output = new MemoryStream())
-                {
-                    using (DeflateStream dstream = new DeflateStream(output, CompressionLevel.Optimal))
+                case Compression.Deflate:
                     {
-                        dstream.Write(data, 0, data.Length);
+                        using (MemoryStream output = new MemoryStream())
+                        {
+                            using (DeflateStream dstream = new DeflateStream(output, CompressionLevel.Fastest))
+                            {
+                                dstream.Write(data, 0, data.Length);
+                            }
+                            return output.ToArray();
+                        }
                     }
-                    return output.ToArray();
-                }
-            }
-            else if (compression == Compression.Gzip)
-            {
-                if (data == null)
-                    throw new ArgumentNullException("inputData must be non-null");
 
-                using (var compressIntoMs = new MemoryStream())
-                {
-                    using (var gzs = new BufferedStream(new GZipStream(compressIntoMs,
-                        CompressionMode.Compress), 64 * 1024))
+                case Compression.Gzip:
                     {
-                        gzs.Write(data, 0, data.Length);
+                        using (var compressIntoMs = new MemoryStream())
+                        {
+                            using (var gzs = new BufferedStream(new GZipStream(compressIntoMs,
+                                CompressionMode.Compress), 64 * 1024))
+                            {
+                                gzs.Write(data, 0, data.Length);
+                            }
+                            return compressIntoMs.ToArray();
+                        }
                     }
-                    return compressIntoMs.ToArray();
-                }
+                case Compression.Custom:
+                    return OnCustomCompression?.Invoke(data);
+                default:
+                    return data;
             }
-            else return data;
         }
 
         public static byte[] Decompress(this byte[] data)
         {
-            Compression compression = NeutronMain.Settings.GlobalSettings.Compression;
-            if (compression == Compression.Deflate)
+            Compression compression = OthersHelper.GetSettings().GlobalSettings.Compression;
+            switch (compression)
             {
-                using (MemoryStream input = new MemoryStream(data))
-                {
-                    using (MemoryStream output = new MemoryStream())
+                case Compression.Deflate:
                     {
-                        using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+                        using (MemoryStream input = new MemoryStream(data))
                         {
-                            dstream.CopyTo(output);
+                            using (MemoryStream output = new MemoryStream())
+                            {
+                                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+                                {
+                                    dstream.CopyTo(output);
+                                }
+                                return output.ToArray();
+                            }
                         }
-                        return output.ToArray();
                     }
-                }
-            }
-            else if (compression == Compression.Gzip)
-            {
-                if (data == null)
-                    throw new ArgumentNullException("inputData must be non-null");
-
-                using (var compressedMs = new MemoryStream(data))
-                {
-                    using (var decompressedMs = new MemoryStream())
+                case Compression.Gzip:
                     {
-                        using (var gzs = new BufferedStream(new GZipStream(compressedMs,
-                            CompressionMode.Decompress), 64 * 1024))
+                        using (var compressedMs = new MemoryStream(data))
                         {
-                            gzs.CopyTo(decompressedMs);
+                            using (var decompressedMs = new MemoryStream())
+                            {
+                                using (var gzs = new BufferedStream(new GZipStream(compressedMs,
+                                    CompressionMode.Decompress), 64 * 1024))
+                                {
+                                    gzs.CopyTo(decompressedMs);
+                                }
+                                return decompressedMs.ToArray();
+                            }
                         }
-                        return decompressedMs.ToArray();
                     }
-                }
+                case Compression.Custom:
+                    return OnCustomDecompression?.Invoke(data);
+                default:
+                    return data;
             }
-            else return data;
         }
 
         public static byte[] Serialize(this object obj)
         {
-            try
+            Serialization serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
+            switch (serializationMode)
             {
-                Serialization serializationMode = NeutronMain.Settings.GlobalSettings.Serialization;
-                switch (serializationMode)
-                {
-                    case Serialization.Json:
+                case Serialization.Json:
+                    return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj));
+                case Serialization.Binary:
+                    {
+                        BinaryFormatter formatter = new BinaryFormatter();
+                        using (MemoryStream mStream = new MemoryStream())
                         {
-                            return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj));
+                            formatter.Serialize(mStream, obj);
+                            return mStream.ToArray();
                         }
-                    case Serialization.Binary:
-                        {
-                            BinaryFormatter formatter = new BinaryFormatter();
-                            using (MemoryStream mStream = new MemoryStream())
-                            {
-                                formatter.Serialize(mStream, obj);
-                                return mStream.ToArray();
-                            }
-                        }
-                    default:
-                        return null;
-                }
+                    }
+                case Serialization.Custom:
+                    return OnCustomSerialization?.Invoke(obj);
+                default:
+                    return null;
             }
-            catch (Exception ex) { LogHelper.StackTrace(ex); return null; }
         }
 
         public static T Deserialize<T>(this byte[] buffer)
         {
-            try
+            Serialization serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
+            switch (serialization)
             {
-                Serialization serialization = NeutronMain.Settings.GlobalSettings.Serialization;
-                switch (serialization)
-                {
-                    case Serialization.Json:
+                case Serialization.Json:
+                    return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(buffer));
+                case Serialization.Binary:
+                    {
+                        BinaryFormatter formatter = new BinaryFormatter();
+                        using (MemoryStream mStream = new MemoryStream(buffer))
                         {
-                            return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(buffer));
+                            return (T)formatter.Deserialize(mStream);
                         }
-                    case Serialization.Binary:
-                        {
-                            BinaryFormatter formatter = new BinaryFormatter();
-                            using (MemoryStream mStream = new MemoryStream(buffer))
-                            {
-                                return (T)formatter.Deserialize(mStream);
-                            }
-                        }
-                    default:
-                        return default;
-                }
+                    }
+                case Serialization.Custom:
+                    return (T)OnCustomDeserialization?.Invoke(buffer);
+                default:
+                    return default;
             }
-            catch (Exception ex) { LogHelper.StackTrace(ex); return default; }
         }
     }
 }

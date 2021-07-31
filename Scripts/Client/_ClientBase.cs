@@ -50,47 +50,46 @@ namespace NeutronNetwork.Client
         }
 
         //* Usado para enviar os dados para o servidor.
-        protected async void Send(NeutronWriter writer, Protocol protocol = Protocol.Tcp)
+        //* o pacote é usado apenas para definir se conta ou não os bytes enviados e recebidos.
+        protected async void Send(NeutronWriter writer, Protocol protocol = Protocol.Tcp, Packet packet = Packet.Empty)
         {
             try
             {
                 if (This.IsConnected)
                 {
-                    switch (protocol)
+                    using (NeutronWriter headerWriter = Neutron.PooledNetworkWriters.Pull())
                     {
-                        case Protocol.Tcp:
-                            {
-                                NetworkStream netStream = TcpClient.GetStream();
-                                using (NeutronWriter header = Neutron.PooledNetworkWriters.Pull())
+                        byte[] buffer = writer.ToArray().Compress();
+                        //* Cabeçalho da mensagem/dados.
+                        #region Header
+                        headerWriter.WriteExactly(buffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro(4 bytes), e a mensagem.
+                        #endregion
+                        byte[] headerBuffer = headerWriter.ToArray();
+                        switch (protocol)
+                        {
+                            case Protocol.Tcp:
                                 {
-                                    byte[] buffer = writer.ToArray();
-                                    #region Header
-                                    header.WriteFixedLength(buffer.Length); //* Pre-fixa o tamanho da mensagem no buffer.
-                                    header.Write(buffer); //* Os dados enviados junto do pre-fixo.
-                                    #endregion
-
-                                    byte[] hBuffer = header.ToArray();
-                                    await netStream.WriteAsync(hBuffer, 0, hBuffer.Length); //* Envia os dados pro servidor.
-                                    {
-                                        //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                        NeutronStatistics.m_ClientTCP.AddOutgoing(buffer.Length);
-                                    }
-                                }
-                            }
-                            break;
-                        case Protocol.Udp:
-                            {
-                                if ((NeutronMain.Settings.LagSimulationSettings.Drop && This.Player != null && This.Player.IsConnected) && !OthersHelper.Odds())
-                                    return;
-
-                                byte[] buffer = writer.ToArray();
-                                await UdpClient.SendAsync(buffer, buffer.Length, _udpEndPoint); //* Envia os dados pro servidor.
-                                {
+                                    NetworkStream netStream = TcpClient.GetStream();
+                                    await netStream.WriteAsync(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor.
+#if UNITY_EDITOR
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.m_ClientUDP.AddOutgoing(buffer.Length);
+                                    NeutronStatistics.m_ClientTCP.AddOutgoing(buffer.Length, packet);
+#endif
                                 }
-                            }
-                            break;
+                                break;
+                            case Protocol.Udp:
+                                {
+                                    if ((NeutronMain.Settings.LagSimulationSettings.Drop && This.Player != null && This.Player.IsConnected) && !OthersHelper.Odds())
+                                        return;
+
+                                    await UdpClient.SendAsync(headerBuffer, headerBuffer.Length, _udpEndPoint); //* Envia os dados pro servidor.
+#if UNITY_EDITOR
+                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                    NeutronStatistics.m_ClientUDP.AddOutgoing(buffer.Length, packet);
+#endif
+                                }
+                                break;
+                        }
                     }
                 }
             }
@@ -252,7 +251,7 @@ namespace NeutronNetwork.Client
         /// <returns></returns>
         public bool IsMasterClient()
         {
-            return This.Player.Room.Owner.Equals(This.Player);
+            return This.Player.Matchmaking.Player.Equals(This.Player);
         }
 
         /// <summary>

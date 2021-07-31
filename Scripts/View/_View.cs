@@ -10,11 +10,14 @@ namespace NeutronNetwork
 {
     public class View : MonoBehaviour
     {
-        [SerializeField] private NeutronPlayer _owner;
         /// <summary>
         ///* O Jogador dono deste objeto, é pra ele que você vai enviar as paradas.
         /// </summary>
-        public NeutronPlayer Owner { get => _owner; set => _owner = value; }
+        public NeutronPlayer Player { get; set; }
+        /// <summary>
+        ///* Define se está pronto para o uso.
+        /// </summary>
+        public bool IsReady => Player != null;
 
         public virtual void Awake()
         {
@@ -28,7 +31,8 @@ namespace NeutronNetwork
 
         public virtual void Update()
         {
-
+            if (IsReady)
+                name = $"{Player.Nickname} [{Player.ID}]";
         }
     }
 }

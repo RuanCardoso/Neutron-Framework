@@ -7,9 +7,7 @@ namespace NeutronNetwork.Helpers
 {
     public static class MatchmakingHelper
     {
-        #region Events
         public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomBroadcast;
-        #endregion
 
         public static bool GetPlayer(int id, out NeutronPlayer player)
         {
@@ -69,7 +67,6 @@ namespace NeutronNetwork.Helpers
 
         public static NeutronPlayer[] Tunneling(NeutronPlayer player, TunnelingTo tunnelingTo)
         {
-            INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
             switch (tunnelingTo)
             {
                 case TunnelingTo.Me:
@@ -83,24 +80,31 @@ namespace NeutronNetwork.Helpers
                         if (player.IsInChannel())
                             return player.Channel.Players();
                         else
+                        {
+                            player.Message(Packet.Empty, "Failed to direct packet, channel not found. Join a channel before sending the packet.");
                             return null;
+                        }
                     }
                 case TunnelingTo.Room:
                     {
                         if (player.IsInRoom())
                             return player.Room.Players();
                         else
+                        {
+                            player.Message(Packet.Empty, "Failed to direct packet, room not found. Join a room before sending the packet.");
                             return null;
+                        }
                     }
                 case TunnelingTo.Auto:
                     {
-                        if (neutronMatchmaking != null)
-                            return neutronMatchmaking.Players();
+                        INeutronMatchmaking matchmaking = player.Matchmaking;
+                        if (matchmaking != null)
+                            return matchmaking.Players();
                         else
-                            return Neutron.Server.PlayersBySocket.Values.ToArray();
+                            return Tunneling(player, TunnelingTo.Server);
                     }
                 default:
-                    return OnCustomBroadcast.Invoke(player, tunnelingTo);
+                    return OnCustomBroadcast?.Invoke(player, tunnelingTo);
             }
         }
     }

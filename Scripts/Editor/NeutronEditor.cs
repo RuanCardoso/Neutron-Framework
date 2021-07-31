@@ -31,8 +31,10 @@ public class NeutronEditor : EditorWindow
             l_Controllers = new GameObject("Controllers");
             GameObject l_Client = new GameObject("Client");
             GameObject l_Server = new GameObject("Server");
+            GameObject l_Custom = new GameObject("Custom");
             l_Client.transform.SetParent(l_Controllers.transform);
             l_Server.transform.SetParent(l_Controllers.transform);
+            l_Custom.transform.SetParent(l_Controllers.transform);
             l_Server.AddComponent<NeutronServer>();
             EditorUtility.SetDirty(l_Controllers);
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());

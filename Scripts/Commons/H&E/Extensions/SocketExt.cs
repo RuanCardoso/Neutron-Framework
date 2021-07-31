@@ -5,19 +5,34 @@ namespace NeutronNetwork.Extensions
 {
     public static class SocketExt
     {
-        public static void Send(this NeutronPlayer player, NeutronWriter writer, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        public static void Write(this NeutronPlayer sender, NeutronPlayer dataSender, NeutronWriter writer, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol, Packet packet = Packet.Empty)
         {
-            SocketHelper.Redirect(player, protocol, targetTo, writer.ToArray(), MatchmakingHelper.Tunneling(player, tunnelingTo));
+            SocketHelper.Redirect(sender, dataSender, protocol, targetTo, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, tunnelingTo));
         }
 
-        public static void Send(this NeutronPlayer player, NeutronWriter writer, NeutronDefaultHandlerOptions handler)
+        public static void Write(this NeutronPlayer sender, NeutronPlayer dataSender, NeutronWriter writer, NeutronDefaultHandlerOptions handler, Packet packet = Packet.Empty)
         {
-            SocketHelper.Redirect(player, handler.Protocol, handler.TargetTo, writer.ToArray(), MatchmakingHelper.Tunneling(player, handler.TunnelingTo));
+            SocketHelper.Redirect(sender, dataSender, handler.Protocol, handler.TargetTo, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, handler.TunnelingTo));
         }
 
-        public static void Send(this NeutronPlayer player, NeutronWriter writer)
+        public static void Write(this NeutronPlayer sender, NeutronPlayer dataSender, NeutronWriter writer, Packet packet = Packet.Empty)
         {
-            SocketHelper.Redirect(player, Protocol.Tcp, TargetTo.Me, writer.ToArray(), MatchmakingHelper.Tunneling(player, TunnelingTo.Me));
+            SocketHelper.Redirect(sender, dataSender, Protocol.Tcp, TargetTo.Me, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, TunnelingTo.Me));
+        }
+
+        public static void Write(this NeutronPlayer sender, NeutronWriter writer, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol, Packet packet = Packet.Empty)
+        {
+            SocketHelper.Redirect(sender, sender, protocol, targetTo, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, tunnelingTo));
+        }
+
+        public static void Write(this NeutronPlayer sender, NeutronWriter writer, NeutronDefaultHandlerOptions handler, Packet packet = Packet.Empty)
+        {
+            SocketHelper.Redirect(sender, sender, handler.Protocol, handler.TargetTo, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, handler.TunnelingTo));
+        }
+
+        public static void Write(this NeutronPlayer sender, NeutronWriter writer, Packet packet = Packet.Empty)
+        {
+            SocketHelper.Redirect(sender, sender, Protocol.Tcp, TargetTo.Me, packet, writer.ToArray(), MatchmakingHelper.Tunneling(sender, TunnelingTo.Me));
         }
     }
 }

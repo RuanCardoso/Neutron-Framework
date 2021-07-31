@@ -13,10 +13,6 @@ MonoBehaviour:
   m_Name: Neutron Synchronization
   m_EditorClassIdentifier: 
   DefaultHandlers:
-    OnGetAllPlayersOnConnection:
-      _targetTo: 2
-      _tunnelingTo: 1
-      _protocol: 0
     OnPlayerNicknameChanged:
       _targetTo: 0
       _tunnelingTo: 5
@@ -25,7 +21,7 @@ MonoBehaviour:
       _targetTo: 0
       _tunnelingTo: 5
       _protocol: 0
-    OnPlayerJoinedChannel:
+    OnPlayerCreatedRoom:
       _targetTo: 0
       _tunnelingTo: 5
       _protocol: 0

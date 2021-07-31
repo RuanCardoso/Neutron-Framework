@@ -9,13 +9,17 @@ namespace NeutronNetwork.Internal
         private int _bytesIncoming;
         #endregion
 
-        public void AddIncoming(int value)
+        public void AddIncoming(int value, Packet packet = Packet.Empty)
         {
+            if (packet == Packet.Ping)
+                return;
             Interlocked.Add(ref _bytesIncoming, value);
         }
 
-        public void AddOutgoing(int value)
+        public void AddOutgoing(int value, Packet packet = Packet.Empty)
         {
+            if (packet == Packet.Ping)
+                return;
             Interlocked.Add(ref _bytesOutgoing, value);
         }
 

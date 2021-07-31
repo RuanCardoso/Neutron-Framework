@@ -54,11 +54,9 @@ namespace NeutronNetwork.Constants
     [Serializable]
     public class NeutronDefaultHandlerSettings
     {
-        [AllowNesting] [ReadOnly] public NeutronDefaultHandlerOptions OnGetAllPlayersOnConnection = new NeutronDefaultHandlerOptions(TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerNicknameChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerDisconnected = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerCreatedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerJoinedChannel = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerJoinedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerLeaveRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public NeutronDefaultHandlerOptions OnPlayerLeaveChannel = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);

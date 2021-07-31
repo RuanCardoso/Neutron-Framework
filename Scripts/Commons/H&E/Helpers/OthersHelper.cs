@@ -52,7 +52,7 @@ namespace NeutronNetwork.Helpers
             if (percent > 100)
                 percent = 100;
 
-            // Inicializar a Matrix
+            // Inicializa a Matriz
             ClassifiedOdds = new int[percent];
             //Limpa a lista.
             Numbers.Clear();
@@ -66,17 +66,21 @@ namespace NeutronNetwork.Helpers
                 ClassifiedOdds[i] = Numbers[i];
         }
 
-        public static int GenerateDynamicObjectId(NeutronPlayer player)
-        {
-            return Math.Abs(Rnd.Next(2771, (Settings.GENERATE_PLAYER_ID - 1)) + (int)(player.ID / (Settings.GENERATE_PLAYER_ID)));
-        }
-
         public static bool Odds()
         {
             if (ClassifiedOdds == null)
                 return LogHelper.Error("ClassifiedOdds it cannot be null.");
             return
                 !ClassifiedOdds.Contains(Rnd.Next(1, 100));
+        }
+
+        public static Packet ReadPacket(byte[] packetBuffer)
+        {
+            using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
+            {
+                reader.SetBuffer(packetBuffer);
+                return reader.ReadPacket<Packet>();
+            }
         }
 
         public static void SetColor(NeutronView neutronView, Color color)

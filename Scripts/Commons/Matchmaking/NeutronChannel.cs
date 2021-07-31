@@ -38,48 +38,37 @@ namespace NeutronNetwork
 
         public NeutronChannel() { }
 
-        public NeutronChannel(int id, string name, int maxPlayers, string properties)
+        public NeutronChannel(int id, string name, int maxPlayers, string properties) : base(name, maxPlayers, properties)
         {
             ID = id;
-            Name = name;
-            MaxPlayers = maxPlayers;
-            Properties = properties;
         }
 
-        public NeutronChannel(SerializationInfo info, StreamingContext context) // deserialization
+        public NeutronChannel(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            ID = info.GetInt32("ID");
-            Name = info.GetString("NM");
-            PlayerCount = info.GetInt32("CP");
-            roomCount = info.GetInt32("CR");
-            MaxPlayers = info.GetInt32("MP");
-            MaxRooms = info.GetInt32("MR");
-            Properties = info.GetString("_");
-            //////////////////////////////////////// Instantiate ////////////////////////////////////
-            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
-            SceneView = new SceneView();
+            ID = info.GetInt32("id");
+            RoomCount = info.GetInt32("roomCount");
+            MaxRooms = info.GetInt32("maxRooms");
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context) // serialization
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("ID", ID);
-            info.AddValue("NM", Name);
-            info.AddValue("CP", PlayerCount);
-            info.AddValue("CR", RoomCount);
-            info.AddValue("MP", MaxPlayers);
-            info.AddValue("MR", MaxRooms);
-            info.AddValue("_", Properties);
+            base.GetObjectData(info, context);
+            {
+                info.AddValue("id", ID);
+                info.AddValue("roomCount", RoomCount);
+                info.AddValue("maxRooms", MaxRooms);
+            }
         }
 
         public bool AddRoom(NeutronRoom room)
         {
-            if (roomCount >= MaxRooms)
-                return LogHelper.Error("Matchmaking: failed to enter, exceeded the maximum rooms limit.");
+            if (RoomCount >= MaxRooms)
+                return LogHelper.Error("Failed to enter, exceeded the maximum rooms limit.");
             else
             {
                 bool TryValue;
                 if ((TryValue = _rooms.TryAdd(room.ID, room)))
-                    roomCount++;
+                    RoomCount++;
                 return TryValue;
             }
         }
@@ -107,6 +96,11 @@ namespace NeutronNetwork
         public NeutronRoom[] GetRooms()
         {
             return _rooms.Values.ToArray();
+        }
+
+        public NeutronRoom[] GetRooms(Func<NeutronRoom, bool> predicate)
+        {
+            return _rooms.Values.Where(predicate).ToArray();
         }
 
         public Boolean Equals(NeutronChannel channel)

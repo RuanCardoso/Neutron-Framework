@@ -1,6 +1,7 @@
 ﻿using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Server.Internal;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -24,6 +25,8 @@ namespace NeutronNetwork.Server
         #region Fields
         public GameObject[] DestroyObjects;
         [HorizontalLine] public LocalPhysicsMode Physics = LocalPhysicsMode.Physics3D;
+        public View View;
+        public EventsBehaviour EventsBehaviour;
         [ReadOnly] [HorizontalLine] public int PlayerCount;
         #endregion
 
@@ -35,6 +38,15 @@ namespace NeutronNetwork.Server
         public void Awake()
         {
 #if UNITY_2018_4_OR_NEWER
+            if (EventsBehaviour == null)
+            {
+                if (ServerBase.OnAwake == null)
+                    EventsBehaviour = gameObject.AddComponent<EventsBehaviour>();
+                else if (!LogHelper.Error("Events Behaviour not defined!"))
+                    return;
+                else
+                    return;
+            }
 #if UNITY_SERVER
         Console.Clear();
 #endif

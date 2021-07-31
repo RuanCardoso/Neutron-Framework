@@ -32,7 +32,7 @@ namespace NeutronNetwork.Client
         #endregion
 
         #region Threading
-        protected CancellationTokenSource _cts = new CancellationTokenSource();
+        protected CancellationTokenSource TokenSource = new CancellationTokenSource();
         #endregion
 
         public void Initialize()
@@ -58,7 +58,7 @@ namespace NeutronNetwork.Client
 
         public void Dispose()
         {
-            _cts.Cancel();
+            TokenSource.Cancel();
             TcpClient.Dispose();
             UdpClient.Dispose();
         }

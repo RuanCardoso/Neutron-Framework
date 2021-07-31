@@ -9,9 +9,9 @@ namespace NeutronNetwork.Internal.Interfaces
         int PlayerCount { get; set; }
         int MaxPlayers { get; set; }
         string Properties { get; set; }
-        NeutronPlayer Owner { get; set; }
-        SceneView SceneView { get; set; }
-        Dictionary<string, object> Get { get; set; }
+        NeutronPlayer Player { get; set; }
+        SceneView SceneView { get; }
+        Dictionary<string, object> Get { get; }
         #endregion
 
         #region Methods

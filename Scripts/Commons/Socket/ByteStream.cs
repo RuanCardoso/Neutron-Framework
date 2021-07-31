@@ -106,11 +106,6 @@ namespace NeutronNetwork
             Write((byte)(object)packet);
         }
 
-        public void WriteFixedLength(int length)
-        {
-            Write(length);
-        }
-
         /// <summary>
         ///* Escreve no fluxo de bytes uma instância do tipo <see cref="T"></see>.<br/>
         ///* A instância <see cref="T"/> é serializada utilizando a serialização definida nas configurações.
@@ -125,7 +120,7 @@ namespace NeutronNetwork
         /// </summary>
         public void WriteExactly(byte[] buffer)
         {
-            WriteFixedLength(buffer.Length);
+            Write(buffer.Length);
             Write(buffer);
         }
 
@@ -278,9 +273,9 @@ namespace NeutronNetwork
         public float[] ReadFloatArray()
         {
             byte[] buffer = ReadExactly();
-            float[] data = new float[buffer.Length / sizeof(float)];
-            Buffer.BlockCopy(buffer, 0, data, 0, buffer.Length);
-            return data;
+            float[] array = new float[buffer.Length / sizeof(float)];
+            Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
+            return array;
         }
 
         /// <summary>
@@ -305,6 +300,15 @@ namespace NeutronNetwork
         public byte[] ReadExactly()
         {
             return ReadBytes(ReadInt32());
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadExactly(out int size)
+        {
+            size = ReadInt32();
+            return ReadBytes(size);
         }
 
         /// <summary>
@@ -337,8 +341,7 @@ namespace NeutronNetwork
         public void SetBuffer(byte[] buffer)
         {
             Stream.Write(buffer, 0, buffer.Length);
-            if (_recycle)
-                SetPosition(0);
+            SetPosition(0);
         }
 
         /// <summary>

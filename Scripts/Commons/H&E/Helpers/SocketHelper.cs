@@ -78,7 +78,7 @@ namespace NeutronNetwork.Helpers
                 try
                 {
                     int bytesRead;
-                    while (offset < size) //* Por causa desse while eu executo em uma Task separada, pra não causar atraso no Thread de recebimento, assim interferindo no UDP.
+                    while (offset < size) //* Execute em uma task separada, evita problemas com o UDP.
                     {
                         int bytesRemaining = size - offset;
                         if ((bytesRead = await stream.ReadAsync(buffer, offset, bytesRemaining, token)) > 0)
@@ -88,47 +88,42 @@ namespace NeutronNetwork.Helpers
                     }
                     return offset == size;
                 }
-                catch (ObjectDisposedException)
-                {
-                    return false;
-                }
-                catch (IOException)
+                catch (Exception)
                 {
                     return false;
                 }
             });
         }
 
-        public static void Redirect(NeutronPlayer player, Protocol protocol, TargetTo targetTo, byte[] buffer, NeutronPlayer[] players)
+        public static void Redirect(NeutronPlayer sender, NeutronPlayer dataSender, Protocol protocol, TargetTo targetTo, Packet packet, byte[] buffer, NeutronPlayer[] tunnelingPlayers)
         {
-            NeutronData dataBuffer = new NeutronData(buffer, protocol);
+            NeutronData data = new NeutronData(buffer, dataSender, protocol, packet);
             if (targetTo == TargetTo.Me)
-                if (!player.IsServer)
-                    Neutron.Server.OnSendingData(player, dataBuffer);
+                if (!sender.IsServer)
+                    Neutron.Server.OnSendingData(sender, data);
                 else
                     LogHelper.Error("The Server cannot transmit data to itself.");
             else
             {
-                if (players != null)
+                if (tunnelingPlayers != null)
                 {
-                    for (int i = 0; i < players.Length; i++)
+                    for (int i = 0; i < tunnelingPlayers.Length; i++)
                     {
                         switch (targetTo)
                         {
                             case TargetTo.All:
-                                Neutron.Server.OnSendingData(players[i], dataBuffer);
+                                Neutron.Server.OnSendingData(tunnelingPlayers[i], data);
                                 break;
                             case TargetTo.Others:
-                                if (players[i].Equals(player))
+                                if (tunnelingPlayers[i].Equals(sender))
                                     continue;
-                                else
-                                    Neutron.Server.OnSendingData(players[i], dataBuffer);
+                                Neutron.Server.OnSendingData(tunnelingPlayers[i], data);
                                 break;
                         }
                     }
                 }
                 else
-                    LogHelper.Error("The Server cannot transmit all data to nothing.");
+                    LogHelper.Error("The server cannot transmit all data to nothing.");
             }
         }
 

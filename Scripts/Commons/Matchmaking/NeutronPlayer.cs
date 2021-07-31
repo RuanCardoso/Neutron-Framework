@@ -70,7 +70,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Propriedades personalizades do jogador.
         /// </summary>
-        public Dictionary<string, object> Get { get; set; }
+        public Dictionary<string, object> Get { get; }
         /// <summary>
         ///* Seu atual Matchmaking, Sala, Grupo ou Channel.<br/>
         ///* Retorna o ultimo tipo de Matchmaking ingressado.
@@ -95,7 +95,7 @@ namespace NeutronNetwork
         {
             #region Properties
             ID = id;
-            Nickname = PlayerHelper.GenerateNickname(id);
+            Nickname = $"Player#{id}";
             #endregion
 
             #region Socket
@@ -111,21 +111,18 @@ namespace NeutronNetwork
 
         public NeutronPlayer(SerializationInfo info, StreamingContext context)
         {
-            ID = info.GetInt32("ID");
-            Nickname = info.GetString("NN");
-            //_currentChannel = info.GetInt32("CC");
-            //CurrentRoom = info.GetInt32("CR");
-            Properties = info.GetString("_");
+            ID = info.GetInt32("id");
+            Nickname = info.GetString("nickname");
+            Properties = info.GetString("properties");
+            //////////////////// Initialize Instances ////////////
             Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("ID", ID);
-            info.AddValue("NN", Nickname);
-            //info.AddValue("CC", CurrentChannel);
-            //info.AddValue("CR", CurrentRoom);
-            info.AddValue("_", Properties);
+            info.AddValue("id", ID);
+            info.AddValue("nickname", Nickname);
+            info.AddValue("properties", Properties);
         }
 
         public Boolean Equals(NeutronPlayer player)
@@ -161,7 +158,9 @@ namespace NeutronNetwork
 
         public void OnBeforeSerialize()
         {
-
+#if UNITY_EDITOR
+            Title = _nickname;
+#endif
         }
 
         public void OnAfterDeserialize()

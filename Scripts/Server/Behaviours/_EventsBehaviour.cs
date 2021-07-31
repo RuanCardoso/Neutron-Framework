@@ -75,7 +75,7 @@ namespace NeutronNetwork.Server.Internal
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
                 SetOwner(channel, channel);
-                SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.Owner, channel.SceneView.HasPhysics, channel.SceneView.GameObjects, Neutron.Server.Physics);
+                SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.Player, channel.SceneView.HasPhysics, channel.SceneView.GameObjects, Neutron.Server.Physics);
                 CreateDefaultRoomsContainer(channel);
             }
         }
@@ -86,14 +86,14 @@ namespace NeutronNetwork.Server.Internal
             {
                 channel.RoomCount++;
                 SetOwner(room, channel, room);
-                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Owner, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
+                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Player, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
             }
         }
 
         private void SetOwner<T>(T AmbientType, NeutronChannel currentChannel, NeutronRoom currentRoom = null) where T : INeutronMatchmaking
         {
             Type type = AmbientType.GetType();
-            if (AmbientType.Owner == null)
+            if (AmbientType.Player == null)
             {
                 NeutronPlayer owner = new NeutronPlayer();
                 owner.IsServer = true;
@@ -110,7 +110,7 @@ namespace NeutronNetwork.Server.Internal
                     }
                 }
                 owner.Matchmaking = MatchmakingHelper.Matchmaking(owner);
-                AmbientType.Owner = owner;
+                AmbientType.Player = owner;
             }
         }
         #endregion

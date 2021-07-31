@@ -40,39 +40,28 @@ namespace NeutronNetwork
 
         public NeutronRoom() { } //* the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
 
-        public NeutronRoom(int id, string roomName, int maxPlayers, bool hasPassword, bool isVisible, string options)
+        public NeutronRoom(int id, string name, int maxPlayers, bool hasPassword, bool isVisible, string properties) : base(name, maxPlayers, properties)
         {
             ID = id;
-            Name = roomName;
-            MaxPlayers = maxPlayers;
             HasPassword = hasPassword;
             IsVisible = isVisible;
-            Properties = options;
         }
 
-        public NeutronRoom(SerializationInfo info, StreamingContext context)
+        public NeutronRoom(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            ID = info.GetInt32("ID");
-            Name = info.GetString("NM");
-            PlayerCount = info.GetInt32("CP");
-            MaxPlayers = info.GetInt32("MP");
-            HasPassword = info.GetBoolean("HP");
-            IsVisible = info.GetBoolean("IV");
-            Properties = info.GetString("_");
-            //////////////////////////////////////// Instantiate ////////////////////////////////////
-            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
-            SceneView = new SceneView();
+            ID = info.GetInt32("id");
+            HasPassword = info.GetBoolean("hasPassword");
+            IsVisible = info.GetBoolean("isVisible");
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("ID", ID);
-            info.AddValue("NM", Name);
-            info.AddValue("CP", PlayerCount);
-            info.AddValue("MP", MaxPlayers);
-            info.AddValue("HP", HasPassword);
-            info.AddValue("IV", IsVisible);
-            info.AddValue("_", Properties);
+            base.GetObjectData(info, context);
+            {
+                info.AddValue("id", ID);
+                info.AddValue("hasPassword", HasPassword);
+                info.AddValue("isVisible", IsVisible);
+            }
         }
 
         public Boolean Equals(NeutronRoom room)

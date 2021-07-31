@@ -210,6 +210,10 @@ public enum Compression : int
     ///* Habilita a compressão Gzip.
     /// </summary>
     Gzip,
+    /// <summary>
+    ///* Compressão de bytes customizada.
+    /// </summary>
+    Custom
 }
 
 /// <summary>
@@ -240,6 +244,10 @@ public enum Serialization : int
     ///* Serialização em texto.
     /// </summary>
     Json,
+    /// <summary>
+    ///* Implemente sua propria serialização.
+    /// </summary>
+    Custom,
 }
 
 public enum StatsSentOrRec : int

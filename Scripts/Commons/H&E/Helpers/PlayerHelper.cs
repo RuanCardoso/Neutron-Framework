@@ -46,7 +46,7 @@ namespace NeutronNetwork.Helpers
                                 return neutronView.OnNeutronRegister(player, isServer, RegisterType.Player, instance);
                             else if (id == Settings.CREATE_OBJECT)
                             {
-                                using (NeutronReader idReader = new NeutronReader())
+                                using (NeutronReader idReader = Neutron.PooledNetworkReaders.Pull())
                                 {
                                     idReader.SetBuffer(buffer);
                                     idReader.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
@@ -78,24 +78,8 @@ namespace NeutronNetwork.Helpers
                 writer.WritePacket(Packet.Disconnection);
                 writer.Write(player.ID);
                 writer.Write(reason);
-                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerDisconnected);
+                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerDisconnected);
             }
-        }
-
-        public static void Message(NeutronPlayer player, Packet packet, string message)
-        {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-            {
-                writer.WritePacket(Packet.Fail);
-                writer.WritePacket(packet);
-                writer.Write(message);
-                player.Send(writer);
-            }
-        }
-
-        public static string GenerateNickname(int id)
-        {
-            return $"Player#{id}";
         }
 
         public static bool IsMine(NeutronPlayer player, int viewId)

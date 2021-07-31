@@ -44,7 +44,7 @@ namespace NeutronNetwork.Server
         }
         #endregion
 
-        #region Handles
+        #region Handlers
         protected void DisconnectHandler(NeutronPlayer player)
         {
             using (player)
@@ -57,7 +57,6 @@ namespace NeutronNetwork.Server
 
         protected void HandshakeHandler(NeutronPlayer player, double time)
         {
-            #region Handshake
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
                 writer.WritePacket(Packet.Handshake);
@@ -66,21 +65,18 @@ namespace NeutronNetwork.Server
                 writer.Write(player.LocalEndPoint.Port);
                 writer.WriteExactly(player);
                 writer.WriteExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
-                player.Send(writer);
+                player.Write(writer);
             }
-            #endregion
 
-            #region Players
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
                 writer.WritePacket(Packet.NewPlayer);
                 writer.WriteExactly(player); // send me to the other players who were already connected.
-                player.Send(writer, OthersHelper.GetDefaultHandler().OnGetAllPlayersOnConnection);
+                player.Write(writer, TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
             }
-            #endregion
         }
 
-        protected void NicknameHandler(NeutronPlayer player, string nickname)
+        protected void SetNicknameHandler(NeutronPlayer player, string nickname)
         {
             player.Nickname = nickname;
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
@@ -88,7 +84,7 @@ namespace NeutronNetwork.Server
                 writer.WritePacket(Packet.Nickname);
                 writer.Write(player.ID);
                 writer.Write(nickname);
-                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerNicknameChanged);
+                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerNicknameChanged);
             }
         }
 
@@ -101,15 +97,13 @@ namespace NeutronNetwork.Server
                 writer.Write(player.ID);
 
                 if (packet == ChatPacket.Global)
-                    player.Send(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
+                    player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
                 else if (packet == ChatPacket.Private)
                 {
                     if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer playerFound))
-                    {
-                        playerFound.Send(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
-                    }
+                        playerFound.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
                     else
-                        PlayerHelper.Message(player, Packet.Chat, "Player not found.");
+                        player.Message(Packet.Chat, "Player not found!");
                 }
             }
         }
@@ -209,7 +203,7 @@ namespace NeutronNetwork.Server
                     else LogHelper.Error("Invalid Network ID, a player with this ID could not be found.");
                 }
             }
-            else PlayerHelper.Message(player, Packet.iRPC, "ERROR: You are not on a channel/room.");
+            else player.Message(Packet.iRPC, "ERROR: You are not on a channel/room.");
             #endregion
 
             #region Local Functions
@@ -222,7 +216,7 @@ namespace NeutronNetwork.Server
                     writer.Write(id);
                     writer.Write(player.ID);
                     writer.WriteExactly(buffer);
-                    mSender.Send(writer, targetTo, tunnelingTo, protocol);
+                    mSender.Write(writer, targetTo, tunnelingTo, protocol);
                     MatchmakingHelper.SetCache(id, writer.ToArray(), player, cache, CachedPacket.iRPC);
                 }
                 return true;
@@ -294,9 +288,8 @@ namespace NeutronNetwork.Server
                 {
                     writer.WritePacket(Packet.gRPC);
                     writer.Write(id);
-                    writer.Write(player.ID);
                     writer.WriteExactly(buffer);
-                    mSender.Send(writer, sendTo, broadcast, protocol);
+                    mSender.Write(player, writer, sendTo, broadcast, protocol);
                     MatchmakingHelper.SetCache(id, writer.ToArray(), player, cacheMode, CachedPacket.gRPC);
                 }
                 return true;
@@ -307,33 +300,51 @@ namespace NeutronNetwork.Server
 
         protected void GetChannelsHandler(NeutronPlayer player)
         {
-            try
+            if (!player.IsInMatchmaking())
             {
-                if (!player.IsInChannel())
+                NeutronChannel[] channels = ChannelsById.Values.ToArray();
+                if (channels.Length > 0)
                 {
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        NeutronChannel[] channels = ChannelsById.Values.ToArray();
                         writer.WritePacket(Packet.GetChannels);
                         writer.WriteExactly(channels);
-                        player.Send(writer);
+                        player.Write(writer);
                     }
                 }
-                else PlayerHelper.Message(player, Packet.GetChannels, "WARNING: You are trying to get channels from within a channel, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of channels within a channel, in order to save bandwidth.");
+                else
+                    player.Message(Packet.GetChannels, "No channels found!");
             }
-            catch (Exception ex) { LogHelper.Error(ex.Message); }
+            else
+                player.Message(Packet.GetChannels, "You are trying to get channels from within a channel, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of channels within a channel, in order to save bandwidth.");
+        }
+
+        protected void GetRoomsHandler(NeutronPlayer player)
+        {
+            if (player.IsInChannel() && !player.IsInRoom())
+            {
+                NeutronChannel channel = player.Channel;
+                if (channel.RoomCount > 0)
+                {
+                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    {
+                        NeutronRoom[] rooms = channel.GetRooms(x => x.IsVisible);
+                        writer.WritePacket(Packet.GetRooms);
+                        writer.WriteExactly(rooms);
+                        player.Write(writer);
+                    }
+                }
+                else
+                    player.Message(Packet.GetRooms, "No rooms found!");
+            }
+            else
+                player.Message(Packet.GetRooms, "You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
         }
 
         protected void JoinChannelHandler(NeutronPlayer player, int channelId)
         {
-            try
+            if (ChannelsById.Count > 0)
             {
-                if (ChannelsById.Count == 0)
-                {
-                    PlayerHelper.Message(player, Packet.JoinChannel, "ERROR: There are no channels created on the server.");
-                    return;
-                }
-
                 if (ChannelsById.TryGetValue(channelId, out NeutronChannel channel))
                 {
                     if (!player.IsInChannel())
@@ -341,68 +352,87 @@ namespace NeutronNetwork.Server
                         if (channel.Add(player))
                         {
                             player.Channel = channel;
+                            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                            OnPlayerJoinedChannel?.Invoke(player);
                             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                             {
                                 writer.WritePacket(Packet.JoinChannel);
                                 writer.Write(player.ID);
                                 writer.WriteExactly(channel);
-                                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedChannel);
-                            }
-                            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                            OnPlayerJoinedChannel?.Invoke(player);
-                        }
-                        else PlayerHelper.Message(player, Packet.JoinChannel, "Failed to add Player");
-                    }
-                    else PlayerHelper.Message(player, Packet.JoinChannel, "ERROR: You are already joined to a channel.");
-                }
-                else PlayerHelper.Message(player, Packet.JoinChannel, "ERROR: We couldn't find a channel with this ID.");
-
-            }
-            catch (Exception ex) { LogHelper.StackTrace(ex); }
-        }
-
-        protected void CreateRoomHandler(NeutronPlayer player, string roomName, int maxPlayers, string password, bool isVisible, bool joinOrCreate, string options)
-        {
-            try
-            {
-                if (player.IsInChannel() && !player.IsInRoom())
-                {
-                    NeutronChannel l_Channel = player.Channel;
-                    int ID = l_Channel.RoomCount;
-                    NeutronRoom nRoom = new NeutronRoom(ID, roomName, maxPlayers, !string.IsNullOrEmpty(password), isVisible, options);
-
-                    void CreateRoom()
-                    {
-                        if (l_Channel.AddRoom(nRoom))
-                        {
-                            player.Room = nRoom;
-                            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-                            {
-                                writer.WritePacket(Packet.CreateRoom);
-                                writer.Write(player.ID);
-                                writer.WriteExactly(nRoom);
-                                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
+                                player.Write(writer, TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
                             }
                         }
-                        else PlayerHelper.Message(player, Packet.CreateRoom, "failed create room");
-                    }
-
-                    if (!joinOrCreate)
-                    {
-                        CreateRoom();
+                        else
+                            player.Message(Packet.JoinChannel, "Failed to join channel");
                     }
                     else
+                        player.Message(Packet.JoinChannel, "You are already joined to a channel.");
+                }
+                else
+                    player.Message(Packet.JoinChannel, "We couldn't find a channel with this ID.");
+            }
+            else
+                player.Message(Packet.JoinChannel, "There are no channels created on the server.");
+        }
+
+        protected void JoinRoomHandler(NeutronPlayer player, int roomId)
+        {
+            if (player.IsInChannel() && !player.IsInRoom())
+            {
+                NeutronRoom room = player.Channel.GetRoom(roomId);
+
+                if (room.Add(player))
+                {
+                    player.Room = room;
+                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                    OnPlayerJoinedRoom?.Invoke(player);
+                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        if (!player.Channel.GetRoom(roomName))
-                        {
-                            CreateRoom();
-                        }
-                        else JoinRoomHandler(player, ID);
+                        writer.WritePacket(Packet.JoinRoom);
+                        writer.Write(player.ID);
+                        writer.WriteExactly(room);
+                        player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
                     }
                 }
-                else PlayerHelper.Message(player, Packet.CreateRoom, "ERROR: You cannot create a room by being inside one. Call LeaveRoom or you not within a channel");
+                else
+                    player.Message(Packet.JoinRoom, "Failed to add player.");
             }
-            catch (Exception ex) { LogHelper.Error(ex.Message); }
+            else
+                player.Message(Packet.JoinRoom, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
+        }
+
+        protected void CreateRoomHandler(NeutronPlayer player, NeutronRoom room, string password)
+        {
+            if (player.IsInChannel() && !player.IsInRoom())
+            {
+                NeutronChannel channel = player.Channel;
+
+                int id = channel.RoomCount;
+                room.ID = ++id;
+                room.Password = password;
+                room.Player = player;
+
+                if (!string.IsNullOrEmpty(room.Name))
+                {
+                    if (channel.AddRoom(room))
+                    {
+                        using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                        {
+                            writer.WritePacket(Packet.CreateRoom);
+                            writer.Write(player.ID);
+                            writer.WriteExactly(room);
+                            player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
+                        }
+                        JoinRoomHandler(player, room.ID);
+                    }
+                    else
+                        player.Message(Packet.CreateRoom, "Failed to create room!");
+                }
+                else
+                    player.Message(Packet.CreateRoom, "Room name is null or empty!");
+            }
+            else
+                player.Message(Packet.CreateRoom, "You cannot create a room by being inside one.\r\nCall LeaveRoom or you not within a channel!");
         }
 
         protected void GetCacheHandler(NeutronPlayer player, CachedPacket cachedPacket, int id, bool sendToOwner)
@@ -445,7 +475,7 @@ namespace NeutronNetwork.Server
                                                 writer.Write(_ID);
                                                 writer.WriteExactly(sender);
                                                 writer.WriteExactly(parameters);
-                                                player.Send(writer);
+                                                player.Write(writer);
                                             }
                                         }
                                     }
@@ -471,34 +501,9 @@ namespace NeutronNetwork.Server
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
                     writer.Write(buffer);
-                    player.Send(writer);
+                    player.Write(writer);
                 }
             }
-        }
-
-        protected void GetRoomsHandler(NeutronPlayer player)
-        {
-            try
-            {
-                if (player.IsInChannel() && !player.IsInRoom())
-                {
-                    NeutronChannel channel = player.Channel;
-                    if (channel.RoomCount <= 0)
-                    {
-                        PlayerHelper.Message(player, Packet.GetRooms, "sem salas pau no cú");
-                        return;
-                    }
-                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-                    {
-                        NeutronRoom[] rooms = channel.GetRooms();
-                        writer.WritePacket(Packet.GetRooms);
-                        writer.WriteExactly<NeutronRoom[]>(rooms);
-                        player.Send(writer);
-                    }
-                }
-                else PlayerHelper.Message(player, Packet.GetRooms, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
-            }
-            catch (Exception ex) { LogHelper.Error(ex.Message); }
         }
 
         protected void LeaveRoomHandler(NeutronPlayer player)
@@ -511,7 +516,7 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(MatchmakingPacket.Room);
                     writer.Write(player.ID);
                     writer.WriteExactly(player.Room);
-                    player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveRoom);
+                    player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveRoom);
                 }
 
                 INeutronMatchmaking matchmaking = player.Matchmaking;
@@ -521,7 +526,7 @@ namespace NeutronNetwork.Server
                         MatchmakingHelper.Leave(player, leaveChannel: false);
                 }
             }
-            else PlayerHelper.Message(player, Packet.Leave, "ERROR: LeaveRoom Failed");
+            else player.Message(Packet.Leave, "ERROR: LeaveRoom Failed");
         }
 
         protected void LeaveChannelHandler(NeutronPlayer player)
@@ -534,45 +539,14 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(MatchmakingPacket.Channel);
                     writer.Write(player.ID);
                     writer.WriteExactly(player.Channel);
-                    player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveChannel);
+                    player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveChannel);
                 }
 
                 NeutronChannel channel = player.Channel;
                 channel.Remove(player);
                 player.Channel = null;
             }
-            else PlayerHelper.Message(player, Packet.Leave, "ERROR: LeaveChannel Failed");
-        }
-
-        protected void JoinRoomHandler(NeutronPlayer player, int roomId)
-        {
-            try
-            {
-                if (player.IsInChannel() && !player.IsInRoom())
-                {
-                    NeutronChannel channel = player.Channel; // Thread safe
-                    NeutronRoom room = channel.GetRoom(roomId); // thread safe
-
-                    if (room == null) return;
-
-                    if (room.Add(player))
-                    {
-                        player.Room = room;
-                        using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-                        {
-                            writer.WritePacket(Packet.JoinRoom);
-                            writer.Write(player.ID);
-                            writer.WriteExactly(room);
-                            player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
-                        }
-                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                        OnPlayerJoinedRoom?.Invoke(player);
-                    }
-                    else PlayerHelper.Message(player, Packet.JoinRoom, "Failed to add player.");
-                }
-                else PlayerHelper.Message(player, Packet.JoinRoom, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
-            }
-            catch (Exception ex) { LogHelper.Error(ex.Message); }
+            else player.Message(Packet.Leave, "ERROR: LeaveChannel Failed");
         }
 
         protected void DestroyPlayerHandler(NeutronPlayer player)
@@ -581,7 +555,7 @@ namespace NeutronNetwork.Server
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
                 writer.WritePacket(Packet.DestroyPlayer);
-                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerDestroyed);
+                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerDestroyed);
             }
             OnPlayerDestroyed?.Invoke(player);
         }
@@ -593,7 +567,7 @@ namespace NeutronNetwork.Server
             {
                 writer.WritePacket(Packet.SetPlayerProperties);
                 writer.Write(player.ID);
-                player.Send(writer, OthersHelper.GetDefaultHandler().OnPlayerPropertiesChanged);
+                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerPropertiesChanged);
             }
         }
 
@@ -604,25 +578,25 @@ namespace NeutronNetwork.Server
                 NeutronChannel channel = player.Channel;
                 NeutronRoom room = player.Room;
 
-                if (room.Owner == null)
+                if (room.Player == null)
                 {
-                    PlayerHelper.Message(player, Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
+                    player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
                     return;
                 }
 
-                if (room.Owner.Equals(player))
+                if (room.Player.Equals(player))
                 {
                     room.Properties = properties;
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
                         writer.WritePacket(Packet.SetRoomProperties);
                         writer.Write(player.ID);
-                        player.Send(writer, OthersHelper.GetDefaultHandler().OnRoomPropertiesChanged);
+                        player.Write(writer, OthersHelper.GetDefaultHandler().OnRoomPropertiesChanged);
                     }
                 }
-                else PlayerHelper.Message(player, Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
+                else player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
             }
-            else PlayerHelper.Message(player, Packet.SetRoomProperties, "You are not inside a room.");
+            else player.Message(Packet.SetRoomProperties, "You are not inside a room.");
         }
 
         public void PingHandler(NeutronPlayer player, double time)
@@ -637,7 +611,7 @@ namespace NeutronNetwork.Server
                 writer.WritePacket(Packet.Ping);
                 writer.Write(Neutron.Time);
                 writer.Write(time);
-                player.Send(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Udp);
+                player.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Udp, Packet.Ping);
             }
         }
 
@@ -653,9 +627,9 @@ namespace NeutronNetwork.Server
                     writer.WriteExactly(parameters);
 
                     if (isMine)
-                        nPlayer.Send(writer, targetTo, tunnelingTo, protocol);
+                        nPlayer.Write(writer, targetTo, tunnelingTo, protocol);
                     else
-                        nPlayer.Send(writer, TargetTo.Me, TunnelingTo.Me, protocol);
+                        nPlayer.Write(writer, TargetTo.Me, TunnelingTo.Me, protocol);
                 }
             }
             else Debug.LogError("dsdsdsd");
@@ -678,7 +652,7 @@ namespace NeutronNetwork.Server
                         writer.Write(viewId);
                         writer.Write(instanceId);
                         writer.WriteExactly(buffer);
-                        player.Send(writer, targetTo, tunnelingTo, protocol);
+                        player.Write(writer, targetTo, tunnelingTo, protocol);
                     }
                 }
 
@@ -693,7 +667,7 @@ namespace NeutronNetwork.Server
                             Send();
                     }
                     else
-                        PlayerHelper.Message(player, Packet.OnAutoSync, "Auto Sync instance not found!");
+                        player.Message(Packet.OnAutoSync, "Auto Sync instance not found!");
                 }
                 else
                     Send();
@@ -715,7 +689,7 @@ namespace NeutronNetwork.Server
                 }
             }
             else
-                PlayerHelper.Message(player, Packet.OnAutoSync, "Have you ever joined a channel or room?");
+                player.Message(Packet.OnAutoSync, "Have you ever joined a channel or room?");
         }
         #endregion
     }

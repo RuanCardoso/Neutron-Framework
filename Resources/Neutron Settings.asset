@@ -16,10 +16,10 @@ MonoBehaviour:
     Addresses:
     - localhost
     Port: 1418
-    MaxPlayers: 32767
+    MaxPlayers: 300
     ActionsProcessedPerFrame: 1
     Serialization: 1
-    Compression: 0
+    Compression: 2
     NoDelay: 1
     Lan: 0
     P2P: 0
