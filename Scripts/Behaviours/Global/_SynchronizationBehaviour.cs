@@ -1,5 +1,5 @@
 ﻿using NeutronNetwork.Attributes;
-using NeutronNetwork.Json;
+using Newtonsoft.Json;
 using UnityEngine;
 
 /// <summary>

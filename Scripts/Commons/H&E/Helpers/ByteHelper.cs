@@ -1,5 +1,5 @@
 using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Json;
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.IO.Compression;
