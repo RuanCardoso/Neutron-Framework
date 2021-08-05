@@ -197,7 +197,7 @@ namespace NeutronNetwork.Components
             while (!(Microphone.GetPosition(deviceName) > 0)) { }
         }
 
-        [iRPC(10)]
+        [iRPC(ID = 10)]
         private void RPC(NeutronReader options, NeutronPlayer sender)
         {
             Debug.Log(IsClient);

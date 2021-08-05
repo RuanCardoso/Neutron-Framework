@@ -31,7 +31,7 @@ namespace NeutronNetwork.Internal.Components
         {
             while (true)
             {
-                yield return new WaitForSeconds(Settings.ONE_PER_SECOND);
+                yield return new WaitForSeconds(NeutronConstantsSettings.ONE_PER_SECOND);
                 OnChangedStatistics?.Invoke(m_Profilers);
                 #region Reset
                 foreach (var l_Profiler in m_Profilers)

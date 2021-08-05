@@ -87,7 +87,7 @@ namespace NeutronNetwork.Components
             }
         }
 
-        [iRPC(101)]
+        [iRPC(ID = 101)]
         private void RPC(NeutronReader options, NeutronPlayer sender)
         {
             onFirstPacket = true;

@@ -29,9 +29,11 @@ namespace NeutronNetwork.Server
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeaveChannel { get; set; }
+        public static NeutronEventNoReturn<NeutronPlayer, NeutronRoom> OnPlayerCreatedRoom { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedRoom { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeaveRoom { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerPropertiesChanged { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling { get; set; }
         #endregion
 
         #region MonoBehaviour
@@ -63,15 +65,15 @@ namespace NeutronNetwork.Server
                 writer.Write(Neutron.Time);
                 writer.Write(time);
                 writer.Write(player.LocalEndPoint.Port);
-                writer.WriteExactly(player);
-                writer.WriteExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
+                writer.WriteIntExactly(player);
+                writer.WriteIntExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
                 player.Write(writer);
             }
 
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
                 writer.WritePacket(Packet.NewPlayer);
-                writer.WriteExactly(player); // send me to the other players who were already connected.
+                writer.WriteIntExactly(player); // send me to the other players who were already connected.
                 player.Write(writer, TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
             }
         }
@@ -101,7 +103,7 @@ namespace NeutronNetwork.Server
                 else if (packet == ChatPacket.Private)
                 {
                     if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer playerFound))
-                        playerFound.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
+                        playerFound.Write(player, writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
                     else
                         player.Message(Packet.Chat, "Player not found!");
                 }
@@ -109,193 +111,123 @@ namespace NeutronNetwork.Server
         }
 
 #pragma warning disable IDE1006
-        protected void iRPCHandler(NeutronPlayer player, TunnelingTo tunnelingTo, TargetTo targetTo, Cache cache, int viewId, int id, byte[] buffer, Protocol protocol)
+        protected async void iRPCHandler(NeutronPlayer owner, NeutronPlayer sender, short viewId, byte rpcId, byte instanceId, byte[] buffer, RegisterType registerType, TargetTo targetTo, Cache cache, Protocol protocol)
 #pragma warning restore IDE1006
         {
-            #region Logic
-            if (player.IsInChannel() || player.IsInRoom())
+            async Task Run((int, int, RegisterType) key)
             {
-                if (SceneHelper.IsSceneObject(viewId))
+                bool Send()
                 {
-                    if (MatchmakingHelper.GetNetworkObject((player.ID, viewId), player, out NeutronView nView))
+                    TunnelingTo tunnelingTo = TunnelingTo.Auto;
+                    if (targetTo == TargetTo.Me)
+                        tunnelingTo = TunnelingTo.Me;
+                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        // if (nView.iRPCs.TryGetValue(attributeID, out RPC remoteProceduralCall))
-                        // {
-                        //     iRPC dynamicAttr = (iRPC)remoteProceduralCall.attribute;
-                        //     if (dynamicAttr != null)
-                        //     {
-                        //         Action _ = () => { };
-                        //         #region Object Dispatch Logic
-                        //         if (dynamicAttr.SendAfterProcessing)
-                        //         {
-                        //             _ = new Action(() =>
-                        //             {
-                        //                 if (DynamicObject(remoteProceduralCall, nView))
-                        //                     TunnelingTo(nSender);
-                        //                 else return;
-                        //             });
-                        //         }
-                        //         else
-                        //         {
-                        //             if (TunnelingTo(nSender))
-                        //             {
-                        //                 _ = new Action(() =>
-                        //                 {
-                        //                     DynamicObject(remoteProceduralCall, nView);
-                        //                 });
-                        //             }
-                        //         }
-                        //         #endregion
-                        //         if (dynamicAttr.DispatchOnMainThread)
-                        //             NeutronDispatcher.Dispatch(_);
-                        //         else _.Invoke();
-                        //     }
-                        //     else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
-                        // }
-                        // else Debug.LogError("Invalid gRPC ID, there is no attribute with this ID.");
+                        writer.WritePacket(Packet.iRPC);
+                        writer.WritePacket(registerType);
+                        writer.Write(viewId);
+                        writer.Write(rpcId);
+                        writer.Write(instanceId);
+                        writer.WriteNextBytes(buffer);
+                        //////////////////////////////////////////////////////////////////////////////////
+                        MatchmakingHelper.AddCache(rpcId, viewId, writer, owner, cache, CachedPacket.iRPC);
+                        //////////////////////////////////////////////////////////////////////////////////
+                        owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                     }
-                    else Broadcast(player);
+                    return true;
+                }
+
+                if (MatchmakingHelper.GetNetworkObject(key, owner, out NeutronView neutronView))
+                {
+                    if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPC remoteProceduralCall))
+                    {
+                        try
+                        {
+                            iRPC iRPCAttribute = remoteProceduralCall.iRPC;
+                            if (iRPCAttribute.FirstValidation)
+                            {
+                                if (await ReflectionHelper.iRPC(buffer, remoteProceduralCall, owner))
+                                    Send();
+                            }
+                            else
+                            {
+                                if (Send())
+                                    await ReflectionHelper.iRPC(buffer, remoteProceduralCall, owner);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogHelper.StackTrace(ex);
+                        }
+                    }
+                    else
+                        Send();
                 }
                 else
-                {
-                    if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer nPlayer))
-                    {
-                        NeutronView neutronView = nPlayer.NeutronView;
-                        if (neutronView != null)
-                        {
-                            // if (neutronView.iRPCs.TryGetValue(attributeID, out RPC remoteProceduralCall))
-                            // {
-                            //     iRPC dynamicAttr = (iRPC)remoteProceduralCall.attribute;
-                            //     if (dynamicAttr != null)
-                            //     {
-                            //         Action _ = () => { };
-                            //         #region Player Dispatch Logic
-                            //         if (dynamicAttr.SendAfterProcessing)
-                            //         {
-                            //             _ = new Action(() =>
-                            //             {
-                            //                 if (DynamicPlayer(remoteProceduralCall, nPlayer))
-                            //                     TunnelingTo(nPlayer);
-                            //                 else return;
-                            //             });
-                            //         }
-                            //         else
-                            //         {
-                            //             if (TunnelingTo(nPlayer))
-                            //             {
-                            //                 _ = new Action(() =>
-                            //                 {
-                            //                     DynamicPlayer(remoteProceduralCall, nPlayer);
-                            //                 });
-                            //             }
-                            //         }
-                            //         #endregion
-                            //         if (dynamicAttr.DispatchOnMainThread)
-                            //             NeutronDispatcher.Dispatch(_);
-                            //         else _.Invoke();
-                            //     }
-                            //     else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
-                            // }
-                            // else Debug.LogError("Invalid iRPC ID, there is no attribute with this ID.");
-                        }
-                        else Broadcast(nPlayer);
-                    }
-                    else LogHelper.Error("Invalid Network ID, a player with this ID could not be found.");
-                }
+                    Send();
             }
-            else player.Message(Packet.iRPC, "ERROR: You are not on a channel/room.");
-            #endregion
 
-            #region Local Functions
-            bool Broadcast(NeutronPlayer mSender)
+            if (owner.IsInMatchmaking())
             {
-                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                switch (registerType)
                 {
-                    writer.WritePacket(Packet.iRPC);
-                    writer.Write(viewId);
-                    writer.Write(id);
-                    writer.Write(player.ID);
-                    writer.WriteExactly(buffer);
-                    mSender.Write(writer, targetTo, tunnelingTo, protocol);
-                    MatchmakingHelper.SetCache(id, writer.ToArray(), player, cache, CachedPacket.iRPC);
+                    case RegisterType.Scene:
+                        await Run((0, viewId, registerType));
+                        break;
+                    case RegisterType.Player:
+                        await Run((viewId, viewId, registerType));
+                        break;
+                    case RegisterType.Dynamic:
+                        await Run((owner.ID, viewId, registerType));
+                        break;
                 }
-                return true;
             }
-            bool DynamicPlayer(RPC remoteProceduralCall, NeutronPlayer nPlayer) => PlayerHelper.iRPC(buffer, false, remoteProceduralCall, player);
-            bool DynamicObject(RPC remoteProceduralCall, NeutronView nView) => PlayerHelper.iRPC(buffer, false, remoteProceduralCall, player);
-            #endregion
+            else
+                owner.Message(Packet.iRPC, "Have you ever joined a channel or room?");
         }
 
 #pragma warning disable IDE1006
-        protected async void gRPCHandler(NeutronPlayer player, int viewId, int id, byte[] buffer)
+        protected async void gRPCHandler(NeutronPlayer owner, NeutronPlayer sender, byte id, byte[] buffer, Protocol protocol)
 #pragma warning restore IDE1006
         {
-            #region Logic
-            if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer nPlayer))
-            {
-                if (GlobalBehaviour.gRPCs.TryGetValue((byte)id, out RPC remoteProceduralCall))
-                {
-                    gRPC nonDynamicAttr = remoteProceduralCall.GRPC;
-                    if (nonDynamicAttr != null)
-                    {
-                        Action _ = () => { };
-                        #region Dispatch Logic
-                        //if (nonDynamicAttr.SendAfterProcessing)
-                        //{
-                        //    _ = new Action(async () =>
-                        //    {
-                        //        if (await gRPC(remoteProceduralCall))
-                        //            Broadcast(nPlayer, nonDynamicAttr.Cache, nonDynamicAttr.TargetTo, nonDynamicAttr.TunnelingTo, nonDynamicAttr.Protocol);
-                        //        else return;
-                        //    });
-                        //}
-                        //else
-                        //{
-                        //    if (Broadcast(nPlayer, nonDynamicAttr.Cache, nonDynamicAttr.TargetTo, nonDynamicAttr.TunnelingTo, nonDynamicAttr.Protocol))
-                        //    {
-                        //        _ = new Action(async () =>
-                        //        {
-                        //            await gRPC(remoteProceduralCall);
-                        //        });
-                        //    }
-                        //}
-                        #endregion
-                        //if (nonDynamicAttr.RunInMonoBehaviour) { }
-                        //NeutronDispatcher.Dispatch(_);
-                        //else
-                        {
-                            try
-                            {
-                                if (await gRPC(remoteProceduralCall))
-                                    Broadcast(nPlayer, nonDynamicAttr.Cache, nonDynamicAttr.TargetTo, nonDynamicAttr.TunnelingTo, nonDynamicAttr.Protocol);
-                            }
-                            catch (Exception ex)
-                            {
-                                LogHelper.StackTrace(ex);
-                            }
-                        }
-                    }
-                    else Debug.LogError("Invalid Attribute, there is no valid attribute with this ID.");
-                }
-                else Debug.LogError("Invalid gRPC ID, there is no attribute with this ID.");
-            }
-            #endregion
-
-            #region Local Functions
-            bool Broadcast(NeutronPlayer mSender, Cache cacheMode, TargetTo sendTo, TunnelingTo broadcast, Protocol protocol)
+            bool Send(Cache cache, TargetTo targetTo, TunnelingTo tunnelingTo)
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
                     writer.WritePacket(Packet.gRPC);
                     writer.Write(id);
-                    writer.WriteExactly(buffer);
-                    mSender.Write(player, writer, sendTo, broadcast, protocol);
-                    MatchmakingHelper.SetCache(id, writer.ToArray(), player, cacheMode, CachedPacket.gRPC);
+                    writer.WriteNextBytes(buffer);
+                    //////////////////////////////////////////////////////////////////////////////////
+                    MatchmakingHelper.AddCache(id, 0, writer, owner, cache, CachedPacket.gRPC);
+                    //////////////////////////////////////////////////////////////////////////////////
+                    owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                 }
                 return true;
             }
-            async Task<bool> gRPC(RPC remoteProceduralCall) => await PlayerHelper.gRPC(id, player, buffer, remoteProceduralCall, true, false);
-            #endregion
+
+            if (GlobalBehaviour.gRPCs.TryGetValue(id, out RPC remoteProceduralCall))
+            {
+                try
+                {
+                    gRPC gRPCAttribute = remoteProceduralCall.gRPC;
+                    if (gRPCAttribute.FirstValidation)
+                    {
+                        if (await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, NeutronServer.Neutron))
+                            Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo);
+                    }
+                    else
+                    {
+                        if (Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo))
+                            await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, NeutronServer.Neutron);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogHelper.StackTrace(ex);
+                }
+            }
+            else
+                owner.Message(Packet.gRPC, "Invalid gRPC ID, there is no attribute with this ID.");
         }
 
         protected void GetChannelsHandler(NeutronPlayer player)
@@ -308,7 +240,7 @@ namespace NeutronNetwork.Server
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
                         writer.WritePacket(Packet.GetChannels);
-                        writer.WriteExactly(channels);
+                        writer.WriteIntExactly(channels);
                         player.Write(writer);
                     }
                 }
@@ -330,7 +262,7 @@ namespace NeutronNetwork.Server
                     {
                         NeutronRoom[] rooms = channel.GetRooms(x => x.IsVisible);
                         writer.WritePacket(Packet.GetRooms);
-                        writer.WriteExactly(rooms);
+                        writer.WriteIntExactly(rooms);
                         player.Write(writer);
                     }
                 }
@@ -358,7 +290,7 @@ namespace NeutronNetwork.Server
                             {
                                 writer.WritePacket(Packet.JoinChannel);
                                 writer.Write(player.ID);
-                                writer.WriteExactly(channel);
+                                writer.WriteIntExactly(channel);
                                 player.Write(writer, TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
                             }
                         }
@@ -390,7 +322,7 @@ namespace NeutronNetwork.Server
                     {
                         writer.WritePacket(Packet.JoinRoom);
                         writer.Write(player.ID);
-                        writer.WriteExactly(room);
+                        writer.WriteIntExactly(room);
                         player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
                     }
                 }
@@ -416,11 +348,12 @@ namespace NeutronNetwork.Server
                 {
                     if (channel.AddRoom(room))
                     {
+                        OnPlayerCreatedRoom?.Invoke(player, room);
                         using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                         {
                             writer.WritePacket(Packet.CreateRoom);
                             writer.Write(player.ID);
-                            writer.WriteExactly(room);
+                            writer.WriteIntExactly(room);
                             player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
                         }
                         JoinRoomHandler(player, room.ID);
@@ -458,8 +391,8 @@ namespace NeutronNetwork.Server
                                 {
                                     Packet packet = lastReader.ReadPacket<Packet>();
                                     int _ID = lastReader.ReadInt32();
-                                    byte[] sender = lastReader.ReadExactly();
-                                    byte[] parameters = lastReader.ReadExactly();
+                                    byte[] sender = lastReader.ReadIntExactly();
+                                    byte[] parameters = lastReader.ReadIntExactly();
 
                                     using (NeutronWriter oldWriter = new NeutronWriter(new MemoryStream(parameters)))
                                     {
@@ -473,8 +406,8 @@ namespace NeutronNetwork.Server
                                             {
                                                 writer.WritePacket(packet);
                                                 writer.Write(_ID);
-                                                writer.WriteExactly(sender);
-                                                writer.WriteExactly(parameters);
+                                                writer.WriteIntExactly(sender);
+                                                writer.WriteIntExactly(parameters);
                                                 player.Write(writer);
                                             }
                                         }
@@ -515,7 +448,7 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(Packet.Leave);
                     writer.WritePacket(MatchmakingPacket.Room);
                     writer.Write(player.ID);
-                    writer.WriteExactly(player.Room);
+                    writer.WriteIntExactly(player.Room);
                     player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveRoom);
                 }
 
@@ -538,7 +471,7 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(Packet.Leave);
                     writer.WritePacket(MatchmakingPacket.Channel);
                     writer.Write(player.ID);
-                    writer.WriteExactly(player.Channel);
+                    writer.WriteIntExactly(player.Channel);
                     player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveChannel);
                 }
 
@@ -602,9 +535,9 @@ namespace NeutronNetwork.Server
         public void PingHandler(NeutronPlayer player, double time)
         {
             double diffTime = Math.Abs(Neutron.Time - time);
-            if ((Neutron.Time > time) && diffTime > OthersHelper.GetSettings().NET_TIME_DESYNC_TOLERANCE)
+            if ((Neutron.Time > time) && diffTime > OthersHelper.GetConstants().TimeDesyncTolerance)
                 Debug.LogError($"Jogador {player.Nickname} atraso em {diffTime} Ms!");
-            else if ((time > Neutron.Time) && diffTime > OthersHelper.GetSettings().NET_TIME_DESYNC_TOLERANCE)
+            else if ((time > Neutron.Time) && diffTime > OthersHelper.GetConstants().TimeDesyncTolerance)
                 Debug.LogError($"Jogador {player.Nickname} adiantado em {diffTime} Ms!");
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
@@ -624,7 +557,7 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(Packet.CustomPacket);
                     writer.WritePacket(packet);
                     writer.Write(player.ID);
-                    writer.WriteExactly(parameters);
+                    writer.WriteIntExactly(parameters);
 
                     if (isMine)
                         nPlayer.Write(writer, targetTo, tunnelingTo, protocol);
@@ -635,12 +568,12 @@ namespace NeutronNetwork.Server
             else Debug.LogError("dsdsdsd");
         }
 
-        public void OnAutoSyncHandler(NeutronPlayer player, int viewId, int instanceId, byte[] buffer, RegisterType registerType, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        public void OnAutoSyncHandler(NeutronPlayer player, short viewId, byte instanceId, byte[] buffer, RegisterType registerType, Protocol protocol, bool isServerSide)
         {
 #if UNITY_EDITOR
             ThreadHelper.DoNotAllowSimultaneousAccess(PacketProcessingStack_ManagedThreadId);
 #endif
-            void Run((int, int) key)
+            void Run((int, int, RegisterType) key)
             {
                 void Send()
                 {
@@ -648,23 +581,23 @@ namespace NeutronNetwork.Server
                     {
                         writer.WritePacket(Packet.OnAutoSync);
                         writer.WritePacket(registerType);
-                        writer.Write(player.ID);
                         writer.Write(viewId);
                         writer.Write(instanceId);
-                        writer.WriteExactly(buffer);
-                        player.Write(writer, targetTo, tunnelingTo, protocol);
+                        writer.WriteNextBytes(buffer);
+                        player.Write(writer, MatchmakingHelper.TargetTo(isServerSide), TunnelingTo.Auto, protocol);
                     }
                 }
 
                 if (MatchmakingHelper.GetNetworkObject(key, player, out NeutronView neutronView))
                 {
-                    if (neutronView.Childs.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))
+                    if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))
                     {
-                        NeutronReader reader = Neutron.PooledNetworkReaders.Pull();
-                        NeutronWriter writer = Neutron.PooledNetworkWriters.Pull();
-                        reader.SetBuffer(buffer);
-                        if (neutronBehaviour.OnAutoSynchronization(writer, reader, false))
-                            Send();
+                        using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
+                        {
+                            reader.SetBuffer(buffer);
+                            if (neutronBehaviour.OnAutoSynchronization(null, reader, false))
+                                Send();
+                        }
                     }
                     else
                         player.Message(Packet.OnAutoSync, "Auto Sync instance not found!");
@@ -678,13 +611,13 @@ namespace NeutronNetwork.Server
                 switch (registerType)
                 {
                     case RegisterType.Scene:
-                        Run((0, viewId));
+                        Run((0, viewId, registerType));
                         break;
                     case RegisterType.Player:
-                        Run((viewId, viewId));
+                        Run((viewId, viewId, registerType));
                         break;
                     case RegisterType.Dynamic:
-                        Run((player.ID, viewId));
+                        Run((player.ID, viewId, registerType));
                         break;
                 }
             }

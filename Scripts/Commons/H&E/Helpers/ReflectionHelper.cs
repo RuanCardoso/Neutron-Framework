@@ -1,7 +1,11 @@
+using NeutronNetwork;
+using NeutronNetwork.Internal.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
+using UnityEngine;
 
 public static class ReflectionHelper
 {
@@ -78,5 +82,105 @@ public static class ReflectionHelper
     public static MethodInfo[] GetMethods(object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
     {
         return instance.GetType().GetMethods(flags);
+    }
+
+#pragma warning disable IDE1006
+    public static async Task<bool> iRPC(byte[] buffer, RPC remoteProceduralCall, NeutronPlayer player)
+#pragma warning restore IDE1006
+    {
+        NeutronReader reader = Neutron.PooledNetworkReaders.Pull();
+        reader.SetBuffer(buffer);
+
+        switch (remoteProceduralCall.Type)
+        {
+            case MethodType.Async | MethodType.Bool:
+                {
+                    return await remoteProceduralCall.iRPCBoolAsync(reader, player);
+                }
+            case MethodType.Bool:
+                {
+                    return remoteProceduralCall.iRPCBool(reader, player);
+                }
+            case MethodType.Async | MethodType.Task:
+                {
+                    await remoteProceduralCall.iRPCTaskAsync(reader, player);
+                    return true;
+                }
+            case MethodType.Async | MethodType.Void:
+            case MethodType.Void:
+                {
+                    remoteProceduralCall.iRPCVoid(reader, player);
+                    return true;
+                }
+            default:
+                return LogHelper.Error($"Type not implemented!");
+        }
+    }
+
+#pragma warning disable IDE1006
+    public static async Task<bool> gRPC(NeutronPlayer player, byte[] buffer, RPC remoteProceduralCall, bool isServer, bool isMine, Neutron instance)
+#pragma warning restore IDE1006
+    {
+        NeutronReader reader = Neutron.PooledNetworkReaders.Pull();
+        reader.SetBuffer(buffer);
+
+        switch (remoteProceduralCall.Type)
+        {
+            case MethodType.Async | MethodType.View:
+            case MethodType.View:
+                {
+                    NeutronView neutronView = await remoteProceduralCall.gRPCViewAsync(reader, isServer, isMine, player, instance);
+                    bool result = await NeutronSchedule.ScheduleTaskAsync(() =>
+                    {
+                        if (neutronView.CompareTag("Player"))
+                            return neutronView.OnNeutronRegister(player, isServer, RegisterType.Player, instance);
+                        else
+                        {
+                            using (NeutronReader idReader = Neutron.PooledNetworkReaders.Pull())
+                            {
+                                idReader.SetBuffer(buffer);
+                                idReader.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
+                                return neutronView.OnNeutronRegister(player, isServer, RegisterType.Dynamic, instance, idReader.ReadInt16());
+                            }
+                        }
+                    });
+
+                    return await NeutronSchedule.ScheduleTaskAsync(() =>
+                    {
+                        if (!result)
+                            MonoBehaviour.Destroy(neutronView.gameObject);
+                        return result;
+                    });
+                }
+            case MethodType.Async | MethodType.Bool:
+                {
+                    return await remoteProceduralCall.gRPCBoolAsync(reader, isServer, isMine, player, instance);
+                }
+            case MethodType.Bool:
+                {
+                    return remoteProceduralCall.gRPCBool(reader, isServer, isMine, player, instance);
+                }
+            case MethodType.Async | MethodType.Int:
+                {
+                    return Convert.ToBoolean(await remoteProceduralCall.gRPCIntAsync(reader, isServer, isMine, player, instance));
+                }
+            case MethodType.Int:
+                {
+                    return Convert.ToBoolean(remoteProceduralCall.gRPCInt(reader, isServer, isMine, player, instance));
+                }
+            case MethodType.Async | MethodType.Task:
+                {
+                    await remoteProceduralCall.gRPCTaskAsync(reader, isServer, isMine, player, instance);
+                    return true;
+                }
+            case MethodType.Async | MethodType.Void:
+            case MethodType.Void:
+                {
+                    remoteProceduralCall.gRPCVoid(reader, isServer, isMine, player, instance);
+                    return true;
+                }
+            default:
+                return LogHelper.Error($"Type not implemented!");
+        }
     }
 }

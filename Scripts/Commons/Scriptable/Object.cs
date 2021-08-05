@@ -10,13 +10,13 @@ namespace NeutronNetwork.Constants
     {
         public string[] Addresses = { "localhost" };
         public int Port = 1418;
+        [ReadOnly] [AllowNesting] public string AppId;
         [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
-        [Range(1, 60)] public int ActionsProcessedPerFrame = 1;
         public Serialization Serialization = Serialization.Json;
         public Compression Compression = Compression.None;
         public bool NoDelay = true;
-        [ReadOnly] [AllowNesting] public bool Lan;
-        [ReadOnly] [AllowNesting] public bool P2P;
+        [ReadOnly] [AllowNesting] public bool PeerToPeer;
+        [HideInInspector] public bool PerfomanceMode;
     }
 
     [Serializable]
@@ -28,8 +28,7 @@ namespace NeutronNetwork.Constants
     [Serializable]
     public class NeutronServerSettings
     {
-        [Range(1, 256)] public int FPS = 128;
-        [Range(1, 30)] public int PacketsProcessedPerTick = 1;
+        [Range(1, 256)] public int FPS = 45;
         public int BackLog = 10;
         [HideInInspector] public bool NeutronAntiCheat = true;
     }
@@ -39,29 +38,77 @@ namespace NeutronNetwork.Constants
     {
         [AllowNesting] [ReadOnly] public bool Inbound;
         public bool Outbound;
-        [Range(1, 150)] public int InOutDelay;
+        [Range(1, 150)] public int InOutDelay = 1;
         public bool Drop;
-        [Range(1, 100)] public int Percent;
+        [Range(1, 100)] public int Percent = 1;
     }
 
     [Serializable]
     public class NeutronClientSettings
     {
-        [Range(1, 256)] public int FPS = 90;
+        [Range(1, 256)] public int FPS = 60;
         [Range(0.1F, 1)] public float PingRate = 0.2F;
+        [Range(1, 60)] public float TcpKeepAlive = 5F;
+    }
+
+    [Serializable]
+    public class NeutronConstantsSettings
+    {
+        #region String's
+        public string ContainerName = "[Container] -> Player[Main]";
+        #endregion
+
+        #region Integers
+        [Range(1, 1472)]
+        public int MaxUdpPacketSize = (int)(0.5 * 1024); // bytes
+        [Range(1, 65535)]
+        public int MaxTcpPacketSize = 2 * 1024; // bytes
+        [Range(1, 65535)]
+        public int ReceiveBufferSize = 8 * 1024; // bytes
+        [Range(1, 65535)]
+        public int SendBufferSize = 8 * 1024; // bytes
+        [Range(1, 65535)]
+        public int BufferedStreamSize = 8 * 1024; // bytes
+        [Range(1, 5)]
+        public int MaxConnectionsPerIp = 2;
+        public int MaxLatency = 150; // ms
+        //////////////////////////////////////////////////
+        public const int GENERATE_PLAYER_ID = 0;
+        public const int BOUNDED_CAPACITY = int.MaxValue;
+        public const int MIN_SEND_RATE = 1;
+        public const int MAX_SEND_RATE = 128;
+        #endregion
+
+        #region Single's
+        public const float ONE_PER_SECOND = 1F;
+        #endregion
+
+        #region Double's
+        public double TimeDesyncTolerance = 1D;
+        public double TimeResyncTolerance = 0.001D;
+        #endregion
+
+        #region Others
+        public EncodingType Encoding = EncodingType.ASCII;
+        public HeaderSizeType HeaderSize = HeaderSizeType.Short;
+        #endregion
+
+        #region Bool's
+        public bool BufferedStream = false;
+        #endregion
     }
 
     [Serializable]
     public class NeutronDefaultHandlerSettings
     {
-        public NeutronDefaultHandlerOptions OnPlayerNicknameChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerDisconnected = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerCreatedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerJoinedRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerLeaveRoom = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerLeaveChannel = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerPropertiesChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnRoomPropertiesChanged = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public NeutronDefaultHandlerOptions OnPlayerDestroyed = new NeutronDefaultHandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerNicknameChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerDisconnected = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerCreatedRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerJoinedRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerLeaveRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerLeaveChannel = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnRoomPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerDestroyed = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
     }
 }

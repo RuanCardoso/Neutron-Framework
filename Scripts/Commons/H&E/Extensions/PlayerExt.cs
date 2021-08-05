@@ -10,7 +10,7 @@ namespace NeutronNetwork.Extensions
                 writer.WritePacket(Packet.Fail);
                 writer.WritePacket(packet);
                 writer.Write(message);
-                player.Send(writer);
+                player.Write(writer);
             }
 #else
             LogHelper.Error($"[{packet}] -> | ERROR | {message}");

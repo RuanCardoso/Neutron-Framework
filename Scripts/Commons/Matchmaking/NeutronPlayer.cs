@@ -5,6 +5,7 @@ using NeutronNetwork.Json;
 using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization;
@@ -32,7 +33,7 @@ namespace NeutronNetwork
 
         #region Properties
         /// <summary>
-        ///* Retorna o identificador da sala.
+        ///* Retorna o identificador dojogador.
         /// </summary>
         public int ID { get => _id; set => _id = value; }
         /// <summary>
@@ -83,6 +84,7 @@ namespace NeutronNetwork
         public IPEndPoint LocalEndPoint { get; set; }
         public TcpClient TcpClient { get; set; }
         public UdpClient UdpClient { get; set; }
+        public Stream NetworkStream { get; set; }
         #endregion
 
         #region Threading
@@ -152,6 +154,7 @@ namespace NeutronNetwork
         public void Dispose()
         {
             TokenSource.Dispose();
+            NetworkStream.Dispose();
             TcpClient.Dispose();
             UdpClient.Dispose();
         }

@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Components;
 using System;
 using System.IO;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace NeutronNetwork
 {
     public class NeutronWriter : BinaryWriter, IDisposable
     {
+        public static NeutronWriter Empty = new NeutronWriter();
+
         #region Fields
         private readonly MemoryStream _memoryStream;
         private readonly bool _recycle = true;
@@ -22,7 +25,7 @@ namespace NeutronNetwork
         ///* Inicializa uma nova instância, componente necessário para escrever bytes.
         /// </summary>
         /// <param name="recycle">* Define se o objeto deve ser reciclado ou descartado.</param>
-        public NeutronWriter(bool recycle = true) : base(new MemoryStream())
+        public NeutronWriter(bool recycle = true) : base(new MemoryStream(), NeutronModule.Encoding)
         {
             _memoryStream = (MemoryStream)base.BaseStream;
             _recycle = recycle;
@@ -33,7 +36,7 @@ namespace NeutronNetwork
         /// </summary>
         /// <param name="stream">* Define um stream personalizado.</param>
         /// <param name="recycle">* Define se o objeto deve ser reciclado ou descartado.</param>
-        public NeutronWriter(MemoryStream stream, bool recycle = true) : base(stream)
+        public NeutronWriter(MemoryStream stream, bool recycle = true) : base(stream, NeutronModule.Encoding)
         {
             _memoryStream = stream;
             _recycle = recycle;
@@ -87,15 +90,64 @@ namespace NeutronNetwork
         {
             byte[] buffer = new byte[array.Length * sizeof(float)];
             Buffer.BlockCopy(array, 0, buffer, 0, buffer.Length);
-            WriteExactly(buffer);
+            WriteIntExactly(buffer);
+        }
+
+        /// Escreve o tamanho do pacote no cabeçalho do protocolo, com base no HEADER_TYPE.
+        public void WriteSize(byte[] packetBuffer)
+        {
+            switch (OthersHelper.GetConstants().HeaderSize)
+            {
+                case HeaderSizeType.Byte:
+                    WriteByteExactly(packetBuffer);
+                    break;
+                case HeaderSizeType.Short:
+                    WriteShortExactly(packetBuffer);
+                    break;
+                case HeaderSizeType.Int:
+                    WriteIntExactly(packetBuffer);
+                    break;
+            }
         }
 
         /// <summary>
         ///* Escreve no fluxo de bytes outro fluxo de bytes <see cref="NeutronWriter"></see>.
         /// </summary>
-        public void Write(NeutronWriter writer)
+        public void WriteNextBytes(NeutronWriter writer)
         {
-            WriteExactly(writer.ToArray());
+            WriteNextBytes(writer.ToArray());
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes outro fluxo de bytes <see cref="byte[]"></see>.
+        /// </summary>
+        public void WriteNextBytes(byte[] buffer)
+        {
+            Write(buffer);
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes outro fluxo de bytes <see cref="NeutronWriter"></see>.
+        /// </summary>
+        public void WriteIntWriter(NeutronWriter writer)
+        {
+            WriteIntExactly(writer.ToArray());
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes outro fluxo de bytes <see cref="NeutronWriter"></see>.
+        /// </summary>
+        public void WriteShortWriter(NeutronWriter writer)
+        {
+            WriteShortExactly(writer.ToArray());
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes outro fluxo de bytes <see cref="NeutronWriter"></see>.
+        /// </summary>
+        public void WriteByteWriter(NeutronWriter writer)
+        {
+            WriteByteExactly(writer.ToArray());
         }
 
         /// <summary>
@@ -110,17 +162,62 @@ namespace NeutronNetwork
         ///* Escreve no fluxo de bytes uma instância do tipo <see cref="T"></see>.<br/>
         ///* A instância <see cref="T"/> é serializada utilizando a serialização definida nas configurações.
         /// </summary>
-        public void WriteExactly<T>(T obj)
+        public void WriteIntExactly<T>(T obj)
         {
-            WriteExactly(obj.Serialize());
+            WriteIntExactly(obj.Serialize());
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes uma instância do tipo <see cref="T"></see>.<br/>
+        ///* A instância <see cref="T"/> é serializada utilizando a serialização definida nas configurações.
+        /// </summary>
+        public void WriteShortExactly<T>(T obj)
+        {
+            WriteShortExactly(obj.Serialize());
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes uma instância do tipo <see cref="T"></see>.<br/>
+        ///* A instância <see cref="T"/> é serializada utilizando a serialização definida nas configurações.
+        /// </summary>
+        public void WriteByteExactly<T>(T obj)
+        {
+            WriteByteExactly(obj.Serialize());
         }
 
         /// <summary>
         ///* Escreve no fluxo de bytes uma instância do tipo <see cref="byte[]"></see>.<br/>
         /// </summary>
-        public void WriteExactly(byte[] buffer)
+        public void WriteIntExactly(byte[] buffer)
         {
-            Write(buffer.Length);
+            int length = buffer.Length;
+            if (length > int.MaxValue)
+                LogHelper.Error($"Header size overflow, size is greater than \"int\" length: {length}");
+            Write(length);
+            Write(buffer);
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes uma instância do tipo <see cref="byte[]"></see>.<br/>
+        /// </summary>
+        public void WriteShortExactly(byte[] buffer)
+        {
+            int length = buffer.Length;
+            if (length > short.MaxValue)
+                LogHelper.Error($"Header size overflow, size is greater than \"short\" length: {length}");
+            Write((short)length);
+            Write(buffer);
+        }
+
+        /// <summary>
+        ///* Escreve no fluxo de bytes uma instância do tipo <see cref="byte[]"></see>.<br/>
+        /// </summary>
+        public void WriteByteExactly(byte[] buffer)
+        {
+            int length = buffer.Length;
+            if (length > byte.MaxValue)
+                LogHelper.Error($"Header size overflow, size is greater than \"byte\" length: {length}");
+            Write((byte)length);
             Write(buffer);
         }
 
@@ -188,7 +285,7 @@ namespace NeutronNetwork
         ///* Inicializa uma nova instância, componente necessário para ler o fluxo de bytes.
         /// </summary>
         /// <param name="recycle">* Define se o objeto deve ser reciclado ou descartado.</param>
-        public NeutronReader(bool recycle = true) : base(new MemoryStream())
+        public NeutronReader(bool recycle = true) : base(new MemoryStream(), NeutronModule.Encoding)
         {
             _memoryStream = (MemoryStream)base.BaseStream;
             _recycle = recycle;
@@ -198,7 +295,7 @@ namespace NeutronNetwork
         ///* Inicializa uma nova instância, componente necessário para ler o fluxo de bytes.
         /// </summary>
         /// <param name="recycle">* Define se o objeto deve ser reciclado ou descartado.</param>
-        public NeutronReader(MemoryStream stream, bool recycle = true) : base(stream)
+        public NeutronReader(MemoryStream stream, bool recycle = true) : base(stream, NeutronModule.Encoding)
         {
             _memoryStream = stream;
             _recycle = recycle;
@@ -207,7 +304,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Inicializa uma nova instância, componente necessário para ler o fluxo de bytes.
         /// </summary>
-        public NeutronReader(byte[] buffer) : base(new MemoryStream(buffer))
+        public NeutronReader(byte[] buffer) : base(new MemoryStream(buffer), NeutronModule.Encoding)
         {
             _memoryStream = (MemoryStream)base.BaseStream;
             _recycle = false;
@@ -216,7 +313,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Inicializa uma nova instância, componente necessário para ler o fluxo de bytes.
         /// </summary>
-        public NeutronReader(byte[] buffer, int index, int count) : base(new MemoryStream(buffer, index, count))
+        public NeutronReader(byte[] buffer, int index, int count) : base(new MemoryStream(buffer, index, count), NeutronModule.Encoding)
         {
             _memoryStream = (MemoryStream)base.BaseStream;
             _recycle = false;
@@ -272,7 +369,7 @@ namespace NeutronNetwork
         /// </summary>
         public float[] ReadFloatArray()
         {
-            byte[] buffer = ReadExactly();
+            byte[] buffer = ReadIntExactly();
             float[] array = new float[buffer.Length / sizeof(float)];
             Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
             return array;
@@ -286,18 +383,72 @@ namespace NeutronNetwork
             return (T)(object)ReadByte();
         }
 
-        /// <summary>
-        ///* Ler a instância do tipo <see cref="T"></see> do fluxo de bytes e deserializa.
-        /// </summary>
-        public T ReadExactly<T>()
+        /// Ler o tamanho do pacote do cabeçalho do protocolo, com base no HEADER_TYPE.
+        public byte[] ReadSize(out int size)
         {
-            return ReadExactly().Deserialize<T>();
+            size = 0;
+            switch (OthersHelper.GetConstants().HeaderSize)
+            {
+                case HeaderSizeType.Byte:
+                    {
+                        byte[] buffer = ReadByteExactly(out byte sizeOf);
+                        size = sizeOf;
+                        return buffer;
+                    }
+                case HeaderSizeType.Short:
+                    {
+                        byte[] buffer = ReadShortExactly(out short sizeOf);
+                        size = sizeOf;
+                        return buffer;
+                    }
+                case HeaderSizeType.Int:
+                    {
+                        byte[] buffer = ReadIntExactly(out int sizeOf);
+                        size = sizeOf;
+                        return buffer;
+                    }
+                default:
+                    return default;
+            }
         }
 
         /// <summary>
         ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
         /// </summary>
-        public byte[] ReadExactly()
+        public byte[] ReadNextBytes(int size)
+        {
+            int bytesRemaining = (int)(size - Pos);
+            return ReadBytes(bytesRemaining);
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="T"></see> do fluxo de bytes e deserializa.
+        /// </summary>
+        public T ReadIntExactly<T>()
+        {
+            return ReadIntExactly().Deserialize<T>();
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="T"></see> do fluxo de bytes e deserializa.
+        /// </summary>
+        public T ReadShortExactly<T>()
+        {
+            return ReadShortExactly().Deserialize<T>();
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="T"></see> do fluxo de bytes e deserializa.
+        /// </summary>
+        public T ReadByteExactly<T>()
+        {
+            return ReadByteExactly().Deserialize<T>();
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadIntExactly()
         {
             return ReadBytes(ReadInt32());
         }
@@ -305,9 +456,43 @@ namespace NeutronNetwork
         /// <summary>
         ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
         /// </summary>
-        public byte[] ReadExactly(out int size)
+        public byte[] ReadShortExactly()
+        {
+            return ReadBytes(ReadInt16());
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadByteExactly()
+        {
+            return ReadBytes(ReadByte());
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadIntExactly(out int size)
         {
             size = ReadInt32();
+            return ReadBytes(size);
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadShortExactly(out short size)
+        {
+            size = ReadInt16();
+            return ReadBytes(size);
+        }
+
+        /// <summary>
+        ///* Ler a instância do tipo <see cref="byte[]"></see> do fluxo de bytes.
+        /// </summary>
+        public byte[] ReadByteExactly(out byte size)
+        {
+            size = ReadByte();
             return ReadBytes(size);
         }
 
@@ -345,7 +530,7 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* Descarta a instância, se recycle é true, recicla a instância.
+        ///* Descarta a instância, se "recycle" é true, recicla a instância para o pool.
         /// </summary>
         public new void Dispose()
         {

@@ -17,7 +17,7 @@ namespace NeutronNetwork.Internal.Interfaces
         #region Methods
         bool Add(NeutronPlayer player);
         bool Remove(NeutronPlayer player);
-        void Add(NeutronCache cache);
+        void Add(NeutronCache cache, int viewId);
         NeutronPlayer[] Players();
         NeutronCache[] Caches();
         #endregion

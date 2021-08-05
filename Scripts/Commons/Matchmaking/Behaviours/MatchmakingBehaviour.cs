@@ -28,7 +28,7 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Fields -> Not Serialized
-        private readonly Dictionary<(int, int), NeutronCache> _cachedPackets = new Dictionary<(int, int), NeutronCache>();
+        private readonly Dictionary<(int, int, int), NeutronCache> _cachedPackets = new Dictionary<(int, int, int), NeutronCache>();
         private int _cacheId;
         #endregion
 
@@ -60,7 +60,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* O cache de pacotes do atual Matchmaking.
         /// </summary>
-        public Dictionary<(int, int), NeutronCache> CachedPackets => _cachedPackets;
+        public Dictionary<(int, int, int), NeutronCache> CachedPackets => _cachedPackets;
         /// <summary>
         ///* A lista de jogadores do atual Matchmaking.
         /// </summary>
@@ -117,14 +117,13 @@ namespace NeutronNetwork.Internal
             }
         }
 
-        public void Add(NeutronCache neutronCache)
+        public void Add(NeutronCache neutronCache, int viewId)
         {
-            int id = neutronCache.Owner.ID;
             switch (neutronCache.Cache)
             {
                 case Cache.Overwrite:
                     {
-                        (int, int) key = (id, neutronCache.Id);
+                        (int, int, int) key = (neutronCache.Owner.ID, neutronCache.Id, viewId);
                         if (CachedPackets.ContainsKey(key))
                             CachedPackets[key] = neutronCache;
                         else
@@ -133,7 +132,7 @@ namespace NeutronNetwork.Internal
                     break;
                 case Cache.New:
                     {
-                        (int, int) key = (id, ++_cacheId);
+                        (int, int, int) key = (neutronCache.Owner.ID, ++_cacheId, viewId);
                         CachedPackets.Add(key, neutronCache);
                     }
                     break;
@@ -177,7 +176,9 @@ namespace NeutronNetwork.Internal
 
         public void OnAfterDeserialize()
         {
+#if UNITY_EDITOR
             Title = _name;
+#endif
         }
     }
 }

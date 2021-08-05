@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class NeutronFPS : MonoBehaviour
+public class NeutronFramerate : MonoBehaviour
 {
     #region Fields
     [SerializeField] private int _updateRate = 4;

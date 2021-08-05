@@ -1,28 +1,43 @@
-﻿using UnityEditor;
-using UnityEngine;
-using NeutronNetwork.Server.Internal;
-using UnityEditor.SceneManagement;
+﻿using NeutronNetwork;
+using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Server;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
 
 public class NeutronEditor : EditorWindow
 {
-    [MenuItem("Neutron/Settings/Neutron")]
+    [MenuItem("Neutron/Play(Performance Mode)", priority = -50)]
+    private static void Play()
+    {
+        NeutronModule.EditorLoadSettings().GlobalSettings.PerfomanceMode = true;
+        ///////////////////////////////////////////////////////////////////////////
+        EditorApplication.isPlaying = !EditorApplication.isPlaying;
+    }
+
+    [MenuItem("Neutron/Settings/File/Neutron &F11")]
     private static void OpenSettings()
     {
         Object asset = Resources.Load("Neutron Settings");
         if (asset != null)
-            AssetDatabase.OpenAsset(asset);
+        {
+            if (AssetDatabase.OpenAsset(asset))
+                EditorGUIUtility.PingObject(asset);
+        }
     }
 
-    [MenuItem("Neutron/Settings/Synchronization")]
+    [MenuItem("Neutron/Settings/File/Synchronization &F10")]
     private static void OpenSynchronization()
     {
         Object asset = Resources.Load("Neutron Synchronization");
         if (asset != null)
-            AssetDatabase.OpenAsset(asset);
+        {
+            if (AssetDatabase.OpenAsset(asset))
+                EditorGUIUtility.PingObject(asset);
+        }
     }
 
-    [MenuItem("Neutron/Setup")]
+    [MenuItem("Neutron/Settings/Setup", priority = 0)]
     private static void Setup()
     {
         GameObject l_Controllers = GameObject.Find("Controllers");

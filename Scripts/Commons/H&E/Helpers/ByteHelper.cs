@@ -93,46 +93,77 @@ namespace NeutronNetwork.Helpers
 
         public static byte[] Serialize(this object obj)
         {
-            Serialization serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
-            switch (serializationMode)
+            try
             {
-                case Serialization.Json:
-                    return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj));
-                case Serialization.Binary:
-                    {
-                        BinaryFormatter formatter = new BinaryFormatter();
-                        using (MemoryStream mStream = new MemoryStream())
+                Serialization serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                switch (serializationMode)
+                {
+                    case Serialization.Json:
+                        return NeutronModule.Encoding.GetBytes(JsonConvert.SerializeObject(obj));
+                    case Serialization.Binary:
                         {
-                            formatter.Serialize(mStream, obj);
-                            return mStream.ToArray();
+                            BinaryFormatter formatter = new BinaryFormatter();
+                            using (MemoryStream mStream = new MemoryStream())
+                            {
+                                formatter.Serialize(mStream, obj);
+                                return mStream.ToArray();
+                            }
                         }
-                    }
-                case Serialization.Custom:
-                    return OnCustomSerialization?.Invoke(obj);
-                default:
-                    return null;
+                    case Serialization.Custom:
+                        return OnCustomSerialization?.Invoke(obj);
+                    default:
+                        return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.StackTrace(ex);
+                return default;
             }
         }
 
         public static T Deserialize<T>(this byte[] buffer)
         {
-            Serialization serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
-            switch (serialization)
+            try
             {
-                case Serialization.Json:
-                    return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(buffer));
-                case Serialization.Binary:
-                    {
-                        BinaryFormatter formatter = new BinaryFormatter();
-                        using (MemoryStream mStream = new MemoryStream(buffer))
+                Serialization serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                switch (serialization)
+                {
+                    case Serialization.Json:
+                        return JsonConvert.DeserializeObject<T>(NeutronModule.Encoding.GetString(buffer));
+                    case Serialization.Binary:
                         {
-                            return (T)formatter.Deserialize(mStream);
+                            BinaryFormatter formatter = new BinaryFormatter();
+                            using (MemoryStream mStream = new MemoryStream(buffer))
+                            {
+                                return (T)formatter.Deserialize(mStream);
+                            }
                         }
-                    }
-                case Serialization.Custom:
-                    return (T)OnCustomDeserialization?.Invoke(buffer);
+                    case Serialization.Custom:
+                        return (T)OnCustomDeserialization?.Invoke(buffer);
+                    default:
+                        return default;
+                }
+            }
+            catch
+            {
+                LogHelper.Error("Deserialization exception!");
+                return default;
+            }
+        }
+
+        public static int ReadSize(byte[] headerBuffer)
+        {
+            switch (OthersHelper.GetConstants().HeaderSize)
+            {
+                case HeaderSizeType.Byte:
+                    return headerBuffer[0];
+                case HeaderSizeType.Short:
+                    return BitConverter.ToInt16(headerBuffer, 0);
+                case HeaderSizeType.Int:
+                    return BitConverter.ToInt32(headerBuffer, 0);
                 default:
-                    return default;
+                    return 0;
             }
         }
     }

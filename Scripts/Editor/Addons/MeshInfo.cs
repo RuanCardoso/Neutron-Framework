@@ -11,7 +11,7 @@ public class MeshInfo : EditorWindow
     private int m_EdgeCount;
     private int m_FaceCount;
 
-    [MenuItem("Neutron/Addons/Mesh Info")]
+    [MenuItem("Neutron/Addons/Mesh Info", priority = 0)]
     static void Init()
     {
         var Window = GetWindow(typeof(MeshInfo), true, "Mesh Info");

@@ -29,21 +29,26 @@ namespace NeutronNetwork
         {
             if (isWriting)
             {
-                var json = JsonConvert.SerializeObject(this, _jsonSerializerSettings);
-                if (!_serializeOnChange)
-                    writer.Write(json);
-                else
+                var data = JsonConvert.SerializeObject(this, _jsonSerializerSettings);
+                if (data.Length > 2)
                 {
-                    if (_json != json)
-                    {
-                        writer.Write(json);
-                        {
-                            _json = json;
-                        }
-                    }
+                    if (!_serializeOnChange)
+                        writer.Write(data);
                     else
-                        return false;
+                    {
+                        if (_json != data)
+                        {
+                            writer.Write(data);
+                            {
+                                _json = data;
+                            }
+                        }
+                        else
+                            return false;
+                    }
                 }
+                else
+                    return false;
             }
             else
             {

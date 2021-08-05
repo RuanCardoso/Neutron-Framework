@@ -45,7 +45,7 @@ namespace NeutronNetwork.Internal.Components
         ///* Este metódo não é recomendado, use a versão assíncrona.
         /// </summary>
         /// <param name="func">* A função a ser agendada.</param>
-        [Obsolete("Utilize a versão assíncrona desta sobrecarga!")]
+        [Obsolete("Use the asynchronous version of this overload!")]
         public static T ScheduleTask<T>(Func<T> func)
         {
             T result = default;
@@ -101,7 +101,7 @@ namespace NeutronNetwork.Internal.Components
         {
             try
             {
-                for (int i = 0; i < NeutronMain.Settings.GlobalSettings.ActionsProcessedPerFrame && _tasks.Count > 0; i++)
+                while (_tasks.Count > 0)
                 {
                     if (_tasks.TryDequeue(out Action action))
                         action.Invoke();

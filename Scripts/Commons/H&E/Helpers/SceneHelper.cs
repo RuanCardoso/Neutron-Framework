@@ -1,4 +1,5 @@
 using NeutronNetwork;
+using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -41,7 +42,7 @@ public static class SceneHelper
 
     public static bool IsSceneObject(int viewID)
     {
-        return viewID > 0 && viewID < Settings.GENERATE_PLAYER_ID;
+        return viewID > 0 && viewID < NeutronConstantsSettings.GENERATE_PLAYER_ID;
     }
 
     public static void MoveToContainer(GameObject obj, string name)

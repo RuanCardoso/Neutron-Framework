@@ -25,7 +25,7 @@ namespace NeutronNetwork
     {
         #region Fields -> Inspector
         [Header("[Identity]")]
-        [SerializeField] [ReadOnly] private byte _iD;
+        [SerializeField] [ReadOnly] private byte _id;
         [SerializeField] [HorizontalLineDown] private Authoritys _authority = Authoritys.Mine;
         [HideInInspector]
         [SerializeField] private bool _hasOnAutoSynchronization, _hasIRPC;
@@ -44,7 +44,7 @@ namespace NeutronNetwork
         ///* ID que será usado para identificar a instância que deve invocar os iRPC's
         /// </summary>
         /// <value></value>
-        public byte ID => _iD;
+        public byte ID => _id;
         /// <summary>
         ///* Retorna o nível de autoridade usado.
         /// </summary>
@@ -112,7 +112,7 @@ namespace NeutronNetwork
             }
         }
         /// <summary>
-        ///* Definido quando o servidor tem a autoridade sobre o objeto, isto é, impede que o servidor execute a sí mesmo alguma instrução que faz parte do iRPC ou OnSerializeNeutronView.<br/>
+        ///* Definido quando o servidor tem a autoridade sobre o objeto, isto é, impede que o servidor execute a sí mesmo alguma instrução que faz parte do iRPC ou OnAutoSynchronization.<br/>
         ///* Se o Cliente possuir a autoridade sobre o objeto, retorna "True".
         /// </summary>
         protected bool DoNotPerformTheOperationOnTheServer => IsClient || Authority != Authoritys.Server;
@@ -121,6 +121,10 @@ namespace NeutronNetwork
         /// </summary>
         /// <value></value>
         public NeutronView NeutronView { get; set; }
+        /// <summary>
+        ///* A instância de Neutron a qual este objeto pertence.
+        /// </summary>
+        public Neutron This { get; set; }
         #endregion
 
         #region Custom MonoBehaviour Methods
@@ -129,14 +133,18 @@ namespace NeutronNetwork
         /// </summary>
         public virtual void OnNeutronStart()
         {
-            if (NeutronView != null)
+            This = NeutronView.This;
+            foreach (iRpcOptions option in _iRpcOptions)
             {
-                _isInitialized = true; //* Define que está pronto para uso, antes disso, tudo falhará.
-                if (_isInitialized)
-                    StartCoroutine(InitializeAutoSync());
+                if (option.Instance.ID == ID)
+                    RuntimeIRpcOptions.Add(option.RpcId, option);
+                else
+                    NeutronView.NeutronBehaviours[option.Instance.ID].RuntimeIRpcOptions.Add(option.RpcId, option);
             }
-            else
-                LogHelper.Error("\"Neutron View\" object not found, failed to instantiate in network.");
+            //* Define que está pronto para uso, antes disso, tudo falhará.
+            _isInitialized = true;
+            //* Inicia a Auto Sincronização.
+            StartCoroutine(InitializeAutoSync());
         }
         /// <summary>
         ///* É Seguro para chamadas internas.(IsMine, HasAuthority, IsServer).
@@ -153,16 +161,14 @@ namespace NeutronNetwork
         #endregion
 
         #region Collections
-        [SerializeField] [ShowIf("_hasIRPC")] private List<NeutronDataSyncOptions> _syncOptions = new List<NeutronDataSyncOptions>();
-        [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private NeutronDataSyncOptionsWithRate OnAutoSynchronizationOptions;
-        private Dictionary<int, NeutronDataSyncOptions> _runtimeSyncOptions;
+        [SerializeField] [ShowIf("_hasIRPC")] [Label("iRpcOptions")] private List<iRpcOptions> _iRpcOptions = new List<iRpcOptions>();
+        [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions OnAutoSynchronizationOptions;
+        [NonSerialized] public Dictionary<byte, iRpcOptions> RuntimeIRpcOptions = new Dictionary<byte, iRpcOptions>();
         #endregion
 
         #region MonoBehaviour
         public virtual void Awake()
-        {
-            _runtimeSyncOptions = _syncOptions.ToDictionary(x => x.RpcId);
-        }
+        { }
 
         public virtual void Start()
         { }
@@ -188,7 +194,7 @@ namespace NeutronNetwork
         public void Reset()
         {
 #if UNITY_EDITOR
-            _iD = 0;
+            _id = 0;
             OnValidate();
 #endif
         }
@@ -196,17 +202,23 @@ namespace NeutronNetwork
         protected virtual void OnValidate()
         {
 #if UNITY_EDITOR
-            if (!Application.isPlaying && ID == 0)
+            LoadOptions();
+#endif
+        }
+
+        private void LoadOptions()
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
             {
-                NeutronBehaviour[] neutronBehaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
+                var neutronBehaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
                 if (neutronBehaviours.Length <= byte.MaxValue)
                 {
-                    for (int i = 0; i < neutronBehaviours.Length; i++)
+                    if (ID == 0)
                     {
-                        if (neutronBehaviours[i] == this)
-                            _iD = (byte)(i + 1);
-                        else if (neutronBehaviours[i].ID == ID)
-                            neutronBehaviours[i].Reset();
+                        _id = (byte)UnityEngine.Random.Range(1, byte.MaxValue);
+                        if (neutronBehaviours.Count(x => x._id == _id) > 1)
+                            Reset();
                     }
                 }
                 else
@@ -225,51 +237,53 @@ namespace NeutronNetwork
                     else
                         _hasOnAutoSynchronization = false;
 
-                    iRPC[][] multiplesMethods = ReflectionHelper.GetMultipleAttributes<iRPC>(instance);
+                    (iRPC[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPC>(instance);
                     _hasIRPC = multiplesMethods.Length > 0;
-                    if (_hasIRPC && _syncOptions != null)
+                    if (_hasIRPC && _iRpcOptions != null)
                     {
-                        List<int> listOfId = new List<int>();
+                        List<byte> listOfId = new List<byte>();
                         for (int i = 0; i < multiplesMethods.Length; i++)
                         {
-                            iRPC[] iRPCs = multiplesMethods[i];
-                            for (int rI = 0; rI < iRPCs.Length; rI++)
+                            (iRPC[], MethodInfo) iRPCs = multiplesMethods[i];
+                            for (int rI = 0; rI < iRPCs.Item1.Length; rI++)
                             {
-                                iRPC iRPC = iRPCs[rI];
-                                if (iRPC != null)
+                                iRPC iRPC = iRPCs.Item1[rI];
+                                var option = new iRpcOptions
                                 {
-                                    listOfId.Add(iRPC.ID);
-
-                                    var option = new NeutronDataSyncOptions();
-                                    option.InstanceId = instance.ID;
-                                    option.RpcId = iRPC.ID;
-
-                                    if (!_syncOptions.Contains(option))
-                                        _syncOptions.Add(option);
-                                    else
-                                        continue;
-                                }
+                                    Instance = instance,
+                                    OriginalInstance = instance,
+                                    RpcId = iRPC.ID,
+                                    Name = iRPCs.Item2.Name,
+                                };
+                                listOfId.Add(option.RpcId);
+                                if (!_iRpcOptions.Contains(option))
+                                    _iRpcOptions.Add(option);
                                 else
                                     continue;
                             }
                         }
 
-                        for (int i = 0; i < _syncOptions.Count; i++)
+                        if (_iRpcOptions.Count > listOfId.Count)
                         {
-                            var option = _syncOptions[i];
-                            if (!listOfId.Contains(option.RpcId))
-                                _syncOptions.Remove(option);
+                            _iRpcOptions.Where(x => !listOfId.Contains(x.RpcId)).ToList().ForEach((x) =>
+                            {
+                                _iRpcOptions.Remove(x);
+                            });
                         }
 
-                        if (_syncOptions.Count > listOfId.Count)
+                        if (_iRpcOptions.Count > listOfId.Count)
                         {
-                            int diff = _syncOptions.Count - listOfId.Count;
+                            int diff = _iRpcOptions.Count - listOfId.Count;
                             for (int i = 0; i < diff; i++)
-                                _syncOptions.RemoveAt(_syncOptions.Count - 1);
+                                _iRpcOptions.RemoveAt(_iRpcOptions.Count - 1);
                         }
+                        _iRpcOptions = _iRpcOptions.OrderBy(x => x.RpcId).ToList();
                     }
-                    else if (_syncOptions != null)
-                        _syncOptions.Clear();
+                    else
+                    {
+                        if (_iRpcOptions != null)
+                            _iRpcOptions.Clear();
+                    }
                 }
             }
             #endregion
@@ -283,89 +297,45 @@ namespace NeutronNetwork
         /// </summary>
         /// <param name="id">* ID do metódo que será invocado.</param>
         /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
-        /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
-        /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
 #pragma warning disable IDE1006
-        protected void iRPC(int id, NeutronWriter writer)
+        protected void iRPC(byte id, NeutronWriter writer)
 #pragma warning restore IDE1006
         {
-            var Options = _runtimeSyncOptions[id];
-            int uniqueID = id ^ ID;
-            if (IsClient)
-                NeutronView.This.iRPC(NeutronView.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
-            else if (IsServer)
-                Neutron.Server.iRPC(NeutronView.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
+            if (RuntimeIRpcOptions.TryGetValue(id, out iRpcOptions option))
+                NeutronView.This.iRPC(writer, NeutronView, option.RpcId, option.OriginalInstance.ID, option.Cache, option.TargetTo, option.Protocol, IsServer);
+            else
+                LogHelper.Error($"Rpc [{id}] not found!");
         }
 
         /// <summary>
-        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.<br/>
-        ///* Envie o iRPC para um jogador específico, suporta o roteamento dos dados. 
+        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.
         /// </summary>
-        /// <param name="player">* O jogador de destino da mensagem.</param>
         /// <param name="id">* ID do metódo que será invocado.</param>
         /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
-        /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
-        /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
+        /// <param name="neutronView">* O Objeto de rede de destino.</param>
 #pragma warning disable IDE1006
-        protected void iRPC(int id, NeutronPlayer player, NeutronWriter writer)
+        protected void iRPC(byte id, NeutronWriter writer, NeutronView neutronView)
 #pragma warning restore IDE1006
         {
-            var Options = _runtimeSyncOptions[id];
-            int uniqueID = id ^ ID;
-            if (IsClient)
-                NeutronView.This.iRPC(player.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
-            else if (IsServer)
-                Neutron.Server.iRPC(player.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
-        }
-
-        /// <summary>
-        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados ou sincronização via rede.<br/>
-        ///* Envie o iRPC para um objeto de rede específico, suporta o roteamento dos dados. 
-        /// </summary>
-        /// <param name="view">* O objeto de rede de destino da mensagem.</param>
-        /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="nCacheMode">* O Tipo de armazenamento em cache que será usado para guardar em cache.</param>
-        /// <param name="nSendTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
-        /// <param name="nBroadcast">* O Túnel que será usado para a transmissão.</param>
-        /// <param name="nSendProtocol">* O protocolo que será usado para enviar os dados.</param>
-#pragma warning disable IDE1006
-        protected void iRPC(int id, NeutronView view, NeutronWriter writer)
-#pragma warning restore IDE1006
-        {
-            var Options = _runtimeSyncOptions[id];
-            int uniqueID = id ^ ID;
-            if (IsClient)
-                NeutronView.This.iRPC(view.ID, uniqueID, writer, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.RecProtocol, Options.SendProtocol);
-            else if (IsServer)
-                Neutron.Server.iRPC(view.ID, uniqueID, writer, NeutronView.Player, Options.Cache, Options.TergetTo, Options.TunnelingTo, Options.SendProtocol);
+            if (RuntimeIRpcOptions.TryGetValue(id, out iRpcOptions option))
+                NeutronView.This.iRPC(writer, neutronView, option.RpcId, option.OriginalInstance.ID, option.Cache, option.TargetTo, option.Protocol, IsServer);
+            else
+                LogHelper.Error($"Rpc [{id}] not found!");
         }
         #endregion
 
-        #region Virtual Methods
+        #region Virtual Methods and Enumerators
         private IEnumerator InitializeAutoSync()
         {
-            var option = OnAutoSynchronizationOptions;
             while (_hasOnAutoSynchronization && HasAuthority)
             {
+                var option = OnAutoSynchronizationOptions;
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
-                    {
-                        if (OnAutoSynchronization(writer, reader, true)) //* Invoca o metódo.
-                        {
-                            if (IsClient)
-                                NeutronView.This.OnAutoSynchronization(writer, NeutronView, ID, option.TargetTo, option.TunnelingTo, option.RecProtocol, option.SendProtocol); //* Envia para a rede. Client->Server
-                            else
-                                Neutron.Server.OnAutoSynchronization(NeutronView.Player, NeutronView, ID, writer, option.TargetTo, option.TunnelingTo, option.SendProtocol); //* Envia para a rede. Server->Client
-                        }
-                    }
+                    if (OnAutoSynchronization(writer, null, true)) //* Invoca o metódo.
+                        NeutronView.This.OnAutoSynchronization(writer, NeutronView, ID, option.Protocol, IsServer); //* Envia para a rede.
                 }
-                yield return new WaitForSeconds(Settings.ONE_PER_SECOND / option.SendRate); //* SendRate, envios por segundo.
+                yield return new WaitForSeconds(NeutronConstantsSettings.ONE_PER_SECOND / option.SendRate); //* SendRate, envios por segundo.
             }
         }
         /// <summary>

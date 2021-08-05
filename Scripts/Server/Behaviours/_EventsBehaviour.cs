@@ -1,5 +1,6 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Interfaces;
 using System;
 using UnityEngine;
@@ -16,12 +17,13 @@ namespace NeutronNetwork.Server.Internal
         public virtual void OnEnable()
         {
             #region Common Events
-            NeutronServer.OnAwake += OnServerAwake;
-            NeutronServer.OnPlayerDisconnected += OnPlayerDisconnected;
+            ServerBase.OnAwake += OnServerAwake;
+            ServerBase.OnPlayerDisconnected += OnPlayerDisconnected;
+            ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
             #endregion
 
             #region Other
-            MatchmakingHelper.OnCustomBroadcast += OnCustomBroadcast;
+            ServerBase.OnCustomTunneling += OnCustomBroadcast;
             #endregion
         }
 
@@ -33,7 +35,7 @@ namespace NeutronNetwork.Server.Internal
             #endregion
 
             #region Other
-            MatchmakingHelper.OnCustomBroadcast -= OnCustomBroadcast;
+            ServerBase.OnCustomTunneling -= OnCustomBroadcast;
             #endregion
         }
 
@@ -44,7 +46,7 @@ namespace NeutronNetwork.Server.Internal
         }
         #endregion
 
-        #region Handlers
+        #region Registered Methods
         public virtual void OnPlayerDisconnected(NeutronPlayer player)
         {
             if (player.RemoteEndPoint != null)
@@ -54,6 +56,15 @@ namespace NeutronNetwork.Server.Internal
         public virtual void OnCheatDetected(NeutronPlayer player, string name)
         {
             LogHelper.Info($"Usando hack porraaaaaaaa -> {player.Nickname}");
+        }
+
+        public virtual void OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
+        {
+            // Create the container of new room.
+            NeutronSchedule.ScheduleTask(() =>
+            {
+                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Player, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
+            });
         }
 
         public virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer player, TunnelingTo tunnelingTo)

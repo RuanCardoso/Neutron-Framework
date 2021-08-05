@@ -8,7 +8,7 @@ namespace NeutronNetwork
         public static void Info(object message)
         {
 #if UNITY_SERVER
-        Console.WriteLine (message);
+            Console.WriteLine(message);
 #else
             Debug.Log(message);
 #endif
@@ -17,11 +17,21 @@ namespace NeutronNetwork
         public static bool Info(object message, object obj)
         {
 #if UNITY_SERVER
-        if (obj == null) { Console.WriteLine (message); return false; }
-        else return true;
+            if (obj == null)
+            {
+                Console.WriteLine(message);
+                return false;
+            }
+            else
+                return true;
 #else
-            if (obj != null) { Debug.Log(message); return true; }
-            else return false;
+            if (obj != null)
+            {
+                Debug.Log(message);
+                return true;
+            }
+            else
+                return false;
 #endif
         }
 
@@ -38,18 +48,28 @@ namespace NeutronNetwork
         public static bool Error(object message, object obj)
         {
 #if UNITY_SERVER
-        if (obj == null) { Console.WriteLine (message); return false; }
-        else return true;
+            if (obj == null)
+            {
+                Console.WriteLine(message);
+                return false;
+            }
+            else
+                return true;
 #else
-            if (obj == null) { Debug.LogError(message); return false; }
-            else return true;
+            if (obj == null)
+            {
+                Debug.LogError(message);
+                return false;
+            }
+            else
+                return true;
 #endif
         }
 
         public static void Warn(object message)
         {
 #if UNITY_SERVER
-        Console.WriteLine (message);
+            Console.WriteLine(message);
 #else
             Debug.LogWarning(message);
 #endif
@@ -58,11 +78,28 @@ namespace NeutronNetwork
         public static bool Warn(object message, object obj)
         {
 #if UNITY_SERVER
-        if (obj == null) { Console.WriteLine (message); return false; }
-        else return true;
+            if (obj == null)
+            {
+                Console.WriteLine(message);
+                return false;
+            }
+            else
+                return true;
 #else
-            if (obj == null) { Debug.LogWarning(message); return false; }
-            else return true;
+            if (obj == null)
+            {
+                Debug.LogWarning(message);
+                return false;
+            }
+            else
+                return true;
+#endif
+        }
+
+        public static void PrintInline(object message, string prefix)
+        {
+#if UNITY_SERVER
+            Console.Write("\r{0}{1}", message, prefix);
 #endif
         }
 

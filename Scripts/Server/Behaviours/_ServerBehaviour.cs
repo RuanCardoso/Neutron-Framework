@@ -2,6 +2,7 @@
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Server.Internal;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -25,6 +26,7 @@ namespace NeutronNetwork.Server
         #region Fields
         public GameObject[] DestroyObjects;
         [HorizontalLine] public LocalPhysicsMode Physics = LocalPhysicsMode.Physics3D;
+        public bool ClientHasPhysics = true;
         public View View;
         public EventsBehaviour EventsBehaviour;
         [ReadOnly] [HorizontalLine] public int PlayerCount;
@@ -51,12 +53,12 @@ namespace NeutronNetwork.Server
         Console.Clear();
 #endif
 #if UNITY_SERVER || UNITY_EDITOR
-            if (NeutronMain.Settings != null)
+            if (NeutronModule.Settings != null)
             {
                 try
                 {
-                    TcpListener = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronMain.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                    TcpListener.Start(NeutronMain.Settings.ServerSettings.BackLog);
+                    TcpListener = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronModule.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                    TcpListener.Start(NeutronModule.Settings.ServerSettings.BackLog);
                     IsReady = true;
                 }
                 catch (SocketException ex)

@@ -1,5 +1,6 @@
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Server;
 using System.Linq;
 using UnityEngine;
 
@@ -7,8 +8,6 @@ namespace NeutronNetwork.Helpers
 {
     public static class MatchmakingHelper
     {
-        public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomBroadcast;
-
         public static bool GetPlayer(int id, out NeutronPlayer player)
         {
             return Neutron.Server.PlayersById.TryGetValue(id, out player);
@@ -17,6 +16,28 @@ namespace NeutronNetwork.Helpers
         public static bool AddPlayer(NeutronPlayer player)
         {
             return Neutron.Server.PlayersById.TryAdd(player.ID, player);
+        }
+
+        public static void BeginSender(NeutronPlayer sender)
+        {
+            lock (Encapsulate.BeginLock)
+            {
+                if (Encapsulate.Sender == null)
+                    Encapsulate.Sender = sender;
+                else
+                    LogHelper.Error("it is necessary to call \"EndSender\" first!");
+            }
+        }
+
+        public static void EndSender()
+        {
+            lock (Encapsulate.BeginLock)
+            {
+                if (Encapsulate.Sender != null)
+                    Encapsulate.Sender = null;
+                else
+                    LogHelper.Error("it is necessary to call \"BeginSender\" first!");
+            }
         }
 
         public static void Leave(NeutronPlayer player, bool leaveRoom = true, bool leaveChannel = true)
@@ -41,7 +62,12 @@ namespace NeutronNetwork.Helpers
                 return null;
         }
 
-        public static bool GetNetworkObject((int, int) id, NeutronPlayer player, out NeutronView view)
+        public static TargetTo TargetTo(bool isServerSide)
+        {
+            return isServerSide ? global::TargetTo.All : global::TargetTo.Others;
+        }
+
+        public static bool GetNetworkObject((int, int, RegisterType) id, NeutronPlayer player, out NeutronView view)
         {
             view = null;
             INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
@@ -51,17 +77,18 @@ namespace NeutronNetwork.Helpers
                 return false;
         }
 
-        public static void SetCache(int id, byte[] buffer, NeutronPlayer player, Cache cache, CachedPacket packet)
+        public static void AddCache(int id, int viewId, NeutronWriter writer, NeutronPlayer player, Cache cache, CachedPacket cachedPacket)
         {
             if (cache != Cache.None)
             {
                 INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
                 if (neutronMatchmaking != null)
                 {
-                    NeutronCache l_Cache = new NeutronCache(id, buffer, player, packet, cache);
-                    if (l_Cache != null)
-                        neutronMatchmaking.Add(l_Cache);
+                    NeutronCache dataCache = new NeutronCache(id, writer.ToArray(), player, cachedPacket, cache);
+                    neutronMatchmaking.Add(dataCache, viewId);
                 }
+                else
+                    LogHelper.Error("Cache -> Invalid matchmaking");
             }
         }
 
@@ -104,7 +131,7 @@ namespace NeutronNetwork.Helpers
                             return Tunneling(player, TunnelingTo.Server);
                     }
                 default:
-                    return OnCustomBroadcast?.Invoke(player, tunnelingTo);
+                    return ServerBase.OnCustomTunneling?.Invoke(player, tunnelingTo);
             }
         }
     }

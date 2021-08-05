@@ -4,6 +4,7 @@ namespace NeutronNetwork.Constants
     {
         public const int NEUTRON_CONFIG = -1100;
         public const int NEUTRON_DISPATCHER = -1000;
+        public const int NEUTRON_REGISTER = -950;
         public const int NEUTRON_EVENTS = -900;
         public const int NEUTRON_SERVER = -800;
         public const int NEUTRON_CLIENT = -700;

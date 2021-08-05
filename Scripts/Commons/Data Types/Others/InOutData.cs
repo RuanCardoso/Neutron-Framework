@@ -11,14 +11,14 @@ namespace NeutronNetwork.Internal
 
         public void AddIncoming(int value, Packet packet = Packet.Empty)
         {
-            if (packet == Packet.Ping)
+            if (packet == Packet.Ping || packet == Packet.TcpKeepAlive)
                 return;
             Interlocked.Add(ref _bytesIncoming, value);
         }
 
         public void AddOutgoing(int value, Packet packet = Packet.Empty)
         {
-            if (packet == Packet.Ping)
+            if (packet == Packet.Ping || packet == Packet.TcpKeepAlive)
                 return;
             Interlocked.Add(ref _bytesOutgoing, value);
         }

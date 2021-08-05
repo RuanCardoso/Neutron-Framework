@@ -71,7 +71,7 @@ namespace NeutronNetwork.Helpers
             return tryRemove;
         }
 
-        public static async Task<bool> ReadAsyncBytes(NetworkStream stream, byte[] buffer, int offset, int size, CancellationToken token)
+        public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int size, CancellationToken token) // Manter Stream, em vez de NetworkStream.
         {
             return await Task.Run(async () =>
             {
@@ -95,35 +95,42 @@ namespace NeutronNetwork.Helpers
             });
         }
 
-        public static void Redirect(NeutronPlayer sender, NeutronPlayer dataSender, Protocol protocol, TargetTo targetTo, Packet packet, byte[] buffer, NeutronPlayer[] tunnelingPlayers)
+        public static void Redirect(NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, TargetTo targetTo, Packet ignoredPacket, byte[] buffer, NeutronPlayer[] players)
         {
-            NeutronData data = new NeutronData(buffer, dataSender, protocol, packet);
-            if (targetTo == TargetTo.Me)
-                if (!sender.IsServer)
-                    Neutron.Server.OnSendingData(sender, data);
-                else
-                    LogHelper.Error("The Server cannot transmit data to itself.");
-            else
+            NeutronPacket packet = new NeutronPacket(buffer, owner, sender, protocol, ignoredPacket);
+            switch (targetTo)
             {
-                if (tunnelingPlayers != null)
-                {
-                    for (int i = 0; i < tunnelingPlayers.Length; i++)
+                case TargetTo.Me:
+                    if (!owner.IsServer)
+                        Neutron.Server.OnSendingData(owner, packet);
+                    else
+                        LogHelper.Error("The Server cannot transmit data to itself.");
+                    break;
+                case TargetTo.Server:
+                    break;
+                default:
                     {
-                        switch (targetTo)
+                        if (players != null)
                         {
-                            case TargetTo.All:
-                                Neutron.Server.OnSendingData(tunnelingPlayers[i], data);
-                                break;
-                            case TargetTo.Others:
-                                if (tunnelingPlayers[i].Equals(sender))
-                                    continue;
-                                Neutron.Server.OnSendingData(tunnelingPlayers[i], data);
-                                break;
+                            for (int i = 0; i < players.Length; i++)
+                            {
+                                switch (targetTo)
+                                {
+                                    case TargetTo.All:
+                                        Neutron.Server.OnSendingData(players[i], packet);
+                                        break;
+                                    case TargetTo.Others:
+                                        if (players[i].Equals(owner))
+                                            continue;
+                                        Neutron.Server.OnSendingData(players[i], packet);
+                                        break;
+                                }
+                            }
                         }
+                        else
+                            LogHelper.Error("The server cannot transmit all data to nothing.");
+                        break;
                     }
-                }
-                else
-                    LogHelper.Error("The server cannot transmit all data to nothing.");
             }
         }
 
@@ -134,7 +141,7 @@ namespace NeutronNetwork.Helpers
             {
                 if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int count))
                 {
-                    if (count > NeutronMain.Settings.LIMIT_OF_CONN_BY_IP)
+                    if (count > OthersHelper.GetConstants().MaxConnectionsPerIp)
                         return false;
                     else
                     {
@@ -188,6 +195,15 @@ namespace NeutronNetwork.Helpers
         public static async Task<IPAddress> GetHostAddress(string host)
         {
             return (await Dns.GetHostAddressesAsync(host))[0];
+        }
+
+        public static Stream GetStream(TcpClient tcpClient)
+        {
+            Stream networkStream = tcpClient.GetStream();
+            if (OthersHelper.GetConstants().BufferedStream)
+                return new BufferedStream(networkStream, OthersHelper.GetConstants().BufferedStreamSize);
+            else
+                return networkStream;
         }
     }
 }

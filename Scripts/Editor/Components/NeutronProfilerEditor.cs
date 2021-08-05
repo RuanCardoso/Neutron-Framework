@@ -22,7 +22,7 @@ public class NeutronProfilerEditor : EditorWindow
     private int m_ServerBytesIncomingUDP;
     #endregion
 
-    [MenuItem("Neutron/Analysis/Profiler")]
+    [MenuItem("Neutron/Settings/Analysis/Profiler &F9")]
     static void Init()
     {
         EditorWindow Window = GetWindow(typeof(NeutronProfilerEditor), true, "Profiler");

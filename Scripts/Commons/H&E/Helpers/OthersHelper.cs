@@ -92,12 +92,17 @@ namespace NeutronNetwork.Helpers
 
         public static NeutronDefaultHandlerSettings GetDefaultHandler()
         {
-            return NeutronMain.Synchronization.DefaultHandlers;
+            return NeutronModule.Synchronization.DefaultHandlers;
         }
 
         public static Settings GetSettings()
         {
-            return NeutronMain.Settings;
+            return NeutronModule.Settings;
+        }
+
+        public static NeutronConstantsSettings GetConstants()
+        {
+            return NeutronModule.Settings.NetworkSettings;
         }
 
 #if !UNITY_2019_2_OR_NEWER

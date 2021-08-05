@@ -46,6 +46,7 @@ public enum TargetTo : byte
 public enum Packet : byte
 {
     Empty,
+    TcpKeepAlive,
     Handshake,
     NewPlayer,
     Disconnection,
@@ -99,8 +100,9 @@ public enum ChatPacket : byte
 [Network]
 public enum CachedPacket : byte
 {
-    gRPC = 121,
-    iRPC = 122,
+    gRPC = 255,
+    iRPC = 254,
+    Custom = 253,
 }
 
 /// <summary>
@@ -329,5 +331,23 @@ public enum MethodType : int
     String = 16,
     Async = 32,
     Task = 64
+}
+
+public enum EncodingType : int
+{
+    UTF8,
+    UTF7,
+    UTF32,
+    Unicode,
+    BigEndianUnicode,
+    ASCII,
+    Default,
+}
+
+public enum HeaderSizeType : int
+{
+    Byte,
+    Int,
+    Short,
 }
 #endregion
