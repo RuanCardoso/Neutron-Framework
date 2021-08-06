@@ -29,6 +29,7 @@ namespace NeutronNetwork.Internal.Components
 #endif
             LoadSettings();
             LoadSynchronization();
+            InitializePools();
         }
 
         private void OnEnable()
@@ -63,6 +64,20 @@ namespace NeutronNetwork.Internal.Components
             {
                 QualitySettings.vSyncCount = 0;
                 Application.targetFrameRate = _framerate;
+            }
+        }
+
+        private void InitializePools()
+        {
+            int maxCapacity = Settings.GlobalSettings.PoolCapacity;
+            Neutron.PooledNetworkWriters = new NeutronPool<NeutronWriter>(() => new NeutronWriter(), maxCapacity, false);
+            Neutron.PooledNetworkReaders = new NeutronPool<NeutronReader>(() => new NeutronReader(), maxCapacity, false);
+            Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true), maxCapacity, false);
+            for (int i = 0; i < maxCapacity; i++)
+            {
+                Neutron.PooledNetworkWriters.Push(new NeutronWriter());
+                Neutron.PooledNetworkReaders.Push(new NeutronReader());
+                Neutron.PooledNetworkStreams.Push(new NeutronStream(true));
             }
         }
 

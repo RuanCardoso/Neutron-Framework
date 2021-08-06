@@ -1,3 +1,4 @@
+using NeutronNetwork.Server;
 using UnityEngine;
 
 /// <summary>
@@ -26,13 +27,13 @@ namespace NeutronNetwork
 
         public virtual void Start()
         {
-
+            //ServerBase.Onnicknamechanged;
         }
 
         public virtual void Update()
         {
-            if (IsReady)
-                name = $"{Player.Nickname} [{Player.ID}]";
+            //if (IsReady)
+            //    name = $"{Player.Nickname} [{Player.ID}]";
         }
     }
 }

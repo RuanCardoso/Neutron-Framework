@@ -12,6 +12,7 @@ namespace NeutronNetwork.Constants
         public int Port = 1418;
         [ReadOnly] [AllowNesting] public string AppId;
         [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
+        [Range(1, Int16.MaxValue)] public int PoolCapacity = 500;
         public Serialization Serialization = Serialization.Json;
         public Compression Compression = Compression.None;
         public bool NoDelay = true;

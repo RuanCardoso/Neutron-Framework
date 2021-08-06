@@ -16,9 +16,10 @@ MonoBehaviour:
     Addresses:
     - localhost
     Port: 1418
-    AppId: 5dbc9b67-425b-4665-b356-549340ad36a4
+    AppId: 4cf76ef5-54e8-40a3-a5ad-9c2751fd6ec0
     MaxPlayers: 300
-    Serialization: 0
+    PoolCapacity: 5000
+    Serialization: 1
     Compression: 0
     NoDelay: 1
     PeerToPeer: 0

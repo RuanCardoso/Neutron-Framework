@@ -33,11 +33,13 @@ namespace NeutronNetwork
         /// <summary>
         ///* Providencia um pool de escritores, utilize-o para melhor performance.
         /// </summary>
-        public static NeutronPool<NeutronWriter> PooledNetworkWriters = new NeutronPool<NeutronWriter>(() => new NeutronWriter());
+        public static NeutronPool<NeutronWriter> PooledNetworkWriters;
         /// <summary>
         ///* Providencia um pool de leitores, utilize-o para melhor performance.
         /// </summary>
-        public static NeutronPool<NeutronReader> PooledNetworkReaders = new NeutronPool<NeutronReader>(() => new NeutronReader());
+        public static NeutronPool<NeutronReader> PooledNetworkReaders;
+        ///* Providencia um pool de Streams, utilize-o para melhor performance.
+        public static NeutronPool<NeutronStream> PooledNetworkStreams;
         //* Usado para retirar a media do RTT;
         private readonly List<double> _rtts = new List<double>();
         #endregion
