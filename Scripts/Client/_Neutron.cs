@@ -1242,6 +1242,63 @@ namespace NeutronNetwork
         /// </summary>
         /// <param name="url">O url no qual que será enviado a requisição.</param>
         /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, WWWForm formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                onAwake.Invoke(request);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, string formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                onAwake.Invoke(request);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, Dictionary<string, string> formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                onAwake.Invoke(request);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
         /// <param name="onResult">O resultado da requisição.</param>
         public static void Post(string url, WWWForm formData, Action<UnityWebRequest> onResult)
         {
@@ -1298,6 +1355,24 @@ namespace NeutronNetwork
             IEnumerator Request()
             {
                 UnityWebRequest request = UnityWebRequest.Get(url);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Get(string url, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Get(url);
+                onAwake.Invoke(request);
                 yield return request.SendWebRequest();
                 onResult.Invoke(request);
             }
