@@ -1255,6 +1255,40 @@ namespace NeutronNetwork
         }
 
         /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, string formData, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, Dictionary<string, string> formData, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
         ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
         /// </summary>
         /// <param name="url">O url no qual que será enviado a requisição.</param>
