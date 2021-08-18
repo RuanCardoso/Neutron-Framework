@@ -1,4 +1,3 @@
-using NeutronNetwork.Server;
 using UnityEngine;
 
 /// <summary>
@@ -12,25 +11,25 @@ namespace NeutronNetwork
     public class View : MonoBehaviour
     {
         /// <summary>
-        ///* O Jogador dono deste objeto, é pra ele que você vai enviar as paradas.
+        ///* O Jogador a qual este View pertence.
         /// </summary>
         public NeutronPlayer Player { get; set; }
         /// <summary>
         ///* Define se está pronto para o uso.
         /// </summary>
-        public bool IsReady => Player != null;
+        protected bool IsReady => Player != null;
 
-        public virtual void Awake()
+        protected virtual void OnEnable()
         {
-
+            NeutronModule.OnUpdate += OnNeutronUpdate;
         }
 
-        public virtual void Start()
+        protected virtual void OnDestroy()
         {
-            //ServerBase.Onnicknamechanged;
+            NeutronModule.OnUpdate -= OnNeutronUpdate;
         }
 
-        public virtual void Update()
+        protected virtual void OnNeutronUpdate()
         {
             //if (IsReady)
             //    name = $"{Player.Nickname} [{Player.ID}]";

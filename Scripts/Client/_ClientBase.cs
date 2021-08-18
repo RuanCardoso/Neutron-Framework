@@ -1,17 +1,16 @@
-﻿using NeutronNetwork.Constants;
-using NeutronNetwork.Helpers;
+﻿using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using System;
-using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using UnityEngine;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
-///* Os br também são pica.
+///* Os br também são pica ou não?.
 ///* Email: cardoso.ruan050322@gmail.com
 ///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
 /// </summary>
@@ -21,15 +20,20 @@ namespace NeutronNetwork.Client
     {
         //* Obtém a instância de Neutron, classe derivada.
         private Neutron This { get; set; }
-        //* Obtém o tipo de cliente da instância.
-        public global::Client ClientType { get; set; }
-
+        /// <summary>
+        ///* Obtém o tipo de cliente da instância.
+        /// </summary>
+        public ClientMode ClientMode { get; set; }
+        /// <summary>
+        ///* Mantém o estado do jogador.
+        /// </summary>
+        protected StateObject StateObject { get; set; }
         //* Inicializa o cliente e registra os eventos de Neutron.
-        protected void Initialize(global::Client client)
+        protected void Initialize(ClientMode clientMode)
         {
             This = (Neutron)this;
             {
-                ClientType = client;
+                ClientMode = clientMode;
                 {
                     This.OnNeutronConnected += OnNeutronConnected;
                     This.OnPlayerConnected += OnPlayerConnected;
@@ -52,68 +56,121 @@ namespace NeutronNetwork.Client
         }
 
         //* Usado para enviar os dados para o servidor.
-        //* o pacote é usado apenas para definir se conta ou não os bytes enviados e recebidos.
-        protected async void Send(NeutronWriter writer, Protocol protocol = Protocol.Tcp, Packet packet = Packet.Empty)
+        //* o ignore é usado apenas para ignorar este pacote no profiler de banda(bandwidth), pacote interno que não deve ser contado.
+        protected void Send(INeutronWriter header, INeutronWriter packet, Protocol protocol = Protocol.Tcp, Packet ignore = Packet.Empty)
         {
             try
             {
                 if (This.IsConnected)
                 {
-                    using (NeutronWriter headerWriter = Neutron.PooledNetworkWriters.Pull())
+                    byte[] packetBuffer = packet.ToArray().Compress(); //! Otimizado para evitar alocações, bom isso depende de como você usa o Neutron :p
+                    switch (protocol)
                     {
-                        byte[] packetBuffer = writer.ToArray().Compress();
-                        //* Cabeçalho da mensagem/dados.
-                        #region Header
-                        headerWriter.WriteSize(packetBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro(4 bytes), e a mensagem.
-                        #endregion
-                        byte[] headerBuffer = headerWriter.ToArray();
-                        switch (protocol)
-                        {
-                            case Protocol.Tcp:
+                        //* ValueTask ainda não funciona na Unity, isso mesmo, em 2021 com .net 6 e standard 2.1, e a unity atrasada com essa merda de Mono, vê se pode?
+                        case Protocol.Tcp:
+                            {
+                                if (header.GetPosition() == 0)
                                 {
-                                    NetworkStream netStream = TcpClient.GetStream();
-                                    await netStream.WriteAsync(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor.
-#if UNITY_EDITOR
-                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.m_ClientTCP.AddOutgoing(packetBuffer.Length, packet);
-#endif
-                                }
-                                break;
-                            case Protocol.Udp:
-                                {
-                                    if ((NeutronModule.Settings.LagSimulationSettings.Drop && This.Player != null && This.Player.IsConnected) && !OthersHelper.Odds())
-                                        return;
+                                    header.WriteSize(packetBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro/short/byte(4/2/1 bytes), e a mensagem.
+                                    byte[] headerBuffer = header.ToArray();
+                                    if (header.IsFixedSize()) //* Verifica se o stream tem um tamanho fixo, é bom, evita alocações.
+                                        header.EndWriteWithFixedCapacity(); //* finaliza a a escrita resetando a posição pra zero.
+                                    else
+                                        header.EndWrite(); //* finaliza a a escrita resetando a posição pra zero.
 
-                                    await UdpClient.SendAsync(headerBuffer, headerBuffer.Length, _udpEndPoint); //* Envia os dados pro servidor.
+                                    NetworkStream networkStream = TcpClient.GetStream();
+                                    switch (OthersHelper.GetConstants().SendModel)
+                                    {
+                                        case SendType.Synchronous:
+                                            networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo síncrono, esta opção é melhor, não aloca e tem performance de CPU.
+                                            break;
+                                        default:
+                                            if (OthersHelper.GetConstants().SendAsyncPattern == AsynchronousType.APM)
+                                                networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo assíncrono, mentira, envia da mesma forma de "SendType.Synchronous", preguiça mesmo. :p, porque BeginReceive e Endreceive é chato de fazer pro TCP :D
+                                            else
+                                                SocketHelper.SendTcpAsync(networkStream, headerBuffer, TokenSource.Token); //* Envia os dados pro servidor de forma assíncrona., faz alocações pra caralho, no tcp não tanto, mas no UDP..... é foda. e usa muita cpu, evite, se souber como resolver, sinta-se a vontade para contribuir.
+                                            break;
+                                    }
 #if UNITY_EDITOR
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.m_ClientUDP.AddOutgoing(packetBuffer.Length, packet);
+                                    NeutronStatistics.ClientTCP.AddOutgoing(packetBuffer.Length, ignore);
 #endif
                                 }
-                                break;
-                        }
+                                else
+                                    LogHelper.Error($"Send: Invalid position, is not zero! Pos -> {header.GetPosition()} Capacity -> {header.GetCapacity()}");
+                            }
+                            break;
+                        case Protocol.Udp:
+                            {
+                                StateObject.SendDatagram = packetBuffer; //* O datagrama a ser usado para enviar os dados para a rede.
+                                switch (OthersHelper.GetConstants().SendModel)
+                                {
+                                    case SendType.Synchronous:
+                                        SocketHelper.SendBytes(UdpClient, packetBuffer, UdpEndPoint); //* envia de modo síncrono, evita alocações e performance boa.
+                                        break;
+                                    default:
+                                        {
+                                            switch (OthersHelper.GetConstants().SendAsyncPattern)
+                                            {
+                                                case AsynchronousType.APM:
+                                                    {
+                                                        //* aloca, mas não tanto, boa performance.
+                                                        SocketHelper.BeginSendBytes(UdpClient, packetBuffer, UdpEndPoint, (ar) =>
+                                                        {
+                                                            SocketHelper.EndSendBytes(UdpClient, ar);
+                                                        }); //* Envia os dados pro servidor.
+                                                        break;
+                                                    }
+
+                                                default:
+                                                    SocketHelper.SendUdpAsync(UdpClient, StateObject, UdpEndPoint); //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                                    break;
+                                            } //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                            break;
+                                        }
+                                }
+#if UNITY_EDITOR
+                                //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                NeutronStatistics.ClientUDP.AddOutgoing(packetBuffer.Length, ignore);
+#endif
+                            }
+                            break;
                     }
                 }
             }
             catch (ObjectDisposedException) { }
             catch (SocketException) { }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                LogHelper.StackTrace(ex);
+            }
         }
 
-        //* Executa o iRPC na instância especificada.
-#pragma warning disable IDE1006 // Estilos de Nomenclatura
-        protected async void iRPCHandler(byte rpcId, short viewId, byte instanceId, byte[] buffer, NeutronPlayer player, RegisterType registerType)
-#pragma warning restore IDE1006 // Estilos de Nomenclatura
+        //* Usado para enviar os dados para o servidor.
+        //* o ignoredPacket é usado apenas para definir se conta ou não os bytes enviados e recebidos.
+        protected void Send(INeutronWriter writer, Protocol protocol = Protocol.Tcp, Packet ignore = Packet.Empty)
         {
-            async Task Run((int, int, RegisterType) key)
+            using (NeutronStream stream = new NeutronStream())
             {
-                if (MatchmakingHelper.GetNetworkObject(key, This.Player, out NeutronView neutronView))
+                Send(stream.Writer, writer, protocol, ignore);
+            }
+        }
+
+        //* Executa o iRPC na instância específicada.
+#pragma warning disable IDE1006
+        protected async void iRPCHandler(byte rpcId, short viewId, byte instanceId, byte[] parameters, NeutronPlayer player, RegisterMode registerMode)
+#pragma warning restore IDE1006
+        {
+            async Task Run((int, int, RegisterMode) key) //* a key do objeto, o primeiro parâmetro é o ID do jogador ou do Objeto de Rede ou 0(se for objeto de cena), e o segundo é o ID do objeto, e o terceiro é o tipo de objeto.
+            {
+                if (MatchmakingHelper.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
                 {
-                    if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPC remoteProceduralCall))
+                    if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPCInvoker remoteProceduralCall)) //* Obtém o RPC com o ID enviado para a rede.
                     {
                         try
                         {
-                            await ReflectionHelper.iRPC(buffer, remoteProceduralCall, player);
+                            //* Executa o RPC, observe que isto não usa reflexão, reflexão é lento irmão, eu uso delegados, e a reflexão para criar os delegados em runtime no Awake do objeto, bem rápido, e funciona no IL2CPP.
+                            await ReflectionHelper.iRPC(parameters, remoteProceduralCall, player);
                         }
                         catch (Exception ex)
                         {
@@ -123,30 +180,31 @@ namespace NeutronNetwork.Client
                 }
             }
 
-            switch (registerType)
+            switch (registerMode)
             {
-                case RegisterType.Scene:
-                    await Run((0, viewId, registerType));
+                case RegisterMode.Scene:
+                    await Run((0, viewId, registerMode));
                     break;
-                case RegisterType.Player:
-                    await Run((viewId, viewId, registerType));
+                case RegisterMode.Player:
+                    await Run((viewId, viewId, registerMode));
                     break;
-                case RegisterType.Dynamic:
-                    await Run((player.ID, viewId, registerType));
+                case RegisterMode.Dynamic:
+                    await Run((player.ID, viewId, registerMode));
                     break;
             }
         }
 
         //* Executa o gRPC, chamada global, não é por instâncias.
-#pragma warning disable IDE1006 // Estilos de Nomenclatura
-        protected async void gRPCHandler(int id, NeutronPlayer player, byte[] buffer, bool isServer, bool isMine)
-#pragma warning restore IDE1006 // Estilos de Nomenclatura
+#pragma warning disable IDE1006
+        protected async void gRPCHandler(int id, NeutronPlayer player, byte[] parameters, bool isServer, bool isMine)
+#pragma warning restore IDE1006
         {
-            if (GlobalBehaviour.gRPCs.TryGetValue((byte)id, out RPC remoteProceduralCall)) //* Obtém o gRPC com o ID especificado.
+            if (GlobalBehaviour.gRPCs.TryGetValue((byte)id, out RPCInvoker remoteProceduralCall)) //* Obtém o gRPC com o ID especificado.
             {
                 try
                 {
-                    await ReflectionHelper.gRPC(player, buffer, remoteProceduralCall, isServer, isMine, This);
+                    //* Invoca os gRPC, não usa reflexão para invocar, utilizo delegados, reflexão usado para criar os delegados no awake, isto melhora a performance em 1000%, do que invocar usando a reflexão.
+                    await ReflectionHelper.gRPC(player, parameters, remoteProceduralCall, isServer, isMine, This);
                 }
                 catch (Exception ex)
                 {
@@ -157,14 +215,14 @@ namespace NeutronNetwork.Client
                 LogHelper.Error("Invalid gRPC ID, there is no attribute with this ID.");
         }
 
-        // Executa o AutoSync.
-        protected void OnAutoSyncHandler(NeutronPlayer player, short viewId, byte instanceId, byte[] buffer, RegisterType registerType)
+        // Executa o AutoSync, observe que não usa reflexão e nem delegados, a invocação é direta, um metódo virtual, opte por usa isto sempre para sincronização constante, ex: movimentação.
+        protected void OnAutoSyncHandler(NeutronPlayer player, short viewId, byte instanceId, byte[] buffer, RegisterMode registerType)
         {
-            void Run((int, int, RegisterType) key)
+            void Run((int, int, RegisterMode) key)
             {
                 if (MatchmakingHelper.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID especificado.
                 {
-                    if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))
+                    if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour)) //* obtém a instância que está sincronizando os dados.
                     {
                         using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
                         {
@@ -177,13 +235,13 @@ namespace NeutronNetwork.Client
 
             switch (registerType)
             {
-                case RegisterType.Scene:
+                case RegisterMode.Scene:
                     Run((0, viewId, registerType));
                     break;
-                case RegisterType.Player:
+                case RegisterMode.Player:
                     Run((viewId, viewId, registerType));
                     break;
-                case RegisterType.Dynamic:
+                case RegisterMode.Dynamic:
                     Run((player.ID, viewId, registerType));
                     break;
             }
@@ -192,19 +250,19 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Envia uma chamada(gRPC) que aciona a criação do seu jogador.<br/>
         /// </summary>
-        /// <param name="writer">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreatePlayer(NeutronWriter writer, byte id)
+        /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void CreatePlayer(NeutronWriter parameters, byte id)
         {
-            This.gRPC(id, writer, Protocol.Tcp);
+            This.gRPC(id, parameters, Protocol.Tcp);
         }
 
         /// <summary>
-        ///* Envia uma chamada(gRPC) que aciona a criação de um objeto.<br/>
+        ///* Envia uma chamada(gRPC) que aciona a criação de um objeto de rede.<br/>
         /// </summary>
-        /// <param name="writer">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreateObject(NeutronWriter writer, byte id)
+        /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void CreateObject(NeutronWriter parameters, byte id)
         {
-            This.gRPC(id, writer, Protocol.Tcp);
+            This.gRPC(id, parameters, Protocol.Tcp);
         }
 
         /// <summary>
@@ -214,9 +272,9 @@ namespace NeutronNetwork.Client
         /// <returns></returns>
         public bool IsMine(NeutronPlayer player)
         {
-            if (This.Player == null)
-                return LogHelper.Error("It is not possible to send data before initialization of the main player.");
-            return player.Equals(This.Player);
+            return This.Player == null
+                ? LogHelper.Error("It is not possible to send data before initialization of the main player.")
+                : player.Equals(This.Player);
         }
 
         /// <summary>
@@ -225,7 +283,11 @@ namespace NeutronNetwork.Client
         /// <returns></returns>
         public bool IsMasterClient()
         {
-            return This.Player.Matchmaking.Player.Equals(This.Player);
+            return This.Player == null
+                ? LogHelper.Error("It is not possible to send data before initialization of the main player.")
+                : This.Player.Matchmaking == null
+                ? LogHelper.Error("It is not possible to send data before initialization of the matchmaking.")
+                : This.Player.Matchmaking.Player.Equals(This.Player);
         }
 
         #region Events
@@ -307,7 +369,7 @@ namespace NeutronNetwork.Client
         {
             NeutronSchedule.ScheduleTask(() =>
             {
-                if (success && ClientType == global::Client.Player)
+                if (success && ClientMode == ClientMode.Player)
                 {
 #if !UNITY_SERVER
                     NeutronModule.Chronometer.Start();

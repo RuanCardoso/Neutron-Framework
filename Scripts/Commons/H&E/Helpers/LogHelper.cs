@@ -1,3 +1,4 @@
+using NeutronNetwork.Internal.Components;
 using System;
 using UnityEngine;
 
@@ -5,6 +6,7 @@ namespace NeutronNetwork
 {
     public static class LogHelper
     {
+        public static Action<string, string, int, int> LogErrorWithoutStackTrace;
         public static void Info(object message)
         {
 #if UNITY_SERVER
@@ -101,6 +103,22 @@ namespace NeutronNetwork
 #if UNITY_SERVER
             Console.Write("\r{0}{1}", message, prefix);
 #endif
+        }
+
+        public static bool ErrorWithoutStackTrace(object message)
+        {
+#if UNITY_SERVER
+            Console.WriteLine(message);
+#else
+            if (LogErrorWithoutStackTrace != null)
+            {
+                NeutronSchedule.ScheduleTask(() =>
+                {
+                    LogErrorWithoutStackTrace(message.ToString(), "", 0, 0);
+                });
+            }
+#endif
+            return false;
         }
 
         public static void StackTrace(Exception ex)

@@ -1,38 +1,59 @@
-using NeutronNetwork;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using System;
 
-[Serializable]
-public class NeutronPacket
+namespace NeutronNetwork.Internal
 {
-    public byte[] Buffer { get; }
-    public NeutronPlayer Owner { get; }
-    public NeutronPlayer Sender { get; }
-    public Protocol Protocol { get; }
-    public Packet Packet { get; } = Packet.Empty;
-    public bool IsServerSide { get; set; }
-
-    public NeutronPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
+    [Serializable]
+    public class NeutronPacket
     {
-        Buffer = buffer;
-        Owner = owner;
-        Sender = sender;
-        Protocol = protocol;
-    }
+        public byte[] Buffer { get; set; }
+        public NeutronPlayer Owner { get; set; }
+        public NeutronPlayer Sender { get; set; }
+        public Protocol Protocol { get; set; }
+        public Packet Packet { get; set; } = Packet.Empty;
+        public bool IsServerSide { get; set; }
 
-    public NeutronPacket(NeutronWriter writer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
-    {
-        Buffer = writer.ToArray();
-        Owner = owner;
-        Sender = sender;
-        Protocol = protocol;
-    }
+        public NeutronPacket()
+        { }
 
-    public NeutronPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
-    {
-        Buffer = buffer;
-        Owner = owner;
-        Sender = sender;
-        Protocol = protocol;
-        Packet = packet;
+        public NeutronPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
+        {
+            Buffer = buffer;
+            Owner = owner;
+            Sender = sender;
+            Protocol = protocol;
+        }
+
+        public NeutronPacket(NeutronWriter writer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
+        {
+            Buffer = writer.ToArray();
+            Owner = owner;
+            Sender = sender;
+            Protocol = protocol;
+        }
+
+        public NeutronPacket(INeutronWriter writer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
+        {
+            Buffer = writer.ToArray();
+            Owner = owner;
+            Sender = sender;
+            Protocol = protocol;
+        }
+
+        public NeutronPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
+        {
+            Buffer = buffer;
+            Owner = owner;
+            Sender = sender;
+            Protocol = protocol;
+            Packet = packet;
+        }
+
+        public void Recycle()
+        {
+            Neutron.PooledNetworkPackets.Push(this);
+        }
     }
 }

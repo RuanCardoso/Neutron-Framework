@@ -1,5 +1,6 @@
 using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
+using NeutronNetwork.Internal.Packets;
 
 namespace NeutronNetwork.Helpers
 {
@@ -9,7 +10,7 @@ namespace NeutronNetwork.Helpers
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.Disconnection);
+                writer.WritePacket((byte)Packet.Disconnection);
                 writer.Write(player.ID);
                 writer.Write(reason);
                 player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerDisconnected);

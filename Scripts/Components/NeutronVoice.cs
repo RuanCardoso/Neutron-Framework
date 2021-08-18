@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NeutronNetwork.Attributes;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Packets;
 using UnityEngine;
 
 namespace NeutronNetwork.Components
@@ -43,11 +44,11 @@ namespace NeutronNetwork.Components
         private int offset;
         private float tSyncInterval, tSamplesTime, tStopDelay = 100;
 
-        private new void Awake()
-        {
-            base.Awake();
-            instance = this;
-        }
+        //private new void Awake()
+        //{
+        //    base.Awake();
+        //    instance = this;
+        //}
 
         public override void OnNeutronStart()
         {

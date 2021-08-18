@@ -1,10 +1,11 @@
 using NeutronNetwork.Constants;
+using NeutronNetwork.Internal.Wrappers;
 using System;
 using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace NeutronNetwork.Internal.Components
+namespace NeutronNetwork
 {
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_DISPATCHER)]
     public class NeutronSchedule : MonoBehaviour
@@ -14,7 +15,7 @@ namespace NeutronNetwork.Internal.Components
         #endregion
 
         #region Collections
-        private static NeutronSafeQueue<Action> _tasks = new NeutronSafeQueue<Action>();
+        private static readonly NeutronSafeQueue<Action> _tasks = new NeutronSafeQueue<Action>();
         #endregion
 
         private void Awake()

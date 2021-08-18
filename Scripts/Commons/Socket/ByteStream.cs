@@ -1,12 +1,14 @@
 ﻿using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
 using System;
 using System.IO;
 using UnityEngine;
 
 namespace NeutronNetwork
 {
-    public class NeutronWriter : BinaryWriter, IDisposable
+    public class NeutronWriter : BinaryWriter, INeutronWriter, IDisposable
     {
         public static NeutronWriter Empty = new NeutronWriter();
 
@@ -153,9 +155,9 @@ namespace NeutronNetwork
         /// <summary>
         ///* Escreve no fluxo de bytes uma instância do tipo <see cref="Enum"></see>.
         /// </summary>
-        public void WritePacket<T>(T packet) where T : Enum
+        public void WritePacket(byte packet)
         {
-            Write((byte)(object)packet);
+            Write(packet);
         }
 
         /// <summary>
@@ -266,9 +268,79 @@ namespace NeutronNetwork
                 Neutron.PooledNetworkWriters.Push(this);
             }
         }
+
+        public void EndWriteWithFixedCapacity()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Write<T>(T[] array, Int32 sizeOf)
+        {
+            throw new NotImplementedException();
+        }
+
+        void INeutronWriter.Write7BitEncodedInt(Int32 value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void WriteByteWriter(NeutronStream.IWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void WriteIntWriter(NeutronStream.IWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void WriteNextBytes(NeutronStream.IWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void WriteShortWriter(NeutronStream.IWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Byte[] GetBuffer()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int64 GetPosition()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int32 GetCapacity()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetCapacity(Int32 size)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Boolean IsFixedSize()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EndWrite()
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    public class NeutronReader : BinaryReader, IDisposable
+    public class NeutronReader : BinaryReader, INeutronReader, IDisposable
     {
         #region Fields
         private readonly MemoryStream _memoryStream;
@@ -378,9 +450,9 @@ namespace NeutronNetwork
         /// <summary>
         ///* Ler a instância do tipo <see cref="Enum"></see> do fluxo de bytes.
         /// </summary>
-        public T ReadPacket<T>() where T : Enum
+        public byte ReadPacket()
         {
-            return (T)(object)ReadByte();
+            return ReadByte();
         }
 
         /// Ler o tamanho do pacote do cabeçalho do protocolo, com base no HEADER_TYPE.
@@ -541,6 +613,76 @@ namespace NeutronNetwork
                 SetLength(0);
                 Neutron.PooledNetworkReaders.Push(this);
             }
+        }
+
+        public void EndReadWithFixedCapacity()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Read(Int32 size, Byte[] buffer = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        Int32 INeutronReader.Read7BitEncodedInt()
+        {
+            throw new NotImplementedException();
+        }
+
+        public T[] ReadArray<T>(Int32 sizeOf, Int32 length)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Single ReadFloat()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int32 ReadInt()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int16 ReadShort()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Byte[] GetBuffer()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int64 GetPosition()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Int32 GetCapacity()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetCapacity(Int32 size)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Boolean IsFixedSize()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EndRead()
+        {
+            throw new NotImplementedException();
         }
     }
 }

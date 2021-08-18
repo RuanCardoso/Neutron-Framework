@@ -1,52 +1,49 @@
-using NeutronNetwork;
-using NeutronNetwork.Constants;
-using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Server.Internal;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public static class SceneHelper
+namespace NeutronNetwork.Helpers
 {
-    public static void CreateContainer(string name, NeutronPlayer player = null, bool hasPhysics = false, GameObject[] objects = null, LocalPhysicsMode physics = LocalPhysicsMode.None)
+    public static class SceneHelper
     {
-        Scene scene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
-        if (objects != null)
+        public static void CreateContainer(string name, NeutronPlayer player = null, bool hasPhysics = false, GameObject[] objects = null, LocalPhysicsMode physics = LocalPhysicsMode.None)
         {
-            foreach (GameObject gameObject in objects)
+            Scene scene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
+            if (objects != null)
             {
-                if (gameObject != null)
+                foreach (GameObject gameObject in objects)
                 {
-                    GameObject obj = Object.Instantiate(gameObject);
-                    MoveToContainer(obj, scene.name);
-                    var neutronViews = obj.GetComponentsInChildren<NeutronView>();
-                    if (neutronViews.Length > 0)
+                    if (gameObject != null)
                     {
-                        foreach (NeutronView view in neutronViews)
-                            view.OnNeutronRegister(player, true, RegisterType.Scene, null);
+                        GameObject obj = Object.Instantiate(gameObject);
+                        MoveToContainer(obj, scene.name);
+                        var neutronViews = obj.GetComponentsInChildren<NeutronView>();
+                        if (neutronViews.Length > 0)
+                        {
+                            foreach (NeutronView view in neutronViews)
+                                view.OnNeutronRegister(player, true, RegisterMode.Scene, null);
+                        }
+                        else
+                            continue;
                     }
                     else
                         continue;
                 }
-                else
-                    continue;
+            }
+
+            if (hasPhysics)
+            {
+                GameObject simulateObject = new GameObject("Simulate");
+                NeutronSimulate simulate = simulateObject.AddComponent<NeutronSimulate>();
+                simulate.PhysicsScene = scene.GetPhysicsScene();
+                MoveToContainer(simulateObject, scene.name);
             }
         }
 
-        if (hasPhysics)
+        public static void MoveToContainer(GameObject obj, string name)
         {
-            GameObject simulateObject = new GameObject("Simulate");
-            NeutronSimulate simulate = simulateObject.AddComponent<NeutronSimulate>();
-            simulate.physicsScene = scene.GetPhysicsScene();
-            MoveToContainer(simulateObject, scene.name);
+            SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
         }
-    }
-
-    public static bool IsSceneObject(int viewID)
-    {
-        return viewID > 0 && viewID < NeutronConstantsSettings.GENERATE_PLAYER_ID;
-    }
-
-    public static void MoveToContainer(GameObject obj, string name)
-    {
-        SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
     }
 }

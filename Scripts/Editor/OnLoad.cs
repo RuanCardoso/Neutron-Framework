@@ -1,4 +1,4 @@
-using NeutronNetwork.Internal.Components;
+using NeutronNetwork;
 using UnityEditor;
 
 // ensure class initializer is called whenever scripts recompile

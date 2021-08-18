@@ -21,15 +21,15 @@ namespace NeutronNetwork.Internal.Wrappers
         {
         }
 
-        public NeutronSafeDictionary(System.Int32 concurrencyLevel, System.Int32 capacity) : base(concurrencyLevel, capacity)
+        public NeutronSafeDictionary(int concurrencyLevel, int capacity) : base(concurrencyLevel, capacity)
         {
         }
 
-        public NeutronSafeDictionary(System.Int32 concurrencyLevel, IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : base(concurrencyLevel, collection, comparer)
+        public NeutronSafeDictionary(int concurrencyLevel, IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : base(concurrencyLevel, collection, comparer)
         {
         }
 
-        public NeutronSafeDictionary(System.Int32 concurrencyLevel, System.Int32 capacity, IEqualityComparer<TKey> comparer) : base(concurrencyLevel, capacity, comparer)
+        public NeutronSafeDictionary(int concurrencyLevel, int capacity, IEqualityComparer<TKey> comparer) : base(concurrencyLevel, capacity, comparer)
         {
         }
     }

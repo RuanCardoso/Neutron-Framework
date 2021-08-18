@@ -1,4 +1,6 @@
-﻿using NeutronNetwork.Internal.Interfaces;
+﻿using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Collections.Generic;
@@ -46,20 +48,20 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Retorna se o objeto é um objeto de cena, falso, se for um jogador.
         /// </summary>
-        public bool IsSceneObject => RegisterType == RegisterType.Scene;
+        public bool IsSceneObject => RegisterType == RegisterMode.Scene;
         /// <summary>
         ///* O tipo de registro usado para o objeto.
         /// </summary>
-        public RegisterType RegisterType { get; set; }
+        public RegisterMode RegisterType { get; set; }
         /// <summary>
         ///* Define o matchmaking em que esse objeto existe.
         /// </summary>
         public INeutronMatchmaking Matchmaking { get; set; }
         #endregion
 
-        #region Collection
+        #region Collections
         ///* Aqui será armazenado todos os metódos marcado com o atributo iRPC.
-        [NonSerialized] public Dictionary<(byte, byte), RPC> iRPCs = new Dictionary<(byte, byte), RPC>();
+        [NonSerialized] public Dictionary<(byte, byte), RPCInvoker> iRPCs = new Dictionary<(byte, byte), RPCInvoker>();
         [NonSerialized] public Dictionary<int, NeutronBehaviour> NeutronBehaviours = new Dictionary<int, NeutronBehaviour>();
         #endregion
 
@@ -71,11 +73,26 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Esta propriedade é usada para sincronizar a rotação atual do objeto em todos os clientes que ingressarem posteriormente.
         /// </summary>
-        public Vector3 LastRotation { get; set; }
+        public Quaternion LastRotation { get; set; }
+        /// <summary>
+        ///* Obtém o transform anexado ao objeto.
+        /// </summary>
+        public Transform Transform { get; set; }
         #endregion
 
         #region Mono Behaviour
-        public void Awake() => GetRpcs();
+        private void Awake() => GetRpcs();
+
+        private void Start()
+        {
+            Transform = transform;
+            NeutronModule.OnUpdate += OnNeutronUpdate;
+        }
+
+        private void OnDestroy()
+        {
+            NeutronModule.OnUpdate -= OnNeutronUpdate;
+        }
 
         //* Impede que objetos filhos tenham objeto de rede, caso o pai já tenha um.
         private void OnEnable()
@@ -97,10 +114,10 @@ namespace NeutronNetwork.Internal
 #endif
         }
 
-        public void Update()
+        private void OnNeutronUpdate()
         {
-            LastPosition = transform.position;
-            LastRotation = transform.eulerAngles;
+            LastPosition = Transform.position;
+            LastRotation = Transform.rotation;
         }
 
         private void Reset()
@@ -146,7 +163,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Registra seu objeto em rede.
         /// </summary>
-        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterType registerType, Neutron instance, int dynamicId = 0) => true;
+        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerType, Neutron instance, int dynamicId = 0) => true;
         #endregion
 
         #region Reflection
@@ -179,7 +196,7 @@ namespace NeutronNetwork.Internal
                                 iRPC method = methods.Item1[ii];
                                 (byte, byte) key = (method.ID, child.ID);
                                 if (!iRPCs.ContainsKey(key)) //* Verifica se não existe um metódo duplicado, ou seja, um iRPC com o mesmo ID.
-                                    iRPCs.Add(key, new RPC(child, methods.Item2, method)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
+                                    iRPCs.Add(key, new RPCInvoker(child, methods.Item2, method)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
                                 else
                                     LogHelper.Error($"Duplicate ID not allowed in \"{child.GetType().Name}\".");
                             }

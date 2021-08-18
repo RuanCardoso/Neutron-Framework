@@ -1,8 +1,10 @@
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
+using NeutronNetwork.Server.Internal;
 using System.Linq;
-using UnityEngine;
 
 namespace NeutronNetwork.Helpers
 {
@@ -62,12 +64,12 @@ namespace NeutronNetwork.Helpers
                 return null;
         }
 
-        public static TargetTo TargetTo(bool isServerSide)
+        public static TargetTo GetTargetTo(bool isServerSide)
         {
-            return isServerSide ? global::TargetTo.All : global::TargetTo.Others;
+            return isServerSide ? TargetTo.All : TargetTo.Others;
         }
 
-        public static bool GetNetworkObject((int, int, RegisterType) id, NeutronPlayer player, out NeutronView view)
+        public static bool GetNetworkObject((int, int, RegisterMode) id, NeutronPlayer player, out NeutronView view)
         {
             view = null;
             INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
@@ -77,9 +79,9 @@ namespace NeutronNetwork.Helpers
                 return false;
         }
 
-        public static void AddCache(int id, int viewId, NeutronWriter writer, NeutronPlayer player, Cache cache, CachedPacket cachedPacket)
+        public static void AddCache(int id, int viewId, NeutronWriter writer, NeutronPlayer player, CacheMode cache, CachedPacket cachedPacket)
         {
-            if (cache != Cache.None)
+            if (cache != CacheMode.None)
             {
                 INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
                 if (neutronMatchmaking != null)

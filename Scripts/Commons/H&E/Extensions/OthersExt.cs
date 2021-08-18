@@ -2,36 +2,39 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-public static class OthersExt
+namespace NeutronNetwork.Extensions
 {
-    public static async Task<bool> RunWithTimeout(this Task task, TimeSpan timeSpan)
+    public static class OthersExt
     {
-        using (CancellationTokenSource timeoutToken = new CancellationTokenSource())
+        public static async Task<bool> RunWithTimeout(this Task task, TimeSpan timeSpan)
         {
-            var whenTask = await Task.WhenAny(task, Task.Delay(timeSpan, timeoutToken.Token));
-            if (whenTask == task)
+            using (CancellationTokenSource timeoutToken = new CancellationTokenSource())
             {
-                timeoutToken.Cancel();
-                await task;
-                return true;
+                var whenTask = await Task.WhenAny(task, Task.Delay(timeSpan, timeoutToken.Token));
+                if (whenTask == task)
+                {
+                    timeoutToken.Cancel();
+                    await task;
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
-                return false;
         }
-    }
 
-    public static async Task<T> RunWithTimeout<T>(this Task<T> task, TimeSpan timeSpan)
-    {
-        using (CancellationTokenSource timeoutToken = new CancellationTokenSource())
+        public static async Task<T> RunWithTimeout<T>(this Task<T> task, TimeSpan timeSpan)
         {
-            var whenTask = await Task.WhenAny(task, Task.Delay(timeSpan, timeoutToken.Token));
-            if (whenTask == task)
+            using (CancellationTokenSource timeoutToken = new CancellationTokenSource())
             {
-                timeoutToken.Cancel();
-                return await task;
+                var whenTask = await Task.WhenAny(task, Task.Delay(timeSpan, timeoutToken.Token));
+                if (whenTask == task)
+                {
+                    timeoutToken.Cancel();
+                    return await task;
+                }
+                else
+                    throw new Exception("Timeout!");
             }
-            else
-                throw new Exception("Timeout!");
         }
     }
 }

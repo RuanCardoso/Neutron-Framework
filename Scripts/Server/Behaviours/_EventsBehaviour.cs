@@ -1,11 +1,12 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Packets;
+using NeutronNetwork.Server;
 using System;
 using UnityEngine;
 
-namespace NeutronNetwork.Server.Internal
+namespace NeutronNetwork
 {
     /// <summary>
     /// You can implement your code here, or create a new script and inherit from this class, if you inherit from this script don't forget to remove this script and add yours and call "base".
@@ -14,32 +15,41 @@ namespace NeutronNetwork.Server.Internal
     public class EventsBehaviour : MonoBehaviour
     {
         #region MonoBehaviour
-        public virtual void OnEnable()
+        protected virtual void OnEnable()
         {
-            #region Common Events
             ServerBase.OnAwake += OnServerAwake;
-            ServerBase.OnPlayerDisconnected += OnPlayerDisconnected;
-            ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
-            #endregion
-
-            #region Other
             ServerBase.OnCustomTunneling += OnCustomBroadcast;
-            #endregion
+            ServerBase.OnMessageReceived += OnMessageReceived;
+            ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
+            ServerBase.OnPlayerDestroyed += OnPlayerDestroyed;
+            ServerBase.OnPlayerDisconnected += OnPlayerDisconnected;
+            ServerBase.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
+            ServerBase.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
+            ServerBase.OnPlayerLeftChannel += OnPlayerLeftChannel;
+            ServerBase.OnPlayerLeftRoom += OnPlayerLeftRoom;
+            ServerBase.OnPlayerNicknameChanged += OnPlayerNicknameChanged;
+            ServerBase.OnPlayerPropertiesChanged += OnPlayerPropertiesChanged;
+            ServerBase.OnRoomPropertiesChanged += OnRoomPropertiesChanged;
         }
 
-        public virtual void OnDisable()
+        protected virtual void OnDisable()
         {
-            #region Common Events
-            NeutronServer.OnAwake -= OnServerAwake;
-            NeutronServer.OnPlayerDisconnected -= OnPlayerDisconnected;
-            #endregion
-
-            #region Other
+            ServerBase.OnAwake -= OnServerAwake;
             ServerBase.OnCustomTunneling -= OnCustomBroadcast;
-            #endregion
+            ServerBase.OnMessageReceived -= OnMessageReceived;
+            ServerBase.OnPlayerCreatedRoom -= OnPlayerCreatedRoom;
+            ServerBase.OnPlayerDestroyed -= OnPlayerDestroyed;
+            ServerBase.OnPlayerDisconnected -= OnPlayerDisconnected;
+            ServerBase.OnPlayerJoinedChannel -= OnPlayerJoinedChannel;
+            ServerBase.OnPlayerJoinedRoom -= OnPlayerJoinedRoom;
+            ServerBase.OnPlayerLeftChannel -= OnPlayerLeftChannel;
+            ServerBase.OnPlayerLeftRoom -= OnPlayerLeftRoom;
+            ServerBase.OnPlayerNicknameChanged -= OnPlayerNicknameChanged;
+            ServerBase.OnPlayerPropertiesChanged -= OnPlayerPropertiesChanged;
+            ServerBase.OnRoomPropertiesChanged -= OnRoomPropertiesChanged;
         }
 
-        public virtual void OnServerAwake()
+        protected virtual void OnServerAwake()
         {
             CreateDefaultContainer();
             CreateDefaultChannelsContainer();
@@ -47,18 +57,19 @@ namespace NeutronNetwork.Server.Internal
         #endregion
 
         #region Registered Methods
-        public virtual void OnPlayerDisconnected(NeutronPlayer player)
+#pragma warning disable UNT0006
+        protected virtual void OnPlayerDisconnected(NeutronPlayer player)
+#pragma warning restore UNT0006
         {
-            if (player.RemoteEndPoint != null)
-                LogHelper.Info($"The Player [{player.RemoteEndPoint}] Has been disconnected from server.");
+            LogHelper.Info($"The Player [{player.StateObject.TcpRemoteEndPoint}] Has been disconnected from server.");
         }
 
-        public virtual void OnCheatDetected(NeutronPlayer player, string name)
+        protected virtual void OnCheatDetected(NeutronPlayer player, string name)
         {
             LogHelper.Info($"Usando hack porraaaaaaaa -> {player.Nickname}");
         }
 
-        public virtual void OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
+        protected virtual void OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
         {
             // Create the container of new room.
             NeutronSchedule.ScheduleTask(() =>
@@ -67,7 +78,52 @@ namespace NeutronNetwork.Server.Internal
             });
         }
 
-        public virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer player, TunnelingTo tunnelingTo)
+        protected virtual bool OnRoomPropertiesChanged(NeutronPlayer player, string properties)
+        {
+            return true;
+        }
+
+        protected virtual bool OnPlayerPropertiesChanged(NeutronPlayer player, string propertie)
+        {
+            return true;
+        }
+
+        protected virtual bool OnPlayerNicknameChanged(NeutronPlayer player, string nickname)
+        {
+            return true;
+        }
+
+        protected virtual void OnPlayerLeftRoom(NeutronPlayer player)
+        {
+
+        }
+
+        protected virtual void OnPlayerLeftChannel(NeutronPlayer player)
+        {
+
+        }
+
+        protected virtual void OnPlayerJoinedRoom(NeutronPlayer player)
+        {
+
+        }
+
+        protected virtual void OnPlayerJoinedChannel(NeutronPlayer player)
+        {
+
+        }
+
+        protected virtual void OnPlayerDestroyed(NeutronPlayer player)
+        {
+
+        }
+
+        protected virtual bool OnMessageReceived(NeutronPlayer player, string message)
+        {
+            return true;
+        }
+
+        protected virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer player, TunnelingTo tunnelingTo)
         {
             switch (tunnelingTo)
             {
@@ -101,27 +157,29 @@ namespace NeutronNetwork.Server.Internal
             }
         }
 
-        private void SetOwner<T>(T AmbientType, NeutronChannel currentChannel, NeutronRoom currentRoom = null) where T : INeutronMatchmaking
+        private void SetOwner<T>(T matchmakingMode, NeutronChannel channel, NeutronRoom room = null) where T : INeutronMatchmaking
         {
-            Type type = AmbientType.GetType();
-            if (AmbientType.Player == null)
+            Type type = matchmakingMode.GetType();
+            if (matchmakingMode.Player == null)
             {
-                NeutronPlayer owner = new NeutronPlayer();
-                owner.IsServer = true;
-                owner.Nickname = "Server";
-                owner.ID = 0;
-                if (owner != null)
+                NeutronPlayer player = new NeutronPlayer
                 {
-                    if (type == typeof(NeutronChannel))
-                        owner.Channel = currentChannel;
-                    else if (type == typeof(NeutronRoom))
-                    {
-                        owner.Channel = currentChannel;
-                        owner.Room = currentRoom;
-                    }
+                    IsServer = true,
+                    Nickname = "Server",
+                    ID = 0
+                };
+                //************************************************************************
+                if (type == typeof(NeutronChannel))
+                    player.Channel = channel;
+                else if (type == typeof(NeutronRoom))
+                {
+                    player.Channel = channel;
+                    player.Room = room;
                 }
-                owner.Matchmaking = MatchmakingHelper.Matchmaking(owner);
-                AmbientType.Player = owner;
+                //************************************************************************
+                player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                //************************************************************************
+                matchmakingMode.Player = player;
             }
         }
         #endregion

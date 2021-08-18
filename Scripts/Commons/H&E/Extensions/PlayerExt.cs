@@ -1,3 +1,5 @@
+using NeutronNetwork.Internal.Packets;
+
 namespace NeutronNetwork.Extensions
 {
     public static class PlayerExt
@@ -7,8 +9,8 @@ namespace NeutronNetwork.Extensions
 #if !UNITY_EDITOR
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.Fail);
-                writer.WritePacket(packet);
+                writer.WritePacket((byte)Packet.Fail);
+                writer.WritePacket((byte)packet);
                 writer.Write(message);
                 player.Write(writer);
             }

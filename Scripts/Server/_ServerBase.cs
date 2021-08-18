@@ -1,8 +1,9 @@
-﻿using NeutronNetwork.Constants;
-using NeutronNetwork.Extensions;
+﻿using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using System;
 using System.IO;
 using System.Linq;
@@ -20,24 +21,27 @@ namespace NeutronNetwork.Server
     public class ServerBase : ServerBehaviour
     {
         #region Singleton
-        public static NeutronServer This;
+        public static NeutronServer This { get; set; }
         #endregion
 
         #region Events
         public static NeutronEventNoReturn OnAwake { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDisconnected { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerNicknameChanged { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnMessageReceived { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel { get; set; }
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeaveChannel { get; set; }
-        public static NeutronEventNoReturn<NeutronPlayer, NeutronRoom> OnPlayerCreatedRoom { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedRoom { get; set; }
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeaveRoom { get; set; }
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerPropertiesChanged { get; set; }
+        public static NeutronEventNoReturn<NeutronPlayer, NeutronRoom> OnPlayerCreatedRoom { get; set; }
+        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftChannel { get; set; }
+        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftRoom { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerPropertiesChanged { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnRoomPropertiesChanged { get; set; }
         public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling { get; set; }
         #endregion
 
-        #region MonoBehaviour
-        public new void Awake()
+        #region Mono Behaviour
+        protected override void Awake()
         {
             base.Awake();
             This = (NeutronServer)this;
@@ -61,10 +65,10 @@ namespace NeutronNetwork.Server
         {
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.Handshake);
+                writer.WritePacket((byte)Packet.Handshake);
                 writer.Write(Neutron.Time);
                 writer.Write(time);
-                writer.Write(player.LocalEndPoint.Port);
+                writer.Write(player.StateObject.UdpLocalEndPoint.Port);
                 writer.WriteIntExactly(player);
                 writer.WriteIntExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
                 player.Write(writer);
@@ -72,7 +76,7 @@ namespace NeutronNetwork.Server
 
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.NewPlayer);
+                writer.WritePacket((byte)Packet.NewPlayer);
                 writer.WriteIntExactly(player); // send me to the other players who were already connected.
                 player.Write(writer, TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
             }
@@ -80,41 +84,47 @@ namespace NeutronNetwork.Server
 
         protected void SetNicknameHandler(NeutronPlayer player, string nickname)
         {
-            player.Nickname = nickname;
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            if (OnPlayerNicknameChanged.Invoke(player, nickname))
             {
-                writer.WritePacket(Packet.Nickname);
-                writer.Write(player.ID);
-                writer.Write(nickname);
-                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerNicknameChanged);
+                player.Nickname = nickname;
+                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                {
+                    writer.WritePacket((byte)Packet.Nickname);
+                    writer.Write(player.ID);
+                    writer.Write(nickname);
+                    player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerNicknameChanged);
+                }
             }
         }
 
-        protected void ChatHandler(NeutronPlayer player, ChatPacket packet, TunnelingTo tunnelingTo, int viewId, string message)
+        protected void ChatHandler(NeutronPlayer player, ChatMode packet, TunnelingTo tunnelingTo, int viewId, string message)
         {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            if (OnMessageReceived.Invoke(player, message))
             {
-                writer.WritePacket(Packet.Chat);
-                writer.Write(message);
-                writer.Write(player.ID);
-
-                if (packet == ChatPacket.Global)
-                    player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
-                else if (packet == ChatPacket.Private)
+                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer playerFound))
-                        playerFound.Write(player, writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
-                    else
-                        player.Message(Packet.Chat, "Player not found!");
+                    writer.WritePacket((byte)Packet.Chat);
+                    writer.Write(message);
+                    writer.Write(player.ID);
+
+                    if (packet == ChatMode.Global)
+                        player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
+                    else if (packet == ChatMode.Private)
+                    {
+                        if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer playerFound))
+                            playerFound.Write(player, writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
+                        else
+                            player.Message(Packet.Chat, "Player not found!");
+                    }
                 }
             }
         }
 
 #pragma warning disable IDE1006
-        protected async void iRPCHandler(NeutronPlayer owner, NeutronPlayer sender, short viewId, byte rpcId, byte instanceId, byte[] buffer, RegisterType registerType, TargetTo targetTo, Cache cache, Protocol protocol)
+        protected async void iRPCHandler(NeutronPlayer owner, NeutronPlayer sender, short viewId, byte rpcId, byte instanceId, byte[] buffer, RegisterMode registerType, TargetTo targetTo, CacheMode cache, Protocol protocol)
 #pragma warning restore IDE1006
         {
-            async Task Run((int, int, RegisterType) key)
+            async Task Run((int, int, RegisterMode) key)
             {
                 bool Send()
                 {
@@ -123,8 +133,8 @@ namespace NeutronNetwork.Server
                         tunnelingTo = TunnelingTo.Me;
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        writer.WritePacket(Packet.iRPC);
-                        writer.WritePacket(registerType);
+                        writer.WritePacket((byte)Packet.iRPC);
+                        writer.WritePacket((byte)registerType);
                         writer.Write(viewId);
                         writer.Write(rpcId);
                         writer.Write(instanceId);
@@ -139,7 +149,7 @@ namespace NeutronNetwork.Server
 
                 if (MatchmakingHelper.GetNetworkObject(key, owner, out NeutronView neutronView))
                 {
-                    if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPC remoteProceduralCall))
+                    if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPCInvoker remoteProceduralCall))
                     {
                         try
                         {
@@ -171,13 +181,13 @@ namespace NeutronNetwork.Server
             {
                 switch (registerType)
                 {
-                    case RegisterType.Scene:
+                    case RegisterMode.Scene:
                         await Run((0, viewId, registerType));
                         break;
-                    case RegisterType.Player:
+                    case RegisterMode.Player:
                         await Run((viewId, viewId, registerType));
                         break;
-                    case RegisterType.Dynamic:
+                    case RegisterMode.Dynamic:
                         await Run((owner.ID, viewId, registerType));
                         break;
                 }
@@ -190,11 +200,11 @@ namespace NeutronNetwork.Server
         protected async void gRPCHandler(NeutronPlayer owner, NeutronPlayer sender, byte id, byte[] buffer, Protocol protocol)
 #pragma warning restore IDE1006
         {
-            bool Send(Cache cache, TargetTo targetTo, TunnelingTo tunnelingTo)
+            bool Send(CacheMode cache, TargetTo targetTo, TunnelingTo tunnelingTo)
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.WritePacket(Packet.gRPC);
+                    writer.WritePacket((byte)Packet.gRPC);
                     writer.Write(id);
                     writer.WriteNextBytes(buffer);
                     //////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +215,7 @@ namespace NeutronNetwork.Server
                 return true;
             }
 
-            if (GlobalBehaviour.gRPCs.TryGetValue(id, out RPC remoteProceduralCall))
+            if (GlobalBehaviour.gRPCs.TryGetValue(id, out RPCInvoker remoteProceduralCall))
             {
                 try
                 {
@@ -239,7 +249,7 @@ namespace NeutronNetwork.Server
                 {
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        writer.WritePacket(Packet.GetChannels);
+                        writer.WritePacket((byte)Packet.GetChannels);
                         writer.WriteIntExactly(channels);
                         player.Write(writer);
                     }
@@ -261,7 +271,7 @@ namespace NeutronNetwork.Server
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
                         NeutronRoom[] rooms = channel.GetRooms(x => x.IsVisible);
-                        writer.WritePacket(Packet.GetRooms);
+                        writer.WritePacket((byte)Packet.GetRooms);
                         writer.WriteIntExactly(rooms);
                         player.Write(writer);
                     }
@@ -285,10 +295,12 @@ namespace NeutronNetwork.Server
                         {
                             player.Channel = channel;
                             player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                            //*****************************************************************
                             OnPlayerJoinedChannel?.Invoke(player);
+                            //*****************************************************************
                             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                             {
-                                writer.WritePacket(Packet.JoinChannel);
+                                writer.WritePacket((byte)Packet.JoinChannel);
                                 writer.Write(player.ID);
                                 writer.WriteIntExactly(channel);
                                 player.Write(writer, TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
@@ -317,10 +329,12 @@ namespace NeutronNetwork.Server
                 {
                     player.Room = room;
                     player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                    //*****************************************************************
                     OnPlayerJoinedRoom?.Invoke(player);
+                    //*****************************************************************
                     using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                     {
-                        writer.WritePacket(Packet.JoinRoom);
+                        writer.WritePacket((byte)Packet.JoinRoom);
                         writer.Write(player.ID);
                         writer.WriteIntExactly(room);
                         player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
@@ -349,13 +363,15 @@ namespace NeutronNetwork.Server
                     if (channel.AddRoom(room))
                     {
                         OnPlayerCreatedRoom?.Invoke(player, room);
+                        //*******************************************************************************
                         using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                         {
-                            writer.WritePacket(Packet.CreateRoom);
+                            writer.WritePacket((byte)Packet.CreateRoom);
                             writer.Write(player.ID);
                             writer.WriteIntExactly(room);
                             player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
                         }
+                        //*******************************************************************************
                         JoinRoomHandler(player, room.ID);
                     }
                     else
@@ -389,7 +405,7 @@ namespace NeutronNetwork.Server
                                 #endregion
                                 //using (NeutronReader lastReader = new NeutronReader(l_Cache.buffer))
                                 {
-                                    Packet packet = lastReader.ReadPacket<Packet>();
+                                    Packet packet = (Packet)lastReader.ReadPacket();
                                     int _ID = lastReader.ReadInt32();
                                     byte[] sender = lastReader.ReadIntExactly();
                                     byte[] parameters = lastReader.ReadIntExactly();
@@ -404,7 +420,7 @@ namespace NeutronNetwork.Server
                                             parameters = oldWriter.ToArray();
                                             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                                             {
-                                                writer.WritePacket(packet);
+                                                writer.WritePacket((byte)packet);
                                                 writer.Write(_ID);
                                                 writer.WriteIntExactly(sender);
                                                 writer.WriteIntExactly(parameters);
@@ -445,13 +461,15 @@ namespace NeutronNetwork.Server
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.WritePacket(Packet.Leave);
-                    writer.WritePacket(MatchmakingPacket.Room);
+                    writer.WritePacket((byte)Packet.Leave);
+                    writer.WritePacket((byte)MatchmakingMode.Room);
                     writer.Write(player.ID);
                     writer.WriteIntExactly(player.Room);
                     player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveRoom);
                 }
-
+                //*******************************************************************************
+                OnPlayerLeftRoom?.Invoke(player);
+                //*******************************************************************************
                 INeutronMatchmaking matchmaking = player.Matchmaking;
                 if (matchmaking != null)
                 {
@@ -468,18 +486,21 @@ namespace NeutronNetwork.Server
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.WritePacket(Packet.Leave);
-                    writer.WritePacket(MatchmakingPacket.Channel);
+                    writer.WritePacket((byte)Packet.Leave);
+                    writer.WritePacket((byte)MatchmakingMode.Channel);
                     writer.Write(player.ID);
                     writer.WriteIntExactly(player.Channel);
                     player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerLeaveChannel);
                 }
-
+                //*******************************************************************************
+                OnPlayerLeftChannel?.Invoke(player);
+                //*******************************************************************************
                 NeutronChannel channel = player.Channel;
                 channel.Remove(player);
                 player.Channel = null;
             }
-            else player.Message(Packet.Leave, "ERROR: LeaveChannel Failed");
+            else
+                player.Message(Packet.Leave, "ERROR: LeaveChannel Failed");
         }
 
         protected void DestroyPlayerHandler(NeutronPlayer player)
@@ -487,52 +508,60 @@ namespace NeutronNetwork.Server
             //MatchmakingHelper.DestroyPlayer(nSender);
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.DestroyPlayer);
+                writer.WritePacket((byte)Packet.DestroyPlayer);
                 player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerDestroyed);
             }
             OnPlayerDestroyed?.Invoke(player);
         }
 
-        public void SetPlayerPropertiesHandler(NeutronPlayer player, string properties)
+        protected void SetPlayerPropertiesHandler(NeutronPlayer player, string properties)
         {
-            player.Properties = properties;
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            if (OnPlayerPropertiesChanged.Invoke(player, properties))
             {
-                writer.WritePacket(Packet.SetPlayerProperties);
-                writer.Write(player.ID);
-                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerPropertiesChanged);
+                player.Properties = properties;
+                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                {
+                    writer.WritePacket((byte)Packet.SetPlayerProperties);
+                    writer.Write(player.ID);
+                    player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerPropertiesChanged);
+                }
             }
         }
 
-        public void SetRoomPropertiesHandler(NeutronPlayer player, string properties)
+        protected void SetRoomPropertiesHandler(NeutronPlayer player, string properties)
         {
-            if (player.IsInRoom())
+            if (OnRoomPropertiesChanged.Invoke(player, properties))
             {
-                NeutronChannel channel = player.Channel;
-                NeutronRoom room = player.Room;
-
-                if (room.Player == null)
+                if (player.IsInRoom())
                 {
-                    player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
-                    return;
-                }
+                    NeutronChannel channel = player.Channel;
+                    NeutronRoom room = player.Room;
 
-                if (room.Player.Equals(player))
-                {
-                    room.Properties = properties;
-                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    if (room.Player == null)
                     {
-                        writer.WritePacket(Packet.SetRoomProperties);
-                        writer.Write(player.ID);
-                        player.Write(writer, OthersHelper.GetDefaultHandler().OnRoomPropertiesChanged);
+                        player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
+                        return;
                     }
+
+                    if (room.Player.Equals(player))
+                    {
+                        room.Properties = properties;
+                        using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                        {
+                            writer.WritePacket((byte)Packet.SetRoomProperties);
+                            writer.Write(player.ID);
+                            player.Write(writer, OthersHelper.GetDefaultHandler().OnRoomPropertiesChanged);
+                        }
+                    }
+                    else
+                        player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
                 }
-                else player.Message(Packet.SetRoomProperties, "You are not allowed to change the properties of this room.");
+                else
+                    player.Message(Packet.SetRoomProperties, "You are not inside a room.");
             }
-            else player.Message(Packet.SetRoomProperties, "You are not inside a room.");
         }
 
-        public void PingHandler(NeutronPlayer player, double time)
+        protected void PingHandler(NeutronPlayer player, double time)
         {
             double diffTime = Math.Abs(Neutron.Time - time);
             if ((Neutron.Time > time) && diffTime > OthersHelper.GetConstants().TimeDesyncTolerance)
@@ -541,21 +570,21 @@ namespace NeutronNetwork.Server
                 Debug.LogError($"Jogador {player.Nickname} adiantado em {diffTime} Ms!");
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
-                writer.WritePacket(Packet.Ping);
+                writer.WritePacket((byte)Packet.Ping);
                 writer.Write(Neutron.Time);
                 writer.Write(time);
-                player.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Udp, Packet.Ping);
+                player.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp, Packet.Ping);
             }
         }
 
-        public void CustomPacketHandler(NeutronPlayer player, bool isMine, int viewId, byte[] parameters, CustomPacket packet, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        protected void CustomPacketHandler(NeutronPlayer player, bool isMine, int viewId, byte[] parameters, CustomPacket packet, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
         {
             if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer nPlayer))
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
-                    writer.WritePacket(Packet.CustomPacket);
-                    writer.WritePacket(packet);
+                    writer.WritePacket((byte)Packet.CustomPacket);
+                    writer.WritePacket((byte)packet);
                     writer.Write(player.ID);
                     writer.WriteIntExactly(parameters);
 
@@ -565,29 +594,19 @@ namespace NeutronNetwork.Server
                         nPlayer.Write(writer, TargetTo.Me, TunnelingTo.Me, protocol);
                 }
             }
-            else Debug.LogError("dsdsdsd");
+            else
+                Debug.LogError("dsdsdsd");
         }
 
-        public void OnAutoSyncHandler(NeutronPlayer player, short viewId, byte instanceId, byte[] buffer, RegisterType registerType, Protocol protocol, bool isServerSide)
+        protected void OnAutoSyncHandler(NeutronPacket packet, short viewId, byte instanceId, byte[] buffer, RegisterMode registerType)
         {
 #if UNITY_EDITOR
             ThreadHelper.DoNotAllowSimultaneousAccess(PacketProcessingStack_ManagedThreadId);
 #endif
-            void Run((int, int, RegisterType) key)
+            NeutronPlayer player = packet.Owner;
+            void Run((int, int, RegisterMode) key)
             {
-                void Send()
-                {
-                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-                    {
-                        writer.WritePacket(Packet.OnAutoSync);
-                        writer.WritePacket(registerType);
-                        writer.Write(viewId);
-                        writer.Write(instanceId);
-                        writer.WriteNextBytes(buffer);
-                        player.Write(writer, MatchmakingHelper.TargetTo(isServerSide), TunnelingTo.Auto, protocol);
-                    }
-                }
-
+                void Send() => SocketHelper.Redirect(packet, MatchmakingHelper.GetTargetTo(packet.IsServerSide), MatchmakingHelper.Tunneling(player, TunnelingTo.Auto));
                 if (MatchmakingHelper.GetNetworkObject(key, player, out NeutronView neutronView))
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))
@@ -610,13 +629,13 @@ namespace NeutronNetwork.Server
             {
                 switch (registerType)
                 {
-                    case RegisterType.Scene:
+                    case RegisterMode.Scene:
                         Run((0, viewId, registerType));
                         break;
-                    case RegisterType.Player:
+                    case RegisterMode.Player:
                         Run((viewId, viewId, registerType));
                         break;
-                    case RegisterType.Dynamic:
+                    case RegisterMode.Dynamic:
                         Run((player.ID, viewId, registerType));
                         break;
                 }

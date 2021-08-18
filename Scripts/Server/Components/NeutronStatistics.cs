@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork.Constants;
+using NeutronNetwork.Editor;
 using System.Collections;
 using UnityEngine;
 
@@ -7,20 +8,20 @@ namespace NeutronNetwork.Internal.Components
     public class NeutronStatistics : MonoBehaviour
     {
         #region Client;
-        public static InOutData m_ClientTCP = new InOutData();
-        public static InOutData m_ClientUDP = new InOutData();
+        public static InOutData ClientTCP { get; set; } = new InOutData();
+        public static InOutData ClientUDP { get; set; } = new InOutData();
         #endregion
 
         #region Server;
-        public static InOutData m_ServerTCP = new InOutData();
-        public static InOutData m_ServerUDP = new InOutData();
+        public static InOutData ServerTCP { get; set; } = new InOutData();
+        public static InOutData ServerUDP { get; set; } = new InOutData();
         #endregion
 
         #region Events
         public static NeutronEventNoReturn<InOutData[]> OnChangedStatistics;
         #endregion
 
-        private InOutData[] m_Profilers = new[] { m_ClientTCP, m_ClientUDP, m_ServerTCP, m_ServerUDP };
+        private readonly InOutData[] m_Profilers = new[] { ClientTCP, ClientUDP, ServerTCP, ServerUDP };
 
         private void Start()
         {

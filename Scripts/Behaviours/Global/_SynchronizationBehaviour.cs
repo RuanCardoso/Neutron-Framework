@@ -25,46 +25,40 @@ namespace NeutronNetwork
         };
         #endregion
 
-        public override bool OnAutoSynchronization(NeutronWriter writer, NeutronReader reader, bool isWriting)
-        {
-            if (isWriting)
-            {
-                var data = JsonConvert.SerializeObject(this, _jsonSerializerSettings);
-                if (data.Length > 2)
-                {
-                    if (!_serializeOnChange)
-                        writer.Write(data);
-                    else
-                    {
-                        if (_json != data)
-                        {
-                            writer.Write(data);
-                            {
-                                _json = data;
-                            }
-                        }
-                        else
-                            return false;
-                    }
-                }
-                else
-                    return false;
-            }
-            else
-            {
-                if (DoNotPerformTheOperationOnTheServer)
-                    JsonConvert.PopulateObject(reader.ReadString(), this, _jsonSerializerSettings);
-            }
-            return OnValidateAutoSynchronization(isWriting);
-        }
+        //public override bool OnAutoSynchronization(NeutronWriter writer, NeutronReader reader, bool isWriting)
+        //{
+        //    if (isWriting)
+        //    {
+        //        var data = JsonConvert.SerializeObject(this, _jsonSerializerSettings);
+        //        if (data.Length > 2)
+        //        {
+        //            if (!_serializeOnChange)
+        //                writer.Write(data);
+        //            else
+        //            {
+        //                if (_json != data)
+        //                {
+        //                    writer.Write(data);
+        //                    {
+        //                        _json = data;
+        //                    }
+        //                }
+        //                else
+        //                    return false;
+        //            }
+        //        }
+        //        else
+        //            return false;
+        //    }
+        //    else
+        //    {
+        //        if (DoNotPerformTheOperationOnTheServer)
+        //            JsonConvert.PopulateObject(reader.ReadString(), this, _jsonSerializerSettings);
+        //    }
+        //    return OnValidateAutoSynchronization(isWriting);
+        //}
 
-        protected override bool OnValidateAutoSynchronization(bool isWriting)
-        {
-            if (isWriting)
-                return true;
-            else
-                return OnValidateProperties();
-        }
+        protected override bool OnValidateAutoSynchronization(bool isMine) => isMine || OnValidateProperties();
         /// <summary>
         ///* Usado para validar as propriedades ao lado do servidor.
         /// </summary>

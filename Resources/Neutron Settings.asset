@@ -16,41 +16,39 @@ MonoBehaviour:
     Addresses:
     - localhost
     Port: 1418
-    AppId: 4cf76ef5-54e8-40a3-a5ad-9c2751fd6ec0
+    AppId: a0e3f93d-4548-4f8d-9aab-3f1f18bea6c9
+    FPS: 60
     MaxPlayers: 300
-    PoolCapacity: 5000
+    StreamPoolCapacity: 1200
+    PacketPoolCapacity: 1200
     Serialization: 1
     Compression: 0
     NoDelay: 1
     PeerToPeer: 0
     PerfomanceMode: 0
-  EditorSettings:
-    FPS: 60
   ClientSettings:
-    FPS: 60
     PingRate: 0.2
     TcpKeepAlive: 5
   ServerSettings:
-    FPS: 45
     BackLog: 10
     NeutronAntiCheat: 1
-  LagSimulationSettings:
-    Inbound: 0
-    Outbound: 0
-    InOutDelay: 1
-    Drop: 0
-    Percent: 1
   NetworkSettings:
     ContainerName: '[Container] -> Player[Main]'
     MaxUdpPacketSize: 512
     MaxTcpPacketSize: 2048
-    ReceiveBufferSize: 8192
-    SendBufferSize: 8192
-    BufferedStreamSize: 8192
+    TcpReceiveBufferSize: 8192
+    TcpSendBufferSize: 8192
+    UdpReceiveBufferSize: 8192
+    UdpSendBufferSize: 8192
     MaxConnectionsPerIp: 2
     MaxLatency: 150
     TimeDesyncTolerance: 1
     TimeResyncTolerance: 0.001
+    ReceiveModel: 0
+    SendModel: 1
+    SendAsyncPattern: 1
+    ReceiveAsyncPattern: 1
     Encoding: 5
     HeaderSize: 2
     BufferedStream: 0
+    BufferedStreamSize: 8192

@@ -1,8 +1,10 @@
 ﻿using NeutronNetwork.Helpers;
 using NeutronNetwork.Interfaces;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
-using Newtonsoft.Json;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Packets;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -80,11 +82,10 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties -> Network
-        public IPEndPoint RemoteEndPoint { get; set; }
-        public IPEndPoint LocalEndPoint { get; set; }
-        public TcpClient TcpClient { get; set; }
-        public UdpClient UdpClient { get; set; }
-        public Stream NetworkStream { get; set; }
+        public TcpClient TcpClient { get; }
+        public UdpClient UdpClient { get; }
+        public Stream NetworkStream { get; }
+        public StateObject StateObject { get; }
         #endregion
 
         #region Threading
@@ -95,20 +96,20 @@ namespace NeutronNetwork
 
         public NeutronPlayer(int id, TcpClient tcpClient, CancellationTokenSource cancellationTokenSource)
         {
-            #region Properties
             ID = id;
             Nickname = $"Player#{id}";
-            #endregion
-
-            #region Socket
+            //**************************************************************************************************
             TcpClient = tcpClient;
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
-            LocalEndPoint = (IPEndPoint)UdpClient.Client.LocalEndPoint;
-            #endregion
-
-            #region Others
+            UdpClient.Client.ReceiveBufferSize = OthersHelper.GetConstants().UdpReceiveBufferSize;
+            UdpClient.Client.SendBufferSize = OthersHelper.GetConstants().UdpSendBufferSize;
+            //**************************************************************************************************
+            StateObject = new StateObject();
+            NetworkStream = SocketHelper.GetStream(tcpClient);
+            StateObject.UdpLocalEndPoint = (IPEndPoint)UdpClient.Client.LocalEndPoint;
+            StateObject.TcpRemoteEndPoint = (IPEndPoint)TcpClient.Client.RemoteEndPoint;
+            //**************************************************************************************************
             TokenSource = cancellationTokenSource;
-            #endregion
         }
 
         public NeutronPlayer(SerializationInfo info, StreamingContext context)

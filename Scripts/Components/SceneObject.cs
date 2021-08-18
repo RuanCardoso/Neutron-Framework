@@ -1,6 +1,7 @@
 using NeutronNetwork;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Packets;
 using System.Collections;
 using UnityEngine;
 
@@ -23,6 +24,6 @@ public class SceneObject : MonoBehaviour
     private IEnumerator Init(Neutron neutron)
     {
         yield return new WaitUntil(() => !NeutronView.IsServer);
-        NeutronView.OnNeutronRegister(neutron.Player, false, RegisterType.Scene, neutron);
+        NeutronView.OnNeutronRegister(neutron.Player, false, RegisterMode.Scene, neutron);
     }
 }

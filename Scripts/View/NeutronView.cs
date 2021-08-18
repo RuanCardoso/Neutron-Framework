@@ -2,6 +2,7 @@
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Server;
 using UnityEngine;
 
@@ -20,7 +21,7 @@ namespace NeutronNetwork
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_VIEW)]
     public class NeutronView : ViewBehaviour
     {
-        public override bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterType registerType, Neutron neutron, int dynamicId = 0)
+        public override bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerType, Neutron neutron, int dynamicId = 0)
         {
             base.OnNeutronRegister(player, isServer, registerType, neutron, dynamicId);
             {
@@ -48,7 +49,7 @@ namespace NeutronNetwork
                 if (IsServer)
                     OthersHelper.SetColor(this, Color.red); // define uma cor para o objeto do servidor.
 
-                if (registerType == RegisterType.Player)
+                if (registerType == RegisterMode.Player)
                 {
                     if (Id == 0)
                     {
@@ -65,7 +66,7 @@ namespace NeutronNetwork
                     else
                         return LogHelper.Error("Dynamically instantiated objects must have their ID at 0.");
                 }
-                else if (registerType == RegisterType.Dynamic)
+                else if (registerType == RegisterMode.Dynamic)
                 {
                     if (Id == 0)
                     {
@@ -80,7 +81,7 @@ namespace NeutronNetwork
                     else
                         return LogHelper.Error("Dynamically instantiated objects must have their ID at 0.");
                 }
-                else if (registerType == RegisterType.Scene)
+                else if (registerType == RegisterMode.Scene)
                 {
                     // Define um nome de identificação para este objeto.
                     gameObject.name = $"Scene Object -> [{name.Replace("(Clone)", "")}] [{(IsServer ? "Server" : "Client")}] #-{Id}";

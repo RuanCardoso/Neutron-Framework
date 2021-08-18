@@ -12,5 +12,9 @@ namespace NeutronNetwork.Internal.Attributes
         public NetworkAttribute(string log)
         {
         }
+
+        public NetworkAttribute(int size)
+        {
+        }
     }
 }

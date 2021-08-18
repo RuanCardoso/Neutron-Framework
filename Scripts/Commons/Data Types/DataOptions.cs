@@ -1,9 +1,10 @@
 using NeutronNetwork.Constants;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Packets;
 using System;
 using UnityEngine;
 
-namespace NeutronNetwork.Server.Internal
+namespace NeutronNetwork.Internal
 {
     [Serializable]
     public class HandlerOptions
@@ -43,7 +44,7 @@ namespace NeutronNetwork.Server.Internal
         [SerializeField] private NeutronBehaviour _instance;
         [SerializeField] [HideInInspector] private NeutronBehaviour _originalInstance;
         [SerializeField] private TargetTo _targetTo;
-        [SerializeField] private Cache _cache;
+        [SerializeField] private CacheMode _cache;
         [SerializeField] private Protocol _protocol;
         #endregion
 
@@ -53,7 +54,7 @@ namespace NeutronNetwork.Server.Internal
         public NeutronBehaviour Instance { get => _instance; set => _instance = value; }
         public NeutronBehaviour OriginalInstance { get => _originalInstance; set => _originalInstance = value; }
         public TargetTo TargetTo { get => _targetTo; set => _targetTo = value; }
-        public Cache Cache { get => _cache; set => _cache = value; }
+        public CacheMode Cache { get => _cache; set => _cache = value; }
         public Protocol Protocol { get => _protocol; set => _protocol = value; }
 
         public Boolean Equals(iRpcOptions other)
@@ -80,10 +81,12 @@ namespace NeutronNetwork.Server.Internal
     [Serializable]
     public class AutoSyncOptions
     {
+        [SerializeField] private bool _highPerformance;
         [SerializeField] private Protocol _protocol;
         [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _sendRate = 15; //* Quantidade de sincronizações por segundo.
 
         public Protocol Protocol { get => _protocol; set => _protocol = value; }
         public int SendRate { get => _sendRate; set => _sendRate = value; }
+        public bool HighPerformance { get => _highPerformance; set => _highPerformance = value; }
     }
 }

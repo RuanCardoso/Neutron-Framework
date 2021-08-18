@@ -1,4 +1,7 @@
 ﻿using NeutronNetwork.Constants;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Packets;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -17,7 +20,7 @@ namespace NeutronNetwork
     {
         #region Collections
         //* Aqui será armazenado todos os gRPC's, a chave é seu ID.
-        public static Dictionary<byte, RPC> gRPCs = new Dictionary<byte, RPC>();
+        public static Dictionary<byte, RPCInvoker> gRPCs = new Dictionary<byte, RPCInvoker>();
         #endregion
 
         #region Mono Behaviour
@@ -30,14 +33,14 @@ namespace NeutronNetwork
         ///* (Client Side) Client->Server->Clients.
         /// </summary>
         /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
         /// <param name="protocol">* O protocolo que será usado para enviar os dados.</param>
         /// <param name="neutron">* A instância de Neutron que realizará a comunicação.</param>
 #pragma warning disable IDE1006
-        protected void gRPC(byte id, NeutronWriter writer, Protocol protocol, Neutron neutron)
+        public void gRPC(byte id, NeutronWriter parameters, Protocol protocol, Neutron neutron)
 #pragma warning restore IDE1006
         {
-            neutron.gRPC(id, writer, protocol);
+            neutron.gRPC(id, parameters, protocol);
         }
 
         /// <summary>
@@ -45,14 +48,14 @@ namespace NeutronNetwork
         ///* (Server Side) Server->Clients.
         /// </summary>
         /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="writer">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
         /// <param name="protocol">* O protocolo que será usado para enviar os dados.</param>
         /// <param name="neutron">* A instância de Neutron que realizará a comunicação.</param>
 #pragma warning disable IDE1006
-        protected void gRPC(byte id, NeutronWriter writer, Protocol protocol, NeutronPlayer player, Neutron neutron)
+        public void gRPC(byte id, NeutronWriter parameters, Protocol protocol, NeutronPlayer player, Neutron neutron)
 #pragma warning restore IDE1006
         {
-            neutron.gRPC(id, writer, protocol, player);
+            neutron.gRPC(id, parameters, protocol, player);
         }
         #endregion
 
@@ -71,7 +74,7 @@ namespace NeutronNetwork
                     {
                         gRPC method = methods.Item1[ii];
                         if (!gRPCs.ContainsKey(method.ID)) //* Verifica se não existe um metódo duplicado, ou seja, um gRPC com mesmo ID.
-                            gRPCs.Add(method.ID, new RPC(instance, methods.Item2, method)); //* Monta sua estrutura e armazena no Dict.
+                            gRPCs.Add(method.ID, new RPCInvoker(instance, methods.Item2, method)); //* Monta sua estrutura e armazena no Dict.
                         else
                             LogHelper.Error($"Duplicate ID not allowed in \"{instance.GetType().Name}\".");
                     }

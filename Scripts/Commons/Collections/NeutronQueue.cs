@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace NeutronNetwork.Internal.Wrappers
+namespace NeutronNetwork.Wrappers
 {
     public class NeutronQueue<T> : Queue<T>
     {

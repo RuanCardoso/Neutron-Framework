@@ -1,6 +1,6 @@
+using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -15,12 +15,12 @@ namespace NeutronNetwork
     public class SceneView
     {
         #region Fields
-        public NeutronSafeDictionary<(int, int, RegisterType), NeutronView> Views = new NeutronSafeDictionary<(int, int, RegisterType), NeutronView>();
         [SerializeField] private GameObject[] _gameObjects;
         [SerializeField] private bool _hasPhysics;
         #endregion
 
         #region Properties
+        public NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views { get; set; } = new NeutronSafeDictionary<(int, int, RegisterMode), NeutronView>();
         public bool HasPhysics { get => _hasPhysics; set => _hasPhysics = value; }
         public GameObject[] GameObjects { get => _gameObjects; set => _gameObjects = value; }
         #endregion

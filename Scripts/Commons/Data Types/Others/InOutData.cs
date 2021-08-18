@@ -1,13 +1,12 @@
+using NeutronNetwork.Internal.Packets;
 using System.Threading;
 
-namespace NeutronNetwork.Internal
+namespace NeutronNetwork.Editor
 {
     public class InOutData
     {
-        #region Fields
         private int _bytesOutgoing;
         private int _bytesIncoming;
-        #endregion
 
         public void AddIncoming(int value, Packet packet = Packet.Empty)
         {

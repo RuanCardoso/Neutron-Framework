@@ -1,20 +1,23 @@
 using System.Collections.Concurrent;
 
-public class NeutronBlockingQueue<T> : BlockingCollection<T>
+namespace NeutronNetwork.Wrappers
 {
-    public NeutronBlockingQueue()
+    public class NeutronBlockingQueue<T> : BlockingCollection<T>
     {
-    }
+        public NeutronBlockingQueue()
+        {
+        }
 
-    public NeutronBlockingQueue(IProducerConsumerCollection<T> collection) : base(collection)
-    {
-    }
+        public NeutronBlockingQueue(IProducerConsumerCollection<T> collection) : base(collection)
+        {
+        }
 
-    public NeutronBlockingQueue(int boundedCapacity) : base(boundedCapacity)
-    {
-    }
+        public NeutronBlockingQueue(int boundedCapacity) : base(boundedCapacity)
+        {
+        }
 
-    public NeutronBlockingQueue(IProducerConsumerCollection<T> collection, int boundedCapacity) : base(collection, boundedCapacity)
-    {
+        public NeutronBlockingQueue(IProducerConsumerCollection<T> collection, int boundedCapacity) : base(collection, boundedCapacity)
+        {
+        }
     }
 }

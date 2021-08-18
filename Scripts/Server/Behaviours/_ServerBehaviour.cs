@@ -1,8 +1,6 @@
 ﻿using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
-using NeutronNetwork.Server.Internal;
-using System;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -13,7 +11,7 @@ namespace NeutronNetwork.Server
     public class ServerBehaviour : MonoBehaviour
     {
         #region Socket
-        public TcpListener TcpListener;
+        public TcpListener TcpListener { get; set; }
         #endregion
 
         #region Collections
@@ -37,7 +35,7 @@ namespace NeutronNetwork.Server
         public int PacketProcessingStack_ManagedThreadId { get; set; }
         #endregion
 
-        public void Awake()
+        protected virtual void Awake()
         {
 #if UNITY_2018_4_OR_NEWER
             if (EventsBehaviour == null)

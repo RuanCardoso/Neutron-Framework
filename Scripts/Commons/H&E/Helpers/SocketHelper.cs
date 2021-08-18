@@ -1,6 +1,8 @@
 using NeutronNetwork.Extensions;
-using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using System;
 using System.IO;
 using System.Net;
@@ -30,16 +32,11 @@ namespace NeutronNetwork.Helpers
             if (tryRemove)
             {
                 Neutron.Server._pooledIds.Enqueue(player.ID);
-                if (player.RemoteEndPoint != null)
-                {
-                    string addr = player.RemoteEndPoint.Address.ToString();
-                    if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
-                        Neutron.Server.RegisteredConnectionsByIp[addr] = --value;
-                }
-
+                string addr = player.StateObject.TcpRemoteEndPoint.Address.ToString();
+                if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
+                    Neutron.Server.RegisteredConnectionsByIp[addr] = --value;
                 PlayerHelper.Disconnect(player, "Exited");
                 //MatchmakingHelper.DestroyPlayer(nPlayer);
-
                 if (player.IsInRoom())
                 {
                     INeutronMatchmaking matchmaking = player.Matchmaking;
@@ -71,9 +68,9 @@ namespace NeutronNetwork.Helpers
             return tryRemove;
         }
 
-        public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int size, CancellationToken token) // Manter Stream, em vez de NetworkStream.
+        public static Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int size, CancellationToken token) // Manter Stream, em vez de NetworkStream.
         {
-            return await Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 try
                 {
@@ -93,6 +90,133 @@ namespace NeutronNetwork.Helpers
                     return false;
                 }
             });
+        }
+
+        public static IAsyncResult BeginReadBytes(UdpClient udpClient, StateObject stateObject, AsyncCallback callback)
+        {
+            Socket udpSocket = udpClient.Client;
+            return udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, null);
+        }
+
+        public static int EndReadBytes(UdpClient udpClient, ref EndPoint remoteEp, IAsyncResult ar)
+        {
+            Socket udpSocket = udpClient.Client;
+            return udpSocket.EndReceiveFrom(ar, ref remoteEp);
+        }
+
+        public static Task<bool> ReadAsyncBytes(UdpClient udpClient, StateObject stateObject)
+        {
+            Socket udpSocket = udpClient.Client;
+            //if (stateObject.ReadAsyncBytes == null)
+            {
+                stateObject.ReadAsyncBytes = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, obj), (ar) =>
+                {
+                    try
+                    {
+                        EndPoint remoteEp = stateObject.NonAllocEndPoint;
+                        int bytesRead = udpSocket.EndReceiveFrom(ar, ref remoteEp);
+                        //* Esta região funciona como um "Syn/Ack", o cliente envia algum pacote vazio após a conexão, após o servidor receber este pacote, atribui o ip de destino, que é para onde os dados serão enviados.
+                        //! Se o ip de destino é nulo, o servidor não enviará os dados, porque não tem destino, não houve "Syn/Ack".
+                        //! A tentativa de envio sem o "Syn/Ack" causará a exceção de "An existing connection was forcibly closed by the remote host"
+                        if (!stateObject.UdpIsReady())
+                            stateObject.UdpRemoteEndPoint = (IPEndPoint)remoteEp;
+                        if (bytesRead > 0)
+                        {
+                            stateObject.ReceivedDatagram = new byte[bytesRead];
+                            //**************************************************************************
+                            Buffer.BlockCopy(stateObject.Buffer, 0, stateObject.ReceivedDatagram, 0, bytesRead);
+                        }
+                        return bytesRead > 0;
+                    }
+                    catch (Exception)
+                    {
+                        return false;
+                    }
+                }, null);
+            }
+            return stateObject.ReadAsyncBytes;
+        }
+
+        public static Task<int> SendAsyncBytes(UdpClient udpClient, StateObject stateObject, IPEndPoint remoteEp)
+        {
+            Socket udpSocket = udpClient.Client;
+            //if (stateObject.SendAsyncBytes == null)
+            {
+                stateObject.SendAsyncBytes = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginSendTo(stateObject.SendDatagram, 0, stateObject.SendDatagram.Length, SocketFlags.None, remoteEp, callback, obj), (ar) =>
+                {
+                    return udpSocket.EndSendTo(ar);
+                }, null);
+            }
+            return stateObject.SendAsyncBytes;
+        }
+
+        public static void BeginSendBytes(UdpClient udpClient, byte[] datagram, IPEndPoint remoteEp, AsyncCallback callback)
+        {
+            Socket udpSocket = udpClient.Client;
+            udpSocket.BeginSendTo(datagram, 0, datagram.Length, SocketFlags.None, remoteEp, callback, null);
+        }
+
+        public static int EndSendBytes(UdpClient udpClient, IAsyncResult ar)
+        {
+            Socket udpSocket = udpClient.Client;
+            return udpSocket.EndSendTo(ar);
+        }
+
+        public static int SendBytes(UdpClient udpClient, byte[] datagram, IPEndPoint remoteEp)
+        {
+            Socket udpSocket = udpClient.Client;
+            return udpSocket.SendTo(datagram, 0, datagram.Length, SocketFlags.None, remoteEp);
+        }
+
+        //* Envia os dados de forma assíncrona no socket UDP, alguém sabe como melhorar isso? faz muitas alocações de GC, e usa muita CPU, por causa do "Task.Factory.FromAsync", melhor usar o síncrono ou beginreceive diretamente.
+        public static async void SendUdpAsync(UdpClient udpClient, StateObject stateObject, IPEndPoint iPEndPoint)
+        {
+            await SendAsyncBytes(udpClient, stateObject, iPEndPoint);
+        }
+
+        //* Escreve no socket de modo assíncrono no socket TCP.
+        public static async void SendTcpAsync(NetworkStream networkStream, byte[] buffer, CancellationToken token)
+        {
+            await networkStream.WriteAsync(buffer, 0, buffer.Length, token);
+        }
+
+        public static void Redirect(NeutronPacket packet, TargetTo targetTo, NeutronPlayer[] players)
+        {
+            switch (targetTo)
+            {
+                case TargetTo.Me:
+                    if (!packet.Owner.IsServer)
+                        Neutron.Server.OnSendingData(packet.Owner, packet);
+                    else
+                        LogHelper.Error("The Server cannot transmit data to itself.");
+                    break;
+                case TargetTo.Server:
+                    break;
+                default:
+                    {
+                        if (players != null)
+                        {
+                            for (int i = 0; i < players.Length; i++)
+                            {
+                                switch (targetTo)
+                                {
+                                    case TargetTo.All:
+                                        Neutron.Server.OnSendingData(players[i], packet);
+                                        break;
+                                    case TargetTo.Others:
+                                        if (players[i].Equals(packet.Owner))
+                                            continue;
+                                        Neutron.Server.OnSendingData(players[i], packet);
+                                        break;
+                                }
+                            }
+                        }
+                        else
+                            LogHelper.Error("The server cannot transmit all data to nothing.");
+                        break;
+                    }
+            }
+            packet.Recycle();
         }
 
         public static void Redirect(NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, TargetTo targetTo, Packet ignoredPacket, byte[] buffer, NeutronPlayer[] players)
@@ -146,9 +270,7 @@ namespace NeutronNetwork.Helpers
                     else
                     {
                         Neutron.Server.RegisteredConnectionsByIp[addr] = count + 1;
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
                 else

@@ -1,3 +1,5 @@
+using NeutronNetwork.Internal.Packets;
+
 namespace NeutronNetwork.Constants
 {
     public class ExecutionOrder
@@ -11,5 +13,10 @@ namespace NeutronNetwork.Constants
         public const int NEUTRON_VIEW = -600;
         public const int NEUTRON_BEHAVIOUR = -500;
         public const int NEUTRON_CONNECTION = -400;
+    }
+
+    public class Size
+    {
+        public const int AutoSync = sizeof(Packet) + sizeof(RegisterMode) + sizeof(short) + sizeof(byte);
     }
 }

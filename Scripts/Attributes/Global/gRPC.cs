@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NeutronNetwork.Packets;
+using System;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -19,7 +20,7 @@ namespace NeutronNetwork
     {
         public byte ID { get; set; }
         public bool FirstValidation { get; set; }
-        public Cache Cache { get; set; }
+        public CacheMode Cache { get; set; }
         public TargetTo TargetTo { get; set; }
         public TunnelingTo TunnelingTo { get; set; }
 

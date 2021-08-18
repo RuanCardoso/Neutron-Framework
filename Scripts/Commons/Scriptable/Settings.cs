@@ -9,10 +9,8 @@ namespace NeutronNetwork
     public class Settings : ScriptableObject
     {
         public NeutronGlobalSettings GlobalSettings = new NeutronGlobalSettings();
-        [HorizontalLine] public NeutronEditorSettings EditorSettings;
         [HorizontalLine] public NeutronClientSettings ClientSettings;
         [HorizontalLine] public NeutronServerSettings ServerSettings;
-        [HorizontalLine] public NeutronLagSettings LagSimulationSettings;
         [HorizontalLine] public NeutronConstantsSettings NetworkSettings;
 
         [ContextMenu("Generate AppId")]

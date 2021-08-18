@@ -74,15 +74,6 @@ namespace NeutronNetwork.Helpers
                 !ClassifiedOdds.Contains(Rnd.Next(1, 100));
         }
 
-        public static Packet ReadPacket(byte[] packetBuffer)
-        {
-            using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
-            {
-                reader.SetBuffer(packetBuffer);
-                return reader.ReadPacket<Packet>();
-            }
-        }
-
         public static void SetColor(NeutronView neutronView, Color color)
         {
             Renderer renderer = neutronView.GetComponentInChildren<Renderer>();

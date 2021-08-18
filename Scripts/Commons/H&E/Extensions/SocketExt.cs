@@ -1,5 +1,7 @@
 using NeutronNetwork.Helpers;
-using NeutronNetwork.Server.Internal;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 
 namespace NeutronNetwork.Extensions
 {
@@ -34,5 +36,10 @@ namespace NeutronNetwork.Extensions
         {
             SocketHelper.Redirect(owner, owner, Protocol.Tcp, TargetTo.Me, packet, writer.ToArray(), MatchmakingHelper.Tunneling(owner, TunnelingTo.Me));
         }
+
+        //public static void Write(this NeutronPacket packet, NeutronWriter writer, TargetTo targetTo)
+        //{
+        //    SocketHelper.Redirect(packet, writer.ToArray(), targetTo, MatchmakingHelper.Tunneling(packet.Owner, TunnelingTo.Me));
+        //}
     }
 }

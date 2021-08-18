@@ -2,7 +2,6 @@
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
-using Newtonsoft.Json;
 using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Collections.Generic;

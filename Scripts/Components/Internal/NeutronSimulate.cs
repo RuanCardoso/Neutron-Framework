@@ -1,31 +1,29 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class NeutronSimulate : MonoBehaviour
+namespace NeutronNetwork.Server.Internal
 {
-    #region Physics
-    public PhysicsScene physicsScene;
-    #endregion
-
-    private float timer;
-
-    void Update()
+    public class NeutronSimulate : MonoBehaviour
     {
-        if (!physicsScene.IsValid())
-            return; // do nothing if the physics Scene is not valid.
+        public PhysicsScene PhysicsScene { get; set; }
+        private float _timer;
 
-        timer += Time.deltaTime;
-
-        // Catch up with the game time.
-        // Advance the physics simulation in portions of Time.fixedDeltaTime
-        // Note that generally, we don't want to pass variable delta to Simulate as that leads to unstable results.
-        while (timer >= Time.fixedDeltaTime)
+        private void Update()
         {
-            timer -= Time.fixedDeltaTime;
-            physicsScene.Simulate(Time.fixedDeltaTime);
-        }
+            if (!PhysicsScene.IsValid())
+                return; // do nothing if the physics Scene is not valid.
 
-        // Here you can access the transforms state right after the simulation, if needed...
+            _timer += Time.deltaTime;
+
+            // Catch up with the game time.
+            // Advance the physics simulation in portions of Time.fixedDeltaTime
+            // Note that generally, we don't want to pass variable delta to Simulate as that leads to unstable results.
+            while (_timer >= Time.fixedDeltaTime)
+            {
+                _timer -= Time.fixedDeltaTime;
+                PhysicsScene.Simulate(Time.fixedDeltaTime);
+            }
+
+            // Here you can access the transforms state right after the simulation, if needed...
+        }
     }
 }

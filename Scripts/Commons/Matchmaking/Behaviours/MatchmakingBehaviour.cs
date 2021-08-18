@@ -1,7 +1,9 @@
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
-using Newtonsoft.Json;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Packets;
+using NeutronNetwork.Server.Internal;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -119,9 +121,9 @@ namespace NeutronNetwork.Internal
 
         public void Add(NeutronCache neutronCache, int viewId)
         {
-            switch (neutronCache.Cache)
+            switch (neutronCache.CacheMode)
             {
-                case Cache.Overwrite:
+                case CacheMode.Overwrite:
                     {
                         (int, int, int) key = (neutronCache.Owner.ID, neutronCache.Id, viewId);
                         if (CachedPackets.ContainsKey(key))
@@ -130,7 +132,7 @@ namespace NeutronNetwork.Internal
                             CachedPackets.Add(key, neutronCache);
                     }
                     break;
-                case Cache.New:
+                case CacheMode.New:
                     {
                         (int, int, int) key = (neutronCache.Owner.ID, ++_cacheId, viewId);
                         CachedPackets.Add(key, neutronCache);

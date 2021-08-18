@@ -1,7 +1,8 @@
-﻿using System;
+﻿using NeutronNetwork.Internal.Packets;
+using System;
 using UnityEngine;
 
-namespace NeutronNetwork.Client.Internal
+namespace NeutronNetwork.Editor
 {
     [Serializable]
     public class AnimatorParameter : IEquatable<AnimatorParameter>
@@ -27,7 +28,7 @@ namespace NeutronNetwork.Client.Internal
 
         public bool Equals(AnimatorParameter other)
         {
-            return _parameterName == other.ParameterName;
+            return _parameterName == other.ParameterName && _parameterType == other._parameterType;
         }
     }
 }

@@ -1,10 +1,10 @@
 using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Packets;
 using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 
 namespace NeutronNetwork.Helpers
 {
@@ -16,10 +16,10 @@ namespace NeutronNetwork.Helpers
         public static NeutronEventWithReturn<byte[], byte[]> OnCustomDecompression;
         public static byte[] Compress(this byte[] data)
         {
-            Compression compression = OthersHelper.GetSettings().GlobalSettings.Compression;
+            Internal.Packets.CompressionMode compression = OthersHelper.GetSettings().GlobalSettings.Compression;
             switch (compression)
             {
-                case Compression.Deflate:
+                case Internal.Packets.CompressionMode.Deflate:
                     {
                         using (MemoryStream output = new MemoryStream())
                         {
@@ -31,19 +31,19 @@ namespace NeutronNetwork.Helpers
                         }
                     }
 
-                case Compression.Gzip:
+                case Internal.Packets.CompressionMode.Gzip:
                     {
                         using (var compressIntoMs = new MemoryStream())
                         {
                             using (var gzs = new BufferedStream(new GZipStream(compressIntoMs,
-                                CompressionMode.Compress), 64 * 1024))
+                                System.IO.Compression.CompressionMode.Compress), 64 * 1024))
                             {
                                 gzs.Write(data, 0, data.Length);
                             }
                             return compressIntoMs.ToArray();
                         }
                     }
-                case Compression.Custom:
+                case Internal.Packets.CompressionMode.Custom:
                     return OnCustomCompression?.Invoke(data);
                 default:
                     return data;
@@ -52,16 +52,16 @@ namespace NeutronNetwork.Helpers
 
         public static byte[] Decompress(this byte[] data)
         {
-            Compression compression = OthersHelper.GetSettings().GlobalSettings.Compression;
+            Internal.Packets.CompressionMode compression = OthersHelper.GetSettings().GlobalSettings.Compression;
             switch (compression)
             {
-                case Compression.Deflate:
+                case Internal.Packets.CompressionMode.Deflate:
                     {
                         using (MemoryStream input = new MemoryStream(data))
                         {
                             using (MemoryStream output = new MemoryStream())
                             {
-                                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+                                using (DeflateStream dstream = new DeflateStream(input, System.IO.Compression.CompressionMode.Decompress))
                                 {
                                     dstream.CopyTo(output);
                                 }
@@ -69,14 +69,14 @@ namespace NeutronNetwork.Helpers
                             }
                         }
                     }
-                case Compression.Gzip:
+                case Internal.Packets.CompressionMode.Gzip:
                     {
                         using (var compressedMs = new MemoryStream(data))
                         {
                             using (var decompressedMs = new MemoryStream())
                             {
                                 using (var gzs = new BufferedStream(new GZipStream(compressedMs,
-                                    CompressionMode.Decompress), 64 * 1024))
+                                    System.IO.Compression.CompressionMode.Decompress), 64 * 1024))
                                 {
                                     gzs.CopyTo(decompressedMs);
                                 }
@@ -84,7 +84,7 @@ namespace NeutronNetwork.Helpers
                             }
                         }
                     }
-                case Compression.Custom:
+                case Internal.Packets.CompressionMode.Custom:
                     return OnCustomDecompression?.Invoke(data);
                 default:
                     return data;
@@ -95,12 +95,12 @@ namespace NeutronNetwork.Helpers
         {
             try
             {
-                Serialization serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                SerializationMode serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
                 switch (serializationMode)
                 {
-                    case Serialization.Json:
+                    case SerializationMode.Json:
                         return NeutronModule.Encoding.GetBytes(JsonConvert.SerializeObject(obj));
-                    case Serialization.Binary:
+                    case SerializationMode.Binary:
                         {
                             BinaryFormatter formatter = new BinaryFormatter();
                             using (MemoryStream mStream = new MemoryStream())
@@ -109,7 +109,7 @@ namespace NeutronNetwork.Helpers
                                 return mStream.ToArray();
                             }
                         }
-                    case Serialization.Custom:
+                    case SerializationMode.Custom:
                         return OnCustomSerialization?.Invoke(obj);
                     default:
                         return null;
@@ -126,12 +126,12 @@ namespace NeutronNetwork.Helpers
         {
             try
             {
-                Serialization serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                SerializationMode serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
                 switch (serialization)
                 {
-                    case Serialization.Json:
+                    case SerializationMode.Json:
                         return JsonConvert.DeserializeObject<T>(NeutronModule.Encoding.GetString(buffer));
-                    case Serialization.Binary:
+                    case SerializationMode.Binary:
                         {
                             BinaryFormatter formatter = new BinaryFormatter();
                             using (MemoryStream mStream = new MemoryStream(buffer))
@@ -139,7 +139,7 @@ namespace NeutronNetwork.Helpers
                                 return (T)formatter.Deserialize(mStream);
                             }
                         }
-                    case Serialization.Custom:
+                    case SerializationMode.Custom:
                         return (T)OnCustomDeserialization?.Invoke(buffer);
                     default:
                         return default;

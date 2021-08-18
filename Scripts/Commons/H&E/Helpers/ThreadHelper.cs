@@ -1,17 +1,19 @@
-﻿using NeutronNetwork;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Threading;
 
-public static class ThreadHelper
+namespace NeutronNetwork.Helpers
 {
-    public static int GetThreadID()
+    public static class ThreadHelper
     {
-        return Thread.CurrentThread.ManagedThreadId;
-    }
+        public static int GetThreadID()
+        {
+            return Thread.CurrentThread.ManagedThreadId;
+        }
 
-    public static void DoNotAllowSimultaneousAccess(int managedThreadId, [CallerMemberName] string callerMemberName = "")
-    {
-        if (GetThreadID() != managedThreadId)
-            LogHelper.Error($"{callerMemberName} can only be called from the Neutron thread");
+        public static void DoNotAllowSimultaneousAccess(int managedThreadId, [CallerMemberName] string callerMemberName = "")
+        {
+            if (GetThreadID() != managedThreadId)
+                LogHelper.Error($"{callerMemberName} can only be called from the Neutron thread");
+        }
     }
 }

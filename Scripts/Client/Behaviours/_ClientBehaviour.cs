@@ -1,15 +1,14 @@
-﻿using NeutronNetwork.Helpers;
+﻿using NeutronNetwork.Constants;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
-using NeutronNetwork.Constants;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -19,26 +18,20 @@ using UnityEditor;
 /// </summary>
 namespace NeutronNetwork.Client
 {
-    public class ClientBehaviour/* : MonoBehaviour*/
+    public class ClientBehaviour
     {
         #region Socket
-        protected TcpClient TcpClient;
-        protected UdpClient UdpClient;
+        protected TcpClient TcpClient { get; set; }
+        protected UdpClient UdpClient { get; set; }
+        protected NonAllocEndPoint UdpEndPoint { get; set; }
+        protected CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
         #endregion
 
         #region Collections
-        public NeutronSafeDictionary<int, NeutronPlayer> Players = new NeutronSafeDictionary<int, NeutronPlayer>();
+        public NeutronSafeDictionary<int, NeutronPlayer> Players { get; set; } = new NeutronSafeDictionary<int, NeutronPlayer>();
         #endregion
 
-        #region Variables
-        protected IPEndPoint _udpEndPoint;
-        #endregion
-
-        #region Threading
-        protected CancellationTokenSource TokenSource = new CancellationTokenSource();
-        #endregion
-
-        public void Initialize()
+        protected void Initialize()
         {
             #region Provider
             if (Players.TryAdd(0, NeutronServer.Player))
@@ -54,21 +47,22 @@ namespace NeutronNetwork.Client
             }
             #endregion
 
-            TcpClient = new TcpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Tcp)));
-            UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
+            int port = SocketHelper.GetFreePort(Protocol.Tcp);
+            TcpClient = new TcpClient(new IPEndPoint(IPAddress.Any, port));
+            UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, port));
 
 #if UNITY_EDITOR
             Application.quitting += OnQuit;
 #endif
         }
 
-        public void Dispose()
+        protected void Dispose()
         {
             TokenSource.Cancel();
             TcpClient.Dispose();
             UdpClient.Dispose();
         }
 
-        public void OnQuit() => Dispose();
+        private void OnQuit() => Dispose();
     }
 }
