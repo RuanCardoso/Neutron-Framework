@@ -20,6 +20,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -1234,6 +1235,39 @@ namespace NeutronNetwork
             }
             else
                 return !LogHelper.Error("\"Neutron View\" object not found, failed to instantiate in network.") ? null : (NeutronView)null;
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Post(string url, WWWForm formData, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static void Get(string url, Action<UnityWebRequest> onResult)
+        {
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Get(url);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+            }
+            NeutronSchedule.ScheduleTask(Request());
         }
         #endregion
     }

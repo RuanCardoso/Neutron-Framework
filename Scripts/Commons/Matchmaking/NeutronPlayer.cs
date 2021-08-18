@@ -71,9 +71,13 @@ namespace NeutronNetwork
         /// </summary>
         public NeutronView NeutronView { get; set; }
         /// <summary>
-        ///* Propriedades personalizades do jogador.
+        ///* Propriedades personalizadas do jogador.
         /// </summary>
         public Dictionary<string, object> Get { get; }
+        /// <summary>
+        ///* Propriedades personalizadas do jogador, disponível somente ao lado do servidor.
+        /// </summary>
+        public Dictionary<string, object> ServerGet { get; }
         /// <summary>
         ///* Seu atual Matchmaking, Sala, Grupo ou Channel.<br/>
         ///* Retorna o ultimo tipo de Matchmaking ingressado.
