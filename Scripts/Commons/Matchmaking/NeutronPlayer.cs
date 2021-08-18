@@ -77,7 +77,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Propriedades personalizadas do jogador, disponível somente ao lado do servidor.
         /// </summary>
-        public Dictionary<string, object> ServerGet { get; }
+        public Dictionary<string, object> Prefs { get; }
         /// <summary>
         ///* Seu atual Matchmaking, Sala, Grupo ou Channel.<br/>
         ///* Retorna o ultimo tipo de Matchmaking ingressado.
@@ -114,6 +114,7 @@ namespace NeutronNetwork
             StateObject.TcpRemoteEndPoint = (IPEndPoint)TcpClient.Client.RemoteEndPoint;
             //**************************************************************************************************
             TokenSource = cancellationTokenSource;
+            Prefs = new Dictionary<string, object>();
         }
 
         public NeutronPlayer(SerializationInfo info, StreamingContext context)
