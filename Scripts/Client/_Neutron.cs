@@ -209,7 +209,7 @@ namespace NeutronNetwork
             if (!IsConnected)
             {
 #if UNITY_EDITOR
-                await Task.Delay(40); //* Eu dei prioridade de execução pro servidor, ele inicializa primeiro que geral, mas coloquei esse delay por segurança, vai que o cliente inicia primeiro que o servidor, disponível somente no editor.
+                await Task.Delay(5); //* Eu dei prioridade de execução pro servidor, ele inicializa primeiro que geral, mas coloquei esse delay por segurança, vai que o cliente inicia primeiro que o servidor, disponível somente no editor.
 #endif
 #if UNITY_SERVER
             if (ClientMode == ClientMode.Player)
