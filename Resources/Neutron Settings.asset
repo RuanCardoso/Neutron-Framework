@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e0f743d5b456616469a5f7cb20e0a4d3, type: 3}
-  m_Name: Neutron Settings
+  m_Name: 
   m_EditorClassIdentifier: 
   GlobalSettings:
     Addresses:
     - localhost
     Port: 1418
-    AppId: a0e3f93d-4548-4f8d-9aab-3f1f18bea6c9
-    FPS: 90
+    AppId: 9f8e66bd-d14b-4e27-ac96-e75082404794
+    FPS: 60
     MaxPlayers: 300
     StreamPoolCapacity: 1200
     PacketPoolCapacity: 1200
@@ -28,7 +28,7 @@ MonoBehaviour:
     PerfomanceMode: 0
   ClientSettings:
     PingRate: 0.2
-    TcpKeepAlive: 1
+    TcpKeepAlive: 5
   ServerSettings:
     BackLog: 10
     NeutronAntiCheat: 1
