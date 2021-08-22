@@ -43,15 +43,11 @@ namespace NeutronNetwork
 
         /// <summary>
         ///* Agenda uma função para ser executada no Thread principal(Unity Main Thread).<br/>
-        ///* Este metódo não é recomendado, use a versão assíncrona.
         /// </summary>
         /// <param name="func">* A função a ser agendada.</param>
-        [Obsolete("Use the asynchronous version of this overload!")]
-        public static T ScheduleTask<T>(Func<T> func)
+        public static void ScheduleTask<T>(Func<T> func, Action<T> onResult)
         {
-            T result = default;
-            _tasks.Enqueue(() => result = func.Invoke());
-            return result;
+            _tasks.Enqueue(() => onResult(func()));
         }
 
         /// <summary>
@@ -70,6 +66,19 @@ namespace NeutronNetwork
         }
 
         /// <summary>
+        ///* Agenda uma co-rotina para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
+        /// </summary>
+        /// <param name="enumerator">* A co-rotina a ser agendada.</param>
+        public static Task TryScheduleTaskAsync(TaskCompletionSource<bool> task, IEnumerator enumerator)
+        {
+            _tasks.Enqueue(() =>
+            {
+                Schedule.StartCoroutine(enumerator);
+            });
+            return task.Task;
+        }
+
+        /// <summary>
         ///* Agenda uma ação para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
         /// </summary>
         /// <param name="action">* A ação a ser agendada.</param>
@@ -78,8 +87,22 @@ namespace NeutronNetwork
             TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
             _tasks.Enqueue(() =>
             {
-                action.Invoke();
+                action();
                 taskCompletionSource.TrySetResult(true);
+            });
+            return taskCompletionSource.Task;
+        }
+
+        /// <summary>
+        ///* Agenda uma ação para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
+        /// </summary>
+        /// <param name="action">* A ação a ser agendada.</param>
+        public static Task TryScheduleTaskAsync(Action<TaskCompletionSource<bool>> action)
+        {
+            TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
+            _tasks.Enqueue(() =>
+            {
+                action(taskCompletionSource);
             });
             return taskCompletionSource.Task;
         }
@@ -93,7 +116,21 @@ namespace NeutronNetwork
             TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
             _tasks.Enqueue(() =>
             {
-                taskCompletionSource.TrySetResult(func.Invoke());
+                taskCompletionSource.TrySetResult(func());
+            });
+            return taskCompletionSource.Task;
+        }
+
+        /// <summary>
+        ///* Agenda uma função para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
+        /// </summary>
+        /// <param name="func">* A função a ser agendada.</param>
+        public static Task<T> TryScheduleTaskAsync<T>(Func<TaskCompletionSource<T>, T> func)
+        {
+            TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
+            _tasks.Enqueue(() =>
+            {
+                func(taskCompletionSource);
             });
             return taskCompletionSource.Task;
         }
@@ -105,7 +142,7 @@ namespace NeutronNetwork
                 while (_tasks.Count > 0)
                 {
                     if (_tasks.TryDequeue(out Action action))
-                        action.Invoke();
+                        action();
                 }
             }
             catch (Exception ex)

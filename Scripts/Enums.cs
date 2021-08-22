@@ -85,7 +85,7 @@ namespace NeutronNetwork.Packets
     public enum TunnelingTo : byte
     {
         /// <summary>
-        ///* Used with <see cref="TargetTo.Me"></see>
+        ///* Usado com <see cref="TargetTo.Me"></see>
         /// </summary>
         Me,
         /// <summary>
@@ -185,6 +185,7 @@ namespace NeutronNetwork.Internal.Packets
         Ping,
         CustomPacket,
         OnAutoSync,
+        AuthStatus
     }
 
     /// <summary>

@@ -133,27 +133,32 @@ namespace NeutronNetwork.Helpers
                 case MethodType.View:
                     {
                         NeutronView neutronView = await remoteProceduralCall.gRPCViewAsync(reader, isServer, isMine, player, instance);
-                        bool result = await NeutronSchedule.ScheduleTaskAsync(() =>
+                        if (neutronView != null)
                         {
-                            if (neutronView.CompareTag("Player"))
-                                return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Player, instance);
-                            else
+                            bool result = await NeutronSchedule.ScheduleTaskAsync(() =>
                             {
-                                using (NeutronReader idReader = Neutron.PooledNetworkReaders.Pull())
+                                if (neutronView.CompareTag("Player"))
+                                    return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Player, instance);
+                                else
                                 {
-                                    idReader.SetBuffer(buffer);
-                                    idReader.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
-                                    return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Dynamic, instance, idReader.ReadInt16());
+                                    using (NeutronReader idReader = Neutron.PooledNetworkReaders.Pull())
+                                    {
+                                        idReader.SetBuffer(buffer);
+                                        idReader.SetPosition((sizeof(float) * 3) + (sizeof(float) * 4));
+                                        return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Dynamic, instance, idReader.ReadInt16());
+                                    }
                                 }
-                            }
-                        });
+                            });
 
-                        return await NeutronSchedule.ScheduleTaskAsync(() =>
-                        {
-                            if (!result)
-                                MonoBehaviour.Destroy(neutronView.gameObject);
-                            return result;
-                        });
+                            return await NeutronSchedule.ScheduleTaskAsync(() =>
+                            {
+                                if (!result)
+                                    MonoBehaviour.Destroy(neutronView.gameObject);
+                                return result;
+                            });
+                        }
+                        else
+                            return false;
                     }
                 case MethodType.Async | MethodType.Bool:
                     {

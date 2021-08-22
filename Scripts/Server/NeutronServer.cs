@@ -55,11 +55,11 @@ namespace NeutronNetwork.Server
         /// <summary>
         ///* Objeto de jogador que representa o servidor.
         /// </summary>
-        public static NeutronPlayer Player { get; set; }
+        public NeutronPlayer Player { get; set; }
         /// <summary>
         ///* Intância de Neutron do Servidor.
         /// </summary>
-        public static Neutron Neutron { get; set; }
+        public Neutron Neutron { get; set; }
         #endregion
 
         #region Fields -> Collections
@@ -80,15 +80,23 @@ namespace NeutronNetwork.Server
         #region Functions
         private void Initilize()
         {
-            Neutron = new Neutron();
             Player = new NeutronPlayer()
             {
                 IsServer = true,
                 Nickname = "Server",
                 ID = 0,
             };
-            Neutron.IsConnected = true;
-            Neutron.Player = Player;
+
+            Neutron = new Neutron
+            {
+                IsConnected = true,
+                IsServer = true,
+                Player = Player
+            };
+
+#if UNITY_SERVER
+            Neutron.Client = Neutron;
+#endif
 
             //* Esta região irá fornecer os ID para a lista.
             #region Provider
@@ -183,8 +191,8 @@ namespace NeutronNetwork.Server
                             if (SocketHelper.AddPlayer(player))
                             {
                                 Interlocked.Increment(ref PlayerCount); //* Incrementa a quantidade de jogadores do servidor.
-                                //* Esta região cria um View, um View é usado para você criar uma comunicação personalizada com o cliente dono(owner).
-                                //* Exemplo, dentro do View você pode implementar uma função que envia um evento ou mensagem a cada X Segundos.
+                                                                        //* Esta região cria um View, um View é usado para você criar uma comunicação personalizada com o cliente dono(owner).
+                                                                        //* Exemplo, dentro do View você pode implementar uma função que envia um evento ou mensagem a cada X Segundos.
                                 #region View
                                 NeutronSchedule.ScheduleTask(() =>
                                 {
@@ -385,15 +393,16 @@ namespace NeutronNetwork.Server
             catch (Exception) { }
         }
 
-        public void OnSimulatingReceivingData(NeutronPacket packet)
+        //* Adiciona um pacote, meio que "simula" o recebimento de um pacote do cliente ou de algum cliente.
+        public void AddPacket(NeutronPacket packet)
         {
             lock (Encapsulate.BeginLock)
             {
                 if (Encapsulate.Sender != null)
                     packet.Sender = Encapsulate.Sender;
-                ///////////////////////////////////////////////////////////////////////////////////
+                //***********************************************************
                 packet.IsServerSide = true;
-                ///////////////////////////////////////////////////////////////////////////////////
+                //***********************************************************
                 _dataForProcessing.Add(packet);
             }
         }
@@ -543,261 +552,268 @@ namespace NeutronNetwork.Server
             {
                 reader.SetBuffer(packetBuffer);
                 //************************************************
-                Packet statsPacket = (Packet)reader.ReadPacket();
+                Packet outPacket = (Packet)reader.ReadPacket();
                 //************************************************
-                switch (statsPacket) //* Ler o pacote recebido
+                if (OnReceivePacket(outPacket) || isServerSide)
                 {
-                    // Test packet
-                    case Packet.TcpKeepAlive:
-                        {
-                            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    switch (outPacket) //* Ler o pacote recebido
+                    {
+                        // Test packet
+                        case Packet.TcpKeepAlive:
                             {
-                                writer.WritePacket((byte)Packet.TcpKeepAlive);
-                                ///////////////////////////////////////////
-                                owner.Write(writer, Packet.TcpKeepAlive);
+                                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                                {
+                                    writer.WritePacket((byte)Packet.TcpKeepAlive);
+                                    ///////////////////////////////////////////
+                                    owner.Write(writer, Packet.TcpKeepAlive);
+                                }
                             }
-                        }
-                        break;
-                    case Packet.Handshake:
-                        {
-                            #region Reader
-                            string appId = reader.ReadString();
-                            double time = reader.ReadDouble();
-                            #endregion
-
-                            #region Logic
-                            if (appId.Decrypt(out appId))
+                            break;
+                        case Packet.Handshake:
                             {
-                                if (OthersHelper.GetSettings().GlobalSettings.AppId == appId)
-                                    HandshakeHandler(owner, time);
-                                else
-                                    owner.Message(Packet.Handshake, "Update your game version, it does not match the current server version.");
+                                #region Reader
+                                string appId = reader.ReadString();
+                                double time = reader.ReadDouble();
+                                Authentication auth = reader.ReadIntExactly<Authentication>();
+                                #endregion
+
+                                #region Logic
+                                if (appId.Decrypt(out appId))
+                                {
+                                    if (OthersHelper.GetSettings().GlobalSettings.AppId == appId)
+                                        HandshakeHandler(owner, time, auth);
+                                    else
+                                        owner.Message(Packet.Handshake, "Update your game version, it does not match the current server version.");
+                                }
+                                else if (!LogHelper.Error("Failed to verify handshake!"))
+                                    DisconnectHandler(owner);
+                                #endregion
                             }
-                            else if (!LogHelper.Error("Failed to verify handshak"))
-                                DisconnectHandler(owner);
-                            #endregion
-                        }
-                        break;
-                    case Packet.Nickname:
-                        {
-                            #region Reader
-                            string nickname = reader.ReadString();
-                            #endregion
-
-                            #region Logic
-                            SetNicknameHandler(owner, nickname);
-                            #endregion
-                        }
-                        break;
-                    case Packet.Chat:
-                        {
-                            #region Defaults
-                            TunnelingTo tunnelingTo = default(TunnelingTo);
-                            int viewId = default(int);
-                            #endregion
-
-                            #region Reader
-                            ChatMode chatPacket = (ChatMode)reader.ReadPacket();
-                            switch (chatPacket)
+                            break;
+                        case Packet.Nickname:
                             {
-                                case ChatMode.Global:
+                                #region Reader
+                                string nickname = reader.ReadString();
+                                #endregion
+
+                                #region Logic
+                                SetNicknameHandler(owner, nickname);
+                                #endregion
+                            }
+                            break;
+                        case Packet.Chat:
+                            {
+                                #region Defaults
+                                TunnelingTo tunnelingTo = default(TunnelingTo);
+                                int viewId = default(int);
+                                #endregion
+
+                                #region Reader
+                                ChatMode chatPacket = (ChatMode)reader.ReadPacket();
+                                switch (chatPacket)
+                                {
+                                    case ChatMode.Global:
+                                        tunnelingTo = (TunnelingTo)reader.ReadPacket();
+                                        break;
+                                    case ChatMode.Private:
+                                        viewId = reader.ReadInt32();
+                                        break;
+                                }
+                                string message = reader.ReadString();
+                                #endregion
+
+                                #region Logic
+                                ChatHandler(owner, chatPacket, tunnelingTo, viewId, message);
+                                #endregion
+                            }
+                            break;
+                        case Packet.iRPC:
+                            {
+                                #region Reader
+                                RegisterMode registerType = (RegisterMode)reader.ReadPacket();
+                                TargetTo targetTo = (TargetTo)reader.ReadPacket();
+                                CacheMode cache = (CacheMode)reader.ReadPacket();
+                                short viewId = reader.ReadInt16();
+                                byte rpcId = reader.ReadByte();
+                                byte instanceId = reader.ReadByte();
+                                byte[] buffer = reader.ReadNextBytes(packetBuffer.Length);
+                                #endregion
+
+                                #region Logic
+                                iRPCHandler(owner, sender, viewId, rpcId, instanceId, buffer, registerType, targetTo, cache, protocol);
+                                #endregion
+                            }
+                            break;
+                        case Packet.gRPC:
+                            {
+                                #region Reader
+                                byte id = reader.ReadByte();
+                                byte[] buffer = reader.ReadNextBytes(packetBuffer.Length);
+                                #endregion
+
+                                #region Logic
+                                gRPCHandler(owner, sender, id, buffer, protocol);
+                                #endregion
+                            }
+                            break;
+                        case Packet.GetChannels:
+                            {
+                                #region Logic
+                                GetChannelsHandler(owner);
+                                #endregion
+                            }
+                            break;
+                        case Packet.JoinChannel:
+                            {
+                                #region Reader
+                                int channelId = reader.ReadInt32();
+                                #endregion
+
+                                #region Logic
+                                JoinChannelHandler(owner, channelId);
+                                #endregion
+                            }
+                            break;
+                        case Packet.GetChached:
+                            {
+                                #region Reader
+                                CachedPacket cachedPacket = (CachedPacket)reader.ReadPacket();
+                                int packetId = reader.ReadInt32();
+                                bool includeMe = reader.ReadBoolean();
+                                #endregion
+
+                                #region Logic
+                                GetCacheHandler(owner, cachedPacket, packetId, includeMe);
+                                #endregion
+                            }
+                            break;
+                        case Packet.CreateRoom:
+                            {
+                                #region Reader
+                                string password = reader.ReadString();
+                                NeutronRoom room = reader.ReadIntExactly<NeutronRoom>();
+                                #endregion
+
+                                #region Logic
+                                CreateRoomHandler(owner, room, password);
+                                #endregion
+                            }
+                            break;
+                        case Packet.GetRooms:
+                            {
+                                #region Logic
+                                GetRoomsHandler(owner);
+                                #endregion
+                            }
+                            break;
+                        case Packet.JoinRoom:
+                            {
+                                #region Reader
+                                int roomId = reader.ReadInt32();
+                                string password = reader.ReadString();
+                                #endregion
+
+                                #region Logic
+                                JoinRoomHandler(owner, roomId, password);
+                                #endregion
+                            }
+                            break;
+                        case Packet.Leave:
+                            {
+                                #region Reader
+                                MatchmakingMode packet = (MatchmakingMode)reader.ReadPacket();
+                                #endregion
+
+                                #region Logic
+                                if (packet == MatchmakingMode.Room)
+                                    LeaveRoomHandler(owner);
+                                else if (packet == MatchmakingMode.Channel)
+                                    LeaveChannelHandler(owner);
+                                #endregion
+                            }
+                            break;
+                        case Packet.DestroyPlayer:
+                            {
+                                #region Logic
+                                DestroyPlayerHandler(owner);
+                                #endregion
+                            }
+                            break;
+                        case Packet.SetPlayerProperties:
+                            {
+                                #region Reader
+                                string properties = reader.ReadString();
+                                #endregion
+
+                                #region Logic
+                                SetPlayerPropertiesHandler(owner, properties);
+                                #endregion
+                            }
+                            break;
+                        case Packet.SetRoomProperties:
+                            {
+                                #region Reader
+                                string properties = reader.ReadString();
+                                #endregion
+
+                                #region Logic
+                                SetRoomPropertiesHandler(owner, properties);
+                                #endregion
+                            }
+                            break;
+                        case Packet.Ping:
+                            {
+                                #region Reader
+                                double time = reader.ReadDouble();
+                                #endregion
+
+                                #region Logic
+                                PingHandler(owner, time);
+                                #endregion
+                            }
+                            break;
+                        case Packet.CustomPacket:
+                            {
+                                #region Defaults
+                                bool isMine;
+                                TargetTo targetTo = default(TargetTo);
+                                TunnelingTo tunnelingTo = default(TunnelingTo);
+                                #endregion
+
+                                #region Reader
+                                int viewId = reader.ReadInt32();
+                                CustomPacket packet = (CustomPacket)reader.ReadPacket();
+                                if ((isMine = PlayerHelper.IsMine(owner, viewId)))
+                                {
+                                    targetTo = (TargetTo)reader.ReadPacket();
                                     tunnelingTo = (TunnelingTo)reader.ReadPacket();
-                                    break;
-                                case ChatMode.Private:
-                                    viewId = reader.ReadInt32();
-                                    break;
+                                }
+                                byte[] buffer = reader.ReadIntExactly();
+                                #endregion
+
+                                #region Logic
+                                CustomPacketHandler(owner, isMine, viewId, buffer, packet, targetTo, tunnelingTo, protocol);
+                                #endregion
                             }
-                            string message = reader.ReadString();
-                            #endregion
-
-                            #region Logic
-                            ChatHandler(owner, chatPacket, tunnelingTo, viewId, message);
-                            #endregion
-                        }
-                        break;
-                    case Packet.iRPC:
-                        {
-                            #region Reader
-                            RegisterMode registerType = (RegisterMode)reader.ReadPacket();
-                            TargetTo targetTo = (TargetTo)reader.ReadPacket();
-                            CacheMode cache = (CacheMode)reader.ReadPacket();
-                            short viewId = reader.ReadInt16();
-                            byte rpcId = reader.ReadByte();
-                            byte instanceId = reader.ReadByte();
-                            byte[] buffer = reader.ReadNextBytes(packetBuffer.Length);
-                            #endregion
-
-                            #region Logic
-                            iRPCHandler(owner, sender, viewId, rpcId, instanceId, buffer, registerType, targetTo, cache, protocol);
-                            #endregion
-                        }
-                        break;
-                    case Packet.gRPC:
-                        {
-                            #region Reader
-                            byte id = reader.ReadByte();
-                            byte[] buffer = reader.ReadNextBytes(packetBuffer.Length);
-                            #endregion
-
-                            #region Logic
-                            gRPCHandler(owner, sender, id, buffer, protocol);
-                            #endregion
-                        }
-                        break;
-                    case Packet.GetChannels:
-                        {
-                            #region Logic
-                            GetChannelsHandler(owner);
-                            #endregion
-                        }
-                        break;
-                    case Packet.JoinChannel:
-                        {
-                            #region Reader
-                            int channelId = reader.ReadInt32();
-                            #endregion
-
-                            #region Logic
-                            JoinChannelHandler(owner, channelId);
-                            #endregion
-                        }
-                        break;
-                    case Packet.GetChached:
-                        {
-                            #region Reader
-                            CachedPacket cachedPacket = (CachedPacket)reader.ReadPacket();
-                            int packetId = reader.ReadInt32();
-                            bool includeMe = reader.ReadBoolean();
-                            #endregion
-
-                            #region Logic
-                            GetCacheHandler(owner, cachedPacket, packetId, includeMe);
-                            #endregion
-                        }
-                        break;
-                    case Packet.CreateRoom:
-                        {
-                            #region Reader
-                            string password = reader.ReadString();
-                            NeutronRoom room = reader.ReadIntExactly<NeutronRoom>();
-                            #endregion
-
-                            #region Logic
-                            CreateRoomHandler(owner, room, password);
-                            #endregion
-                        }
-                        break;
-                    case Packet.GetRooms:
-                        {
-                            #region Logic
-                            GetRoomsHandler(owner);
-                            #endregion
-                        }
-                        break;
-                    case Packet.JoinRoom:
-                        {
-                            #region Reader
-                            int roomId = reader.ReadInt32();
-                            #endregion
-
-                            #region Logic
-                            JoinRoomHandler(owner, roomId);
-                            #endregion
-                        }
-                        break;
-                    case Packet.Leave:
-                        {
-                            #region Reader
-                            MatchmakingMode packet = (MatchmakingMode)reader.ReadPacket();
-                            #endregion
-
-                            #region Logic
-                            if (packet == MatchmakingMode.Room)
-                                LeaveRoomHandler(owner);
-                            else if (packet == MatchmakingMode.Channel)
-                                LeaveChannelHandler(owner);
-                            #endregion
-                        }
-                        break;
-                    case Packet.DestroyPlayer:
-                        {
-                            #region Logic
-                            DestroyPlayerHandler(owner);
-                            #endregion
-                        }
-                        break;
-                    case Packet.SetPlayerProperties:
-                        {
-                            #region Reader
-                            string properties = reader.ReadString();
-                            #endregion
-
-                            #region Logic
-                            SetPlayerPropertiesHandler(owner, properties);
-                            #endregion
-                        }
-                        break;
-                    case Packet.SetRoomProperties:
-                        {
-                            #region Reader
-                            string properties = reader.ReadString();
-                            #endregion
-
-                            #region Logic
-                            SetRoomPropertiesHandler(owner, properties);
-                            #endregion
-                        }
-                        break;
-                    case Packet.Ping:
-                        {
-                            #region Reader
-                            double time = reader.ReadDouble();
-                            #endregion
-
-                            #region Logic
-                            PingHandler(owner, time);
-                            #endregion
-                        }
-                        break;
-                    case Packet.CustomPacket:
-                        {
-                            #region Defaults
-                            bool isMine;
-                            TargetTo targetTo = default(TargetTo);
-                            TunnelingTo tunnelingTo = default(TunnelingTo);
-                            #endregion
-
-                            #region Reader
-                            int viewId = reader.ReadInt32();
-                            CustomPacket packet = (CustomPacket)reader.ReadPacket();
-                            if ((isMine = PlayerHelper.IsMine(owner, viewId)))
+                            break;
+                        case Packet.OnAutoSync:
                             {
-                                targetTo = (TargetTo)reader.ReadPacket();
-                                tunnelingTo = (TunnelingTo)reader.ReadPacket();
+                                #region Reader
+                                RegisterMode registerType = (RegisterMode)reader.ReadPacket();
+                                short viewId = reader.ReadInt16();
+                                byte instanceId = reader.ReadByte();
+                                byte[] parameters = reader.ReadNextBytes(packetBuffer.Length);
+                                #endregion
+
+                                #region Logic
+                                OnAutoSyncHandler(receivedPacket, viewId, instanceId, parameters, registerType);
+                                #endregion
                             }
-                            byte[] buffer = reader.ReadIntExactly();
-                            #endregion
-
-                            #region Logic
-                            CustomPacketHandler(owner, isMine, viewId, buffer, packet, targetTo, tunnelingTo, protocol);
-                            #endregion
-                        }
-                        break;
-                    case Packet.OnAutoSync:
-                        {
-                            #region Reader
-                            RegisterMode registerType = (RegisterMode)reader.ReadPacket();
-                            short viewId = reader.ReadInt16();
-                            byte instanceId = reader.ReadByte();
-                            byte[] parameters = reader.ReadNextBytes(packetBuffer.Length);
-                            #endregion
-
-                            #region Logic
-                            OnAutoSyncHandler(receivedPacket, viewId, instanceId, parameters, registerType);
-                            #endregion
-                        }
-                        break;
+                            break;
+                    }
                 }
+                else
+                    LogHelper.Error("Client is not allowed to run this packet.");
             }
         }
         #endregion

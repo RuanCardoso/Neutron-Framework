@@ -34,7 +34,7 @@ namespace NeutronNetwork.Client
         protected void Initialize()
         {
             #region Provider
-            if (Players.TryAdd(0, NeutronServer.Player))
+            if (Players.TryAdd(0, Neutron.Server.Player))
             {
                 for (int i = 0; i < NeutronModule.Settings.GlobalSettings.MaxPlayers; i++)
                 {

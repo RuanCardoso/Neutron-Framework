@@ -17,7 +17,7 @@ MonoBehaviour:
     - localhost
     Port: 1418
     AppId: a0e3f93d-4548-4f8d-9aab-3f1f18bea6c9
-    FPS: 60
+    FPS: 90
     MaxPlayers: 300
     StreamPoolCapacity: 1200
     PacketPoolCapacity: 1200
@@ -28,7 +28,7 @@ MonoBehaviour:
     PerfomanceMode: 0
   ClientSettings:
     PingRate: 0.2
-    TcpKeepAlive: 5
+    TcpKeepAlive: 1
   ServerSettings:
     BackLog: 10
     NeutronAntiCheat: 1

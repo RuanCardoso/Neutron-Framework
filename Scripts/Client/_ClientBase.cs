@@ -7,6 +7,7 @@ using NeutronNetwork.Packets;
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using UnityEngine;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -18,16 +19,21 @@ namespace NeutronNetwork.Client
 {
     public class ClientBase : ClientBehaviour
     {
+        short _objectSpawnid;
+        //* Define quando o cliente está pronto para uso.
+        protected bool IsReady { get; set; }
         //* Obtém a instância de Neutron, classe derivada.
-        private Neutron This { get; set; }
+        protected Neutron This { get; set; }
+        //* Mantém o estado do jogador.
+        protected StateObject StateObject { get; set; }
+        /// <summary>
+        ///* Define se é a instância do servidor.
+        /// </summary>
+        public bool IsServer { get; set; }
         /// <summary>
         ///* Obtém o tipo de cliente da instância.
         /// </summary>
         public ClientMode ClientMode { get; set; }
-        /// <summary>
-        ///* Mantém o estado do jogador.
-        /// </summary>
-        protected StateObject StateObject { get; set; }
         //* Inicializa o cliente e registra os eventos de Neutron.
         protected void Initialize(ClientMode clientMode)
         {
@@ -61,6 +67,12 @@ namespace NeutronNetwork.Client
         {
             try
             {
+                if (IsServer)
+                {
+                    LogHelper.Error("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
+                    return;
+                }
+#if !UNITY_SERVER
                 if (This.IsConnected)
                 {
                     byte[] packetBuffer = packet.ToArray().Compress(); //! Otimizado para evitar alocações, bom isso depende de como você usa o Neutron :p
@@ -102,41 +114,51 @@ namespace NeutronNetwork.Client
                             break;
                         case Protocol.Udp:
                             {
-                                StateObject.SendDatagram = packetBuffer; //* O datagrama a ser usado para enviar os dados para a rede.
-                                switch (OthersHelper.GetConstants().SendModel)
+                                if (UdpEndPoint == null)
+                                    LogHelper.Error("Unauthenticated!");
+                                else
                                 {
-                                    case SendType.Synchronous:
-                                        SocketHelper.SendBytes(UdpClient, packetBuffer, UdpEndPoint); //* envia de modo síncrono, evita alocações e performance boa.
-                                        break;
-                                    default:
-                                        {
-                                            switch (OthersHelper.GetConstants().SendAsyncPattern)
-                                            {
-                                                case AsynchronousType.APM:
-                                                    {
-                                                        //* aloca, mas não tanto, boa performance.
-                                                        SocketHelper.BeginSendBytes(UdpClient, packetBuffer, UdpEndPoint, (ar) =>
-                                                        {
-                                                            SocketHelper.EndSendBytes(UdpClient, ar);
-                                                        }); //* Envia os dados pro servidor.
-                                                        break;
-                                                    }
-
-                                                default:
-                                                    SocketHelper.SendUdpAsync(UdpClient, StateObject, UdpEndPoint); //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
-                                                    break;
-                                            } //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                    StateObject.SendDatagram = packetBuffer; //* O datagrama a ser usado para enviar os dados para a rede.
+                                    switch (OthersHelper.GetConstants().SendModel)
+                                    {
+                                        case SendType.Synchronous:
+                                            SocketHelper.SendBytes(UdpClient, packetBuffer, UdpEndPoint); //* envia de modo síncrono, evita alocações e performance boa.
                                             break;
-                                        }
-                                }
+                                        default:
+                                            {
+                                                switch (OthersHelper.GetConstants().SendAsyncPattern)
+                                                {
+                                                    case AsynchronousType.APM:
+                                                        {
+                                                            //* aloca, mas não tanto, boa performance.
+                                                            SocketHelper.BeginSendBytes(UdpClient, packetBuffer, UdpEndPoint, (ar) =>
+                                                            {
+                                                                SocketHelper.EndSendBytes(UdpClient, ar);
+                                                            }); //* Envia os dados pro servidor.
+                                                            break;
+                                                        }
+
+                                                    default:
+                                                        SocketHelper.SendUdpAsync(UdpClient, StateObject, UdpEndPoint); //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                                        break;
+                                                } //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                                break;
+                                            }
+                                    }
 #if UNITY_EDITOR
-                                //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                NeutronStatistics.ClientUDP.AddOutgoing(packetBuffer.Length, ignore);
+                                    //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
+                                    NeutronStatistics.ClientUDP.AddOutgoing(packetBuffer.Length, ignore);
 #endif
+                                }
                             }
                             break;
                     }
                 }
+                else
+                    LogHelper.Error("Non-connected socket, sending failed!");
+#else
+                    LogHelper.Error("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
+#endif
             }
             catch (ObjectDisposedException) { }
             catch (SocketException) { }
@@ -248,21 +270,86 @@ namespace NeutronNetwork.Client
         }
 
         /// <summary>
-        ///* Envia uma chamada(gRPC) que aciona a criação do seu jogador.<br/>
+        ///* Inicia uma chamada de preparação para a criação do seu jogador em rede. 
+        /// </summary>
+        /// <param name="parameters">* O escritor dos parâmetros.</param>
+        /// <param name="position">* A posição inicial do spawn do objeto.</param>
+        /// <param name="quaternion">* A rotação inicial do spawn do objeto.</param>
+        public void BeginCreatePlayer(NeutronWriter parameters, Vector3 position, Quaternion quaternion)
+        {
+            parameters.Write(position);
+            parameters.Write(quaternion);
+        }
+
+        /// <summary>
+        ///* Envia uma chamada(gRPC) que inicia a criação do seu jogador.<br/>
         /// </summary>
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreatePlayer(NeutronWriter parameters, byte id)
+        public void EndCreatePlayer(NeutronWriter parameters, byte id)
         {
             This.gRPC(id, parameters, Protocol.Tcp);
         }
 
         /// <summary>
-        ///* Envia uma chamada(gRPC) que aciona a criação de um objeto de rede.<br/>
+        ///* Finaliza a chamada de criação do jogador em rede.<br/>
+        /// </summary>
+        public bool EndCreatePlayer(NeutronReader parameters, out Vector3 position, out Quaternion quaternion)
+        {
+            try
+            {
+                position = parameters.ReadVector3();
+                quaternion = parameters.ReadQuaternion();
+                return true;
+            }
+            catch
+            {
+                position = Vector3.zero;
+                quaternion = Quaternion.identity;
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///* Inicia uma chamada de preparação para a criação de um objeto em rede. 
+        /// </summary>
+        /// <param name="parameters">* O escritor dos parâmetros.</param>
+        /// <param name="position">* A posição inicial do spawn do objeto.</param>
+        /// <param name="quaternion">* A rotação inicial do spawn do objeto.</param>
+        public void BeginCreateObject(NeutronWriter parameters, Vector3 position, Quaternion quaternion)
+        {
+            parameters.Write(position);
+            parameters.Write(quaternion);
+            parameters.Write(++_objectSpawnid);
+        }
+
+        /// <summary>
+        ///* Envia uma chamada(gRPC) que inicia a criação de um objeto de rede.<br/>
         /// </summary>
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void CreateObject(NeutronWriter parameters, byte id)
+        public void EndCreateObject(NeutronWriter parameters, byte id)
         {
             This.gRPC(id, parameters, Protocol.Tcp);
+        }
+
+        /// <summary>
+        ///* Finaliza a chamada de criação de um objeto de rede.<br/>
+        /// </summary>
+        public bool EndCreateObject(NeutronReader parameters, out Vector3 position, out Quaternion quaternion, out short spawnId)
+        {
+            try
+            {
+                position = parameters.ReadVector3();
+                quaternion = parameters.ReadQuaternion();
+                spawnId = parameters.ReadInt16();
+                return true;
+            }
+            catch
+            {
+                position = Vector3.zero;
+                quaternion = Quaternion.identity;
+                spawnId = -1;
+                return false;
+            }
         }
 
         /// <summary>

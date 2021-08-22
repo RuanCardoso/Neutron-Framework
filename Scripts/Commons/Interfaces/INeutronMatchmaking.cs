@@ -1,5 +1,5 @@
 using NeutronNetwork.Server.Internal;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace NeutronNetwork.Internal.Interfaces
 {
@@ -7,12 +7,12 @@ namespace NeutronNetwork.Internal.Interfaces
     {
         #region Properties
         string Name { get; set; }
-        int PlayerCount { get; set; }
+        int PlayerCount { get; }
         int MaxPlayers { get; set; }
         string Properties { get; set; }
         NeutronPlayer Player { get; set; }
         SceneView SceneView { get; }
-        Dictionary<string, object> Get { get; }
+        JObject Get { get; }
         #endregion
 
         #region Methods

@@ -2,6 +2,7 @@
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Packets;
+using NeutronNetwork.Server;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -52,10 +53,10 @@ namespace NeutronNetwork
         /// <param name="protocol">* O protocolo que será usado para enviar os dados.</param>
         /// <param name="neutron">* A instância de Neutron que realizará a comunicação.</param>
 #pragma warning disable IDE1006
-        public void gRPC(byte id, NeutronWriter parameters, Protocol protocol, NeutronPlayer player, Neutron neutron)
+        public void gRPC(byte id, NeutronWriter parameters, Protocol protocol, NeutronPlayer player)
 #pragma warning restore IDE1006
         {
-            neutron.gRPC(id, parameters, protocol, player);
+            Neutron.Server.Neutron.gRPC(id, parameters, protocol, player);
         }
         #endregion
 

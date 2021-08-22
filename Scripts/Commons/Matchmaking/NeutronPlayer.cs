@@ -4,7 +4,7 @@ using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Packets;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -37,63 +37,105 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o identificador dojogador.
         /// </summary>
-        public int ID { get => _id; set => _id = value; }
+        public int ID {
+            get => _id;
+            set => _id = value;
+        }
+
         /// <summary>
         ///* Retorna o nome de seu jogador;
         /// </summary>
-        public string Nickname { get => _nickname; set => _nickname = value; }
+        public string Nickname {
+            get => _nickname;
+            set => _nickname = value;
+        }
+
         /// <summary>
         ///* Retorna o atual canal do jogador.
         /// </summary>
-        public NeutronChannel Channel { get => _channel; set => _channel = value; }
+        public NeutronChannel Channel {
+            get => _channel;
+            set => _channel = value;
+        }
+
         /// <summary>
         ///* Retorna a atual sala do jogador.
         /// </summary>
-        public NeutronRoom Room { get => _room; set => _room = value; }
+        public NeutronRoom Room {
+            get => _room;
+            set => _room = value;
+        }
+
         /// <summary>
         ///* Retorna as propriedades do jogador em Json;
         /// </summary>
-        public string Properties { get => _properties; set => _properties = value; }
+        public string Properties {
+            get => _properties;
+            set => _properties = value;
+        }
+
         /// <summary>
         ///* Retorna o ID do banco de dados do jogador, disponível somente no servidor.
         /// </summary>
-        public int DatabaseID { get => _databaseId; set => _databaseId = value; }
+        public int DatabaseID {
+            get => _databaseId;
+            set => _databaseId = value;
+        }
+
         /// <summary>
         ///* Retorna se este jogador pertence ao servidor.
         /// </summary>
-        public bool IsServer { get; set; }
+        public bool IsServer {
+            get;
+            set;
+        }
+
         /// <summary>
         ///* Retorna o estado da sua conexão com o servidor.
         /// </summary>
-        public bool IsConnected { get; set; }
+        public bool IsConnected {
+            get;
+            set;
+        }
+
         /// <summary>
         ///* Retorna seu identificador de rede.
         /// </summary>
-        public NeutronView NeutronView { get; set; }
+        public NeutronView NeutronView {
+            get;
+            set;
+        }
+
         /// <summary>
         ///* Propriedades personalizadas do jogador.
         /// </summary>
-        public Dictionary<string, object> Get { get; }
+        public JObject Get {
+            get;
+        } = new JObject();
+
         /// <summary>
         ///* Propriedades personalizadas do jogador, disponível somente ao lado do servidor.
         /// </summary>
-        public Dictionary<string, object> Prefs { get; }
+        public Dictionary<string, object> Prefs {
+            get;
+        } = new Dictionary<string, object>();
+
         /// <summary>
         ///* Seu atual Matchmaking, Sala, Grupo ou Channel.<br/>
         ///* Retorna o ultimo tipo de Matchmaking ingressado.
         /// </summary>
-        public INeutronMatchmaking Matchmaking { get; set; }
+        public INeutronMatchmaking Matchmaking {
+            get;
+            set;
+        }
         #endregion
 
         #region Properties -> Network
         public TcpClient TcpClient { get; }
         public UdpClient UdpClient { get; }
         public Stream NetworkStream { get; }
-        public StateObject StateObject { get; }
-        #endregion
-
-        #region Threading
         public CancellationTokenSource TokenSource { get; set; }
+        public StateObject StateObject { get; } = new StateObject();
         #endregion
 
         public NeutronPlayer() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
@@ -108,13 +150,11 @@ namespace NeutronNetwork
             UdpClient.Client.ReceiveBufferSize = OthersHelper.GetConstants().UdpReceiveBufferSize;
             UdpClient.Client.SendBufferSize = OthersHelper.GetConstants().UdpSendBufferSize;
             //**************************************************************************************************
-            StateObject = new StateObject();
             NetworkStream = SocketHelper.GetStream(tcpClient);
             StateObject.UdpLocalEndPoint = (IPEndPoint)UdpClient.Client.LocalEndPoint;
             StateObject.TcpRemoteEndPoint = (IPEndPoint)TcpClient.Client.RemoteEndPoint;
             //**************************************************************************************************
             TokenSource = cancellationTokenSource;
-            Prefs = new Dictionary<string, object>();
         }
 
         public NeutronPlayer(SerializationInfo info, StreamingContext context)
@@ -122,8 +162,8 @@ namespace NeutronNetwork
             ID = info.GetInt32("id");
             Nickname = info.GetString("nickname");
             Properties = info.GetString("properties");
-            //////////////////// Initialize Instances ////////////
-            Get = JsonConvert.DeserializeObject<Dictionary<string, object>>(Properties);
+            //*********************************************
+            Get = JObject.Parse(Properties);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -133,12 +173,12 @@ namespace NeutronNetwork
             info.AddValue("properties", Properties);
         }
 
-        public Boolean Equals(NeutronPlayer player)
+        public bool Equals(NeutronPlayer player)
         {
             return this.ID == player.ID;
         }
 
-        public Boolean Equals(NeutronPlayer x, NeutronPlayer y)
+        public bool Equals(NeutronPlayer x, NeutronPlayer y)
         {
             if (object.ReferenceEquals(x, y))
             {
@@ -159,8 +199,8 @@ namespace NeutronNetwork
 
         public void Dispose()
         {
-            TokenSource.Dispose();
             NetworkStream.Dispose();
+            TokenSource.Dispose();
             TcpClient.Dispose();
             UdpClient.Dispose();
         }
@@ -177,6 +217,21 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             Title = _nickname;
 #endif
+        }
+
+        public override bool Equals(object player)
+        {
+            return ID == ((NeutronPlayer)player).ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return ID.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return $"KKKKKKKKKKKKKKKKKKKKKKKKK Mó preguiça de subistituir isso aqui irmão.";
         }
     }
 }

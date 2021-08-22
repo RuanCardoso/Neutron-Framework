@@ -32,12 +32,14 @@ namespace NeutronNetwork.Server
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedRoom { get; set; }
-        public static NeutronEventNoReturn<NeutronPlayer, NeutronRoom> OnPlayerCreatedRoom { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, NeutronRoom, bool> OnPlayerCreatedRoom { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftChannel { get; set; }
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftRoom { get; set; }
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerPropertiesChanged { get; set; }
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnRoomPropertiesChanged { get; set; }
         public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling { get; set; }
+        public static NeutronEventWithReturn<NeutronPlayer, Authentication, Task<bool>> OnAuthentication { get; set; }
+        public static NeutronEventWithReturn<Packet, bool> OnReceivePacket { get; set; }
         #endregion
 
         #region Mono Behaviour
@@ -61,25 +63,36 @@ namespace NeutronNetwork.Server
             }
         }
 
-        protected void HandshakeHandler(NeutronPlayer player, double time)
+        protected async void HandshakeHandler(NeutronPlayer player, double time, Authentication authentication)
         {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            if (authentication.Pass.Decrypt(out string phrase))
             {
-                writer.WritePacket((byte)Packet.Handshake);
-                writer.Write(Neutron.Time);
-                writer.Write(time);
-                writer.Write(player.StateObject.UdpLocalEndPoint.Port);
-                writer.WriteIntExactly(player);
-                writer.WriteIntExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
-                player.Write(writer);
-            }
+                authentication = new Authentication(authentication.User, phrase, false);
+                if (await OnAuthentication.Invoke(player, authentication))
+                {
+                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    {
+                        writer.WritePacket((byte)Packet.Handshake);
+                        writer.Write(Neutron.Time);
+                        writer.Write(time);
+                        writer.Write(player.StateObject.UdpLocalEndPoint.Port);
+                        writer.WriteIntExactly(player);
+                        writer.WriteIntExactly(PlayersBySocket.Values.ToArray()); // send the other players to me.
+                        player.Write(writer);
+                    }
 
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-            {
-                writer.WritePacket((byte)Packet.NewPlayer);
-                writer.WriteIntExactly(player); // send me to the other players who were already connected.
-                player.Write(writer, TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
+                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    {
+                        writer.WritePacket((byte)Packet.NewPlayer);
+                        writer.WriteIntExactly(player); // send me to the other players who were already connected.
+                        player.Write(writer, TargetTo.Others, TunnelingTo.Server, Protocol.Tcp);
+                    }
+                }
+                else
+                    LogHelper.Error("Auth failed!");
             }
+            else if (!LogHelper.Error("Auth descrypt failed!"))
+                DisconnectHandler(player);
         }
 
         protected void SetNicknameHandler(NeutronPlayer player, string nickname)
@@ -222,13 +235,13 @@ namespace NeutronNetwork.Server
                     gRPC gRPCAttribute = remoteProceduralCall.gRPC;
                     if (gRPCAttribute.FirstValidation)
                     {
-                        if (await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, NeutronServer.Neutron))
+                        if (await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, Neutron.Server.Neutron))
                             Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo);
                     }
                     else
                     {
                         if (Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo))
-                            await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, NeutronServer.Neutron);
+                            await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, false, Neutron.Server.Neutron);
                     }
                 }
                 catch (Exception ex)
@@ -319,29 +332,33 @@ namespace NeutronNetwork.Server
                 player.Message(Packet.JoinChannel, "There are no channels created on the server.");
         }
 
-        protected void JoinRoomHandler(NeutronPlayer player, int roomId)
+        protected void JoinRoomHandler(NeutronPlayer player, int roomId, string password)
         {
             if (player.IsInChannel() && !player.IsInRoom())
             {
                 NeutronRoom room = player.Channel.GetRoom(roomId);
-
-                if (room.Add(player))
+                if (room.Password == password)
                 {
-                    player.Room = room;
-                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                    //*****************************************************************
-                    OnPlayerJoinedRoom?.Invoke(player);
-                    //*****************************************************************
-                    using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                    if (room.Add(player))
                     {
-                        writer.WritePacket((byte)Packet.JoinRoom);
-                        writer.Write(player.ID);
-                        writer.WriteIntExactly(room);
-                        player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
+                        player.Room = room;
+                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                        //*****************************************************************
+                        OnPlayerJoinedRoom?.Invoke(player);
+                        //*****************************************************************
+                        using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                        {
+                            writer.WritePacket((byte)Packet.JoinRoom);
+                            writer.Write(player.ID);
+                            writer.WriteIntExactly(room);
+                            player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerJoinedRoom);
+                        }
                     }
+                    else
+                        player.Message(Packet.JoinRoom, "Failed to add player.");
                 }
                 else
-                    player.Message(Packet.JoinRoom, "Failed to add player.");
+                    player.Message(Packet.JoinRoom, "Failed to join in room, incorrect password");
             }
             else
                 player.Message(Packet.JoinRoom, "WARNING: You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.");
@@ -352,33 +369,34 @@ namespace NeutronNetwork.Server
             if (player.IsInChannel() && !player.IsInRoom())
             {
                 NeutronChannel channel = player.Channel;
-
                 int id = channel.RoomCount;
-                room.ID = ++id;
+                if (room.ID == 0)
+                    room.ID = ++id;
                 room.Password = password;
                 room.Player = player;
 
-                if (!string.IsNullOrEmpty(room.Name))
+                if (OnPlayerCreatedRoom.Invoke(player, room))
                 {
-                    if (channel.AddRoom(room))
+                    if (!string.IsNullOrEmpty(room.Name))
                     {
-                        OnPlayerCreatedRoom?.Invoke(player, room);
-                        //*******************************************************************************
-                        using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                        if (channel.AddRoom(room))
                         {
-                            writer.WritePacket((byte)Packet.CreateRoom);
-                            writer.Write(player.ID);
-                            writer.WriteIntExactly(room);
-                            player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
+                            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+                            {
+                                writer.WritePacket((byte)Packet.CreateRoom);
+                                writer.Write(player.ID);
+                                writer.WriteIntExactly(room);
+                                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerCreatedRoom);
+                            }
+                            //*******************************************************************************
+                            JoinRoomHandler(player, room.ID, password);
                         }
-                        //*******************************************************************************
-                        JoinRoomHandler(player, room.ID);
+                        else
+                            player.Message(Packet.CreateRoom, "Failed to create room!");
                     }
                     else
-                        player.Message(Packet.CreateRoom, "Failed to create room!");
+                        player.Message(Packet.CreateRoom, "Room name is null or empty!");
                 }
-                else
-                    player.Message(Packet.CreateRoom, "Room name is null or empty!");
             }
             else
                 player.Message(Packet.CreateRoom, "You cannot create a room by being inside one.\r\nCall LeaveRoom or you not within a channel!");

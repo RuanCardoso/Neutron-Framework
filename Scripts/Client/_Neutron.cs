@@ -10,6 +10,7 @@ using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -60,8 +61,6 @@ namespace NeutronNetwork
         private int _pingAmount;
         //* Address de conexão.
         private string _host;
-        //* Define quando o cliente está pronto para uso.
-        private bool _isInitialized;
         #endregion
 
         #region Properties -> Static
@@ -80,7 +79,8 @@ namespace NeutronNetwork
             }
         }
         /// <summary>
-        ///* Retorna a instância principal do Cliente.
+        ///* Retorna a instância principal do Cliente.<br/>
+        ///* Retorna a instância principal do Servidor, se estiver sendo executado em uma compilação de servidor.<br/>
         /// </summary>
         public static Neutron Client { get; set; }
         /// <summary>
@@ -124,6 +124,10 @@ namespace NeutronNetwork
         ///* Este evento é acionado quando uma tentativa de conexão retorna seu estado.<br/>
         /// </summary>
         public NeutronEventNoReturn<bool, Neutron> OnNeutronConnected { get; set; }
+        /// <summary>
+        ///* Este evento é acionado quando uma tentativa de autenticação retorna seu estado.<br/>
+        /// </summary>
+        public NeutronEventNoReturn<bool, JObject, Neutron> OnNeutronAuthenticated { get; set; }
         /// <summary>
         ///* Este evento é acionado quando algum jogador se conecta ao servidor.<br/>
         /// </summary>
@@ -198,54 +202,56 @@ namespace NeutronNetwork
         /// <param name="index">* Index do endereço de ip da lista de configurações</param>
         /// <param name="timeout">* Tempo limite de tentativa de estabelecer uma conexão.</param>
         /// <returns></returns>
-        public async void Connect(int index = 0, int timeout = 3)
+        public async void Connect(int index = 0, int timeout = 3, Authentication authentication = null)
         {
+            if (authentication == null)
+                authentication = Authentication.Auth;
+            if (!IsConnected)
+            {
 #if UNITY_EDITOR
-            await Task.Delay(40); //* Eu dei prioridade de execução pro servidor, ele inicializa primeiro que geral, mas coloquei esse delay por segurança, vai que o cliente inicia primeiro que o servidor, disponível somente no editor.
+                await Task.Delay(40); //* Eu dei prioridade de execução pro servidor, ele inicializa primeiro que geral, mas coloquei esse delay por segurança, vai que o cliente inicia primeiro que o servidor, disponível somente no editor.
 #endif
 #if UNITY_SERVER
             if (ClientMode == ClientMode.Player)
                 LogHelper.Info($"The main player has been removed from the server build, but you can choose to use a virtual player!\r\n");
             return;
 #endif
-            Initialize(); //* Inicializa o cliente.
-            TcpClient.NoDelay = OthersHelper.GetSettings().GlobalSettings.NoDelay; //* Define um valor que desabilita o atraso ao enviar ou receber buffers que não estão cheios.
-            TcpClient.ReceiveBufferSize = OthersHelper.GetConstants().TcpReceiveBufferSize;
-            TcpClient.SendBufferSize = OthersHelper.GetConstants().TcpSendBufferSize;
-            UdpClient.Client.ReceiveBufferSize = OthersHelper.GetConstants().UdpReceiveBufferSize;
-            UdpClient.Client.SendBufferSize = OthersHelper.GetConstants().UdpSendBufferSize;
+                Initialize(); //* Inicializa o cliente.
+                TcpClient.NoDelay = OthersHelper.GetSettings().GlobalSettings.NoDelay; //* Define um valor que desabilita o atraso ao enviar ou receber buffers que não estão cheios.
+                TcpClient.ReceiveBufferSize = OthersHelper.GetConstants().TcpReceiveBufferSize;
+                TcpClient.SendBufferSize = OthersHelper.GetConstants().TcpSendBufferSize;
+                UdpClient.Client.ReceiveBufferSize = OthersHelper.GetConstants().UdpReceiveBufferSize;
+                UdpClient.Client.SendBufferSize = OthersHelper.GetConstants().UdpSendBufferSize;
 
-            //* Inicializa os temporizadores
-            _yieldPing = new WaitForSeconds(NeutronModule.Settings.ClientSettings.PingRate); //* evita alocações, performance é prioridade.
-            _yieldTcpKeepAlive = new WaitForSeconds(NeutronModule.Settings.ClientSettings.TcpKeepAlive); //* evita alocações, performance é prioridade.
+                //* Inicializa os temporizadores
+                _yieldPing = new WaitForSeconds(NeutronModule.Settings.ClientSettings.PingRate); //* evita alocações, performance é prioridade.
+                _yieldTcpKeepAlive = new WaitForSeconds(NeutronModule.Settings.ClientSettings.TcpKeepAlive); //* evita alocações, performance é prioridade.
 
-            //* Obtém o ip do URL setado nas configurações.
-            #region Host Resolver
-            _host = NeutronModule.Settings.GlobalSettings.Addresses[index];
-            int port = NeutronModule.Settings.GlobalSettings.Port;
-            if (!string.IsNullOrEmpty(_host))
-            {
-                if (!IPAddress.TryParse(_host, out IPAddress _))
+                //* Obtém o ip do URL setado nas configurações.
+                #region Host Resolver
+                _host = NeutronModule.Settings.GlobalSettings.Addresses[index];
+                int port = NeutronModule.Settings.GlobalSettings.Port;
+                if (!string.IsNullOrEmpty(_host))
                 {
-                    if (!_host.Equals("localhost", StringComparison.InvariantCultureIgnoreCase))
+                    if (!IPAddress.TryParse(_host, out IPAddress _))
                     {
-                        _host = _host.Replace("http://", string.Empty);
-                        _host = _host.Replace("https://", string.Empty);
-                        _host = _host.Replace("/", string.Empty);
-                        _host = (await SocketHelper.GetHostAddress(_host)).ToString();
+                        if (!_host.Equals("localhost", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            _host = _host.Replace("http://", string.Empty);
+                            _host = _host.Replace("https://", string.Empty);
+                            _host = _host.Replace("/", string.Empty);
+                            _host = (await SocketHelper.GetHostAddress(_host)).ToString();
+                        }
+                        else
+                            _host = IPAddress.Loopback.ToString();
                     }
                     else
-                        _host = IPAddress.Loopback.ToString();
+                    { /*Continue*/ }
                 }
                 else
-                { /*Continue*/ }
-            }
-            else
-                _host = IPAddress.Loopback.ToString();
-            #endregion
+                    _host = IPAddress.Loopback.ToString();
+                #endregion
 
-            if (!IsConnected)
-            {
                 bool result = await TcpClient.ConnectAsync(_host, port).RunWithTimeout(new TimeSpan(0, 0, timeout));
                 if (!result)
                 {
@@ -279,23 +285,34 @@ namespace NeutronNetwork
                             break;
                     }
 
-                    NeutronSchedule.Schedule.StartCoroutine(Ping());
-                    NeutronSchedule.Schedule.StartCoroutine(TcpKeepAlive()); //* pacote de manunteção pra manter o TCP ativo.
+                    NeutronSchedule.ScheduleTask(Ping());
+                    NeutronSchedule.ScheduleTask(TcpKeepAlive()); //* pacote de manunteção pra manter o TCP ativo.
+                    HandAuth();
                 }
-                //* Envia um pacote de reconhecimento pro servidor e ele responde com suas informações.
-                #region Handshake
-                using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
-                {
-                    string appId = OthersHelper.GetSettings().GlobalSettings.AppId;
-                    writer.WritePacket((byte)Packet.Handshake);
-                    writer.Write(appId.Encrypt());
-                    writer.Write(Time);
-                    Send(writer);
-                }
-                #endregion
             }
             else
-                LogHelper.Error("Connection Refused!");
+                HandAuth();
+
+            //* Envia um pacote de reconhecimento pro servidor e ele responde com suas informações.
+            void HandAuth()
+            {
+                try
+                {
+                    using (NeutronWriter auth = Neutron.PooledNetworkWriters.Pull())
+                    {
+                        string appId = OthersHelper.GetSettings().GlobalSettings.AppId;
+                        auth.WritePacket((byte)Packet.Handshake);
+                        auth.Write(appId.Encrypt());
+                        auth.Write(Time);
+                        auth.WriteIntExactly(authentication);
+                        Send(auth);
+                    }
+                }
+                catch
+                {
+                    LogHelper.Error("It is no longer possible to initialize a connection on this instance.");
+                }
+            }
         }
 
         //* Recebe a porra dos dados do socket udp e monta o pacote.
@@ -377,7 +394,7 @@ namespace NeutronNetwork
                                             if (await SocketHelper.ReadAsyncBytes(networkStream, playerIdBuffer, 0, sizeof(short), token)) //* ler o pre-fixo(ID) do jogador, um inteiro, 4 bytes(sizeof(int)) e armazena no buffer.
                                             {
                                                 int playerId = BitConverter.ToInt16(playerIdBuffer, 0); //* converte o buffer em inteiro.
-                                                if (playerId <= NeutronModule.Settings.GlobalSettings.MaxPlayers && playerId > 0)
+                                                if (playerId <= NeutronModule.Settings.GlobalSettings.MaxPlayers && playerId >= 0)
                                                 {
                                                     RunPacket(Players[playerId], packetBuffer, out Packet packet); //* executa o pacote.
 #if UNITY_EDITOR
@@ -437,7 +454,12 @@ namespace NeutronNetwork
                 reader.SetBuffer(buffer);
                 //*****************************************
                 outPacket = (Packet)reader.ReadPacket();
-                //*****************************************
+                if (!IsReady && (outPacket != Packet.AuthStatus && outPacket != Packet.Handshake && outPacket != Packet.Disconnection && outPacket != Packet.Fail))
+                {
+                    LogHelper.Error("Unauthenticated!");
+                    return;
+                }
+                //***************************************** 
                 switch (outPacket)
                 {
                     case Packet.Ping:
@@ -525,8 +547,9 @@ namespace NeutronNetwork
                                 else
                                     Players[currentPlayer.ID] = currentPlayer;
                             }
+                            //********************************************************
                             OnPlayerConnected?.Invoke(Player, IsMine(Player), this);
-                            _isInitialized = true;
+                            IsReady = true;
                             #endregion
                         }
                         break;
@@ -770,6 +793,20 @@ namespace NeutronNetwork
                             #endregion
                         }
                         break;
+                    case Packet.AuthStatus:
+                        {
+                            #region Reader
+                            string properties = reader.ReadString();
+                            bool status = reader.ReadBoolean();
+                            #endregion
+
+                            #region Logic
+                            OnNeutronAuthenticated?.Invoke(status, JObject.Parse(properties), this);
+                            if (!status && !LogHelper.Error("The connection was rejected because authentication failed."))
+                            { }
+                            #endregion
+                        }
+                        break;
                 }
             }
         }
@@ -780,7 +817,7 @@ namespace NeutronNetwork
         //* Se o servidor parar de receber esta pulsação o cliente será desconectado.
         private IEnumerator Ping()
         {
-            yield return new WaitUntil(() => _isInitialized);
+            yield return new WaitUntil(() => IsReady);
             while (!TokenSource.Token.IsCancellationRequested)
             {
                 ++_pingAmount;
@@ -802,7 +839,7 @@ namespace NeutronNetwork
         //* Inicia uma pulsação para notificar que o cliente ainda está ativo.
         private IEnumerator TcpKeepAlive()
         {
-            yield return new WaitUntil(() => _isInitialized);
+            yield return new WaitUntil(() => IsReady);
             while (!TokenSource.Token.IsCancellationRequested)
             {
                 using (NeutronWriter writer = PooledNetworkWriters.Pull())
@@ -820,13 +857,17 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerLeftChannel, OnPlayerLeftRoom, OnPlayerLeftGroup ou OnFail.<br/>
         /// </summary>
         /// <param name="packet">* O tipo do pacote de saída.</param>
-        public void Leave(MatchmakingMode packet)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void Leave(MatchmakingMode packet, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.Leave);
                 writer.WritePacket((byte)packet);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Leave));
             }
         }
 
@@ -839,6 +880,7 @@ namespace NeutronNetwork
         /// <param name="tunnelingTo">* O Túnel que será usado para a transmissão.</param>
         public void SendMessage(string message, TunnelingTo tunnelingTo)
         {
+#if !UNITY_SERVER
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.Chat);
@@ -847,6 +889,9 @@ namespace NeutronNetwork
                 writer.Write(message);
                 Send(writer);
             }
+#else
+            LogHelper.Error("This packet is not available on the server side.");
+#endif
         }
 
         /// <summary>
@@ -858,6 +903,7 @@ namespace NeutronNetwork
         /// <param name="player">* O jogador de destino da mensagem.</param>
         public void SendMessage(string message, NeutronPlayer player)
         {
+#if !UNITY_SERVER
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.Chat);
@@ -866,6 +912,9 @@ namespace NeutronNetwork
                 writer.Write(message);
                 Send(writer);
             }
+#else
+            LogHelper.Error("This packet is not available on the server side.");
+#endif
         }
 
         /// <summary>
@@ -958,15 +1007,7 @@ namespace NeutronNetwork
                 if (!isServerSide)
                     Send(header, packet, protocol);
                 else
-                {
-                    NeutronPacket serverPacket = PooledNetworkPackets.Pull();
-                    serverPacket.Buffer = packet.ToArray();
-                    serverPacket.Owner = view.Player;
-                    serverPacket.Sender = view.Player;
-                    serverPacket.Protocol = protocol;
-                    serverPacket.Packet = Packet.Empty;
-                    Server.OnSimulatingReceivingData(serverPacket);
-                }
+                    Server.AddPacket(OthersHelper.GetPacket(packet.ToArray(), view.Player, view.Player, protocol, Packet.OnAutoSync));
             }
             else
                 LogHelper.Error("Invalid position, is not zero!");
@@ -991,7 +1032,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer, protocol);
                 else
-                    Server.OnSimulatingReceivingData(new NeutronPacket(writer, player, player, protocol));
+                    Server.AddPacket(new NeutronPacket(writer, player, player, protocol));
             }
         }
 
@@ -1020,7 +1061,7 @@ namespace NeutronNetwork
                 if (!isServerSide)
                     Send(writer, protocol);
                 else
-                    Server.OnSimulatingReceivingData(new NeutronPacket(writer, view.Player, view.Player, protocol));
+                    Server.AddPacket(new NeutronPacket(writer, view.Player, view.Player, protocol));
             }
         }
 
@@ -1040,9 +1081,10 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.OnSimulatingReceivingData(new NeutronPacket(writer, player, player, Protocol.Tcp));
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Nickname));
             }
-            Nickname = nickname;
+            if (!IsServer)
+                Nickname = nickname;
         }
 
         /// <summary>
@@ -1052,13 +1094,17 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerJoinedRoom ou OnFail.<br/>
         /// </summary>
         /// <param name="channelId">* O ID do canal que deseja ingressar.</param>
-        public void JoinChannel(int channelId)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void JoinChannel(int channelId, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.JoinChannel);
                 writer.Write(channelId);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinChannel));
             }
         }
 
@@ -1069,13 +1115,18 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerJoinedRoom ou OnFail.<br/>
         /// </summary>
         /// <param name="roomId">* O ID da sala que deseja ingressar.</param>
-        public void JoinRoom(int roomId)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void JoinRoom(int roomId, string password, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.JoinRoom);
                 writer.Write(roomId);
-                Send(writer);
+                writer.Write(password);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinRoom));
             }
         }
 
@@ -1084,15 +1135,18 @@ namespace NeutronNetwork
         ///* A criação da sala falhará se o nome for nulo, em branco ou se a quantidade máxima de salas foi antigida.<br/>
         ///* Retorno de chamada: OnPlayerCreatedRoom ou OnFail.<br/>
         /// </summary>
-        public void CreateRoom(NeutronRoom room)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void CreateRoom(NeutronRoom room, NeutronPlayer player = null)
         {
-            room.HasPassword = !string.IsNullOrEmpty(room.Password);
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.CreateRoom);
                 writer.Write(room.Password);
                 writer.WriteIntExactly(room);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.CreateRoom));
             }
         }
 
@@ -1104,7 +1158,8 @@ namespace NeutronNetwork
         /// <param name="packet">* O tipo de pacote que deseja obter.</param>
         /// <param name="packetId">* ID do pacote que deseja obter os dados.</param>
         /// <param name="includeOwnerPackets">* Define se você deve receber pacotes em cache que são seus.</param>
-        public void GetCachedPackets(CachedPacket packet, int packetId, bool includeOwnerPackets = true)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void GetCache(CachedPacket packet, int packetId, bool includeOwnerPackets = true, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
@@ -1112,7 +1167,10 @@ namespace NeutronNetwork
                 writer.WritePacket((byte)packet);
                 writer.Write(packetId);
                 writer.Write(includeOwnerPackets);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChached));
             }
         }
 
@@ -1121,12 +1179,16 @@ namespace NeutronNetwork
         ///* Falhará se não houver canais disponíveis.<br/>
         ///* Retorno de chamada: OnChannelsReceived ou OnFail.<br/>
         /// </summary>
-        public void GetChannels()
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void GetChannels(NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.GetChannels);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChannels));
             }
         }
 
@@ -1135,12 +1197,16 @@ namespace NeutronNetwork
         ///* Falhará se não houver salas disponíveis.<br/>
         ///* Retorno de chamada: OnRoomsReceived ou OnFail.<br/>
         /// </summary>
-        public void GetRooms()
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void GetRooms(NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.GetRooms);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetRooms));
             }
         }
 
@@ -1149,13 +1215,17 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnPlayerPropertiesChanged ou OnFail.<br/>
         /// </summary>
         /// <param name="properties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
-        public void SetPlayerProperties(Dictionary<string, object> properties)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void SetPlayerProperties(Dictionary<string, object> properties, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.SetPlayerProperties);
                 writer.Write(JsonConvert.SerializeObject(properties));
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetPlayerProperties));
             }
         }
 
@@ -1164,25 +1234,17 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnRoomPropertiesChanged ou OnFail.<br/>
         /// </summary>
         /// <param name="properties">* O dicionário que contém as propriedades e valores a serem definidos para o jogador.</param>
-        public void SetRoomProperties(Dictionary<string, object> properties)
+        /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
+        public void SetRoomProperties(Dictionary<string, object> properties, NeutronPlayer player = null)
         {
             using (NeutronWriter writer = PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.SetRoomProperties);
                 writer.Write(JsonConvert.SerializeObject(properties));
-                Send(writer);
-            }
-        }
-
-        /// <summary>
-        ///* Destrói seu objeto de rede que representa seu jogador.<br/>
-        /// </summary>
-        public void DestroyPlayer()
-        {
-            using (NeutronWriter writer = PooledNetworkWriters.Pull())
-            {
-                writer.WritePacket((byte)Packet.DestroyPlayer);
-                Send(writer);
+                if (player == null)
+                    Send(writer);
+                else
+                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetRoomProperties));
             }
         }
         #endregion
@@ -1194,7 +1256,7 @@ namespace NeutronNetwork
         /// </summary>
         /// <param name="clientMode">* O tipo de cliente que a instância usará.</param>
         /// <returns>Retorna uma instância do tipo Neutron.</returns>
-        public static Neutron Create(ClientMode clientMode)
+        public static Neutron Create(ClientMode clientMode = ClientMode.Player)
         {
             Neutron neutron = new Neutron();
             neutron.Initialize(clientMode);

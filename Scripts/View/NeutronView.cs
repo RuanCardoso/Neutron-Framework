@@ -2,6 +2,7 @@
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Server;
 using UnityEngine;
@@ -92,13 +93,14 @@ namespace NeutronNetwork
                     OnNeutronAwake();
                 }
                 // define a instância que invocou este metódo.
-                This = !IsServer ? neutron : NeutronServer.Neutron;
+                This = !IsServer ? neutron : Neutron.Server.Neutron;
                 // Adiciona o objeto na lista de objetos de redes.
+                INeutronMatchmaking matchmaking = IsServer ? player.Matchmaking : neutron.Player.Matchmaking;
                 if (IsServer)
                 {
-                    if (player.Matchmaking.SceneView.Views.Count <= short.MaxValue)
+                    if (matchmaking.SceneView.Views.Count <= short.MaxValue)
                     {
-                        if (!player.Matchmaking.SceneView.Views.TryAdd((keyId, Id, registerType), this))
+                        if (!matchmaking.SceneView.Views.TryAdd((keyId, Id, registerType), this))
                             return LogHelper.Error($"{IsServer} Duplicated ID [{keyId} - {Id}]");
                     }
                     else
@@ -106,7 +108,7 @@ namespace NeutronNetwork
                 }
                 else
                 {
-                    if (!neutron.Player.Matchmaking.SceneView.Views.TryAdd((keyId, Id, registerType), this))
+                    if (!matchmaking.SceneView.Views.TryAdd((keyId, Id, registerType), this))
                         return LogHelper.Error($"{IsServer} Duplicated ID [{keyId} - {Id}]");
                 }
                 Invoke(); // Invoca os metódos virtual e define como pronto para uso.

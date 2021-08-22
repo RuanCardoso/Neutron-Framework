@@ -1,6 +1,7 @@
 using NeutronNetwork.Constants;
-using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Server.Internal;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -79,6 +80,17 @@ namespace NeutronNetwork.Helpers
             Renderer renderer = neutronView.GetComponentInChildren<Renderer>();
             if (renderer != null)
                 renderer.material.color = color;
+        }
+
+        public static NeutronPacket GetPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
+        {
+            NeutronPacket neutronPacket = Neutron.PooledNetworkPackets.Pull();
+            neutronPacket.Buffer = buffer;
+            neutronPacket.Owner = owner;
+            neutronPacket.Sender = sender;
+            neutronPacket.Protocol = protocol;
+            neutronPacket.Packet = packet;
+            return neutronPacket;
         }
 
         public static NeutronDefaultHandlerSettings GetDefaultHandler()
