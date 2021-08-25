@@ -359,6 +359,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Usado para personalizar a sincronização de variáveis ​​em um script monitorado por um NeutronView.<br/>
         ///* É determinado automaticamente se as variáveis ​​que estão sendo serializadas devem ser enviadas ou recebidas.<br/>
+        ///* O stream é descartado automaticamente, não é necessário o decarte manual.
         /// </summary>
         /// <param name="stream">* Fluxo usado para escrever ou ler os parâmetros enviados ou recebidos.</param>
         /// <param name="isMine">* Define se você está escrevendo ou lendo os dados.</param>
