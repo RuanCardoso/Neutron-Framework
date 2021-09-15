@@ -6,7 +6,6 @@ namespace NeutronNetwork.Extensions
     {
         public static void Message(this NeutronPlayer player, Packet packet, string message)
         {
-#if !UNITY_EDITOR
             using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
             {
                 writer.WritePacket((byte)Packet.Fail);
@@ -14,9 +13,6 @@ namespace NeutronNetwork.Extensions
                 writer.Write(message);
                 player.Write(writer);
             }
-#else
-            LogHelper.Error($"[{packet}] -> | ERROR | {message}");
-#endif
         }
     }
 }

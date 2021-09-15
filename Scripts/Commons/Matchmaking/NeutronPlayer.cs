@@ -200,7 +200,10 @@ namespace NeutronNetwork
         public void Dispose()
         {
             NetworkStream.Dispose();
-            TokenSource.Dispose();
+            using (TokenSource)
+            {
+                TokenSource.Cancel();
+            }
             TcpClient.Dispose();
             UdpClient.Dispose();
         }

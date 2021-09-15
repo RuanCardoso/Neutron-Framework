@@ -15,7 +15,7 @@ namespace NeutronNetwork
         #endregion
 
         #region Collections
-        private static readonly NeutronSafeQueue<Action> _tasks = new NeutronSafeQueue<Action>();
+        private static readonly NeutronSafeQueueNonAlloc<Action> _tasks = new NeutronSafeQueueNonAlloc<Action>(0);
         #endregion
 
         private void Awake()
@@ -79,6 +79,19 @@ namespace NeutronNetwork
         }
 
         /// <summary>
+        ///* Agenda uma co-rotina para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
+        /// </summary>
+        /// <param name="enumerator">* A co-rotina a ser agendada.</param>
+        public static Task<T> TryScheduleTaskAsync<T>(TaskCompletionSource<T> task, IEnumerator enumerator)
+        {
+            _tasks.Enqueue(() =>
+            {
+                Schedule.StartCoroutine(enumerator);
+            });
+            return task.Task;
+        }
+
+        /// <summary>
         ///* Agenda uma ação para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
         /// </summary>
         /// <param name="action">* A ação a ser agendada.</param>
@@ -100,6 +113,20 @@ namespace NeutronNetwork
         public static Task TryScheduleTaskAsync(Action<TaskCompletionSource<bool>> action)
         {
             TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
+            _tasks.Enqueue(() =>
+            {
+                action(taskCompletionSource);
+            });
+            return taskCompletionSource.Task;
+        }
+
+        /// <summary>
+        ///* Agenda uma ação para ser executada no Thread principal(Unity Main Thread) de modo assíncrono.
+        /// </summary>
+        /// <param name="action">* A ação a ser agendada.</param>
+        public static Task<T> TryScheduleTaskAsync<T>(Action<TaskCompletionSource<T>> action)
+        {
+            TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
             _tasks.Enqueue(() =>
             {
                 action(taskCompletionSource);

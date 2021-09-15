@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e0f743d5b456616469a5f7cb20e0a4d3, type: 3}
-  m_Name: Neutron Settings
+  m_Name: 
   m_EditorClassIdentifier: 
   GlobalSettings:
     Addresses:
     - localhost
     Port: 1418
-    AppId: 9f8e66bd-d14b-4e27-ac96-e75082404794
+    AppId: a5dd9c39-a1a4-4d80-aabc-8659ea8810b9
     FPS: 60
     MaxPlayers: 300
     StreamPoolCapacity: 1200

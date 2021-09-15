@@ -82,7 +82,7 @@ namespace NeutronNetwork.Helpers
                 renderer.material.color = color;
         }
 
-        public static NeutronPacket GetPacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
+        public static NeutronPacket CreatePacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
         {
             NeutronPacket neutronPacket = Neutron.PooledNetworkPackets.Pull();
             neutronPacket.Buffer = buffer;

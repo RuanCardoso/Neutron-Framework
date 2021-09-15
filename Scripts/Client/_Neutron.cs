@@ -71,9 +71,8 @@ namespace NeutronNetwork
         /// </summary>
         public static NeutronServer Server {
             get {
-#if !UNITY_EDITOR && !UNITY_SERVER
-                if (ServerBase.This == null)
-                    LogHelper.Error("You cannot access the server's methods and properties on the client, except within the Unity Editor.");
+#if !UNITY_EDITOR && !UNITY_SERVER && !UNITY_NEUTRON_LAN
+                LogHelper.Error("You cannot access the server's methods and properties on the client, except within the Unity Editor.");
 #endif
                 return ServerBase.This;
             }
@@ -466,7 +465,7 @@ namespace NeutronNetwork
                         {
                             double serverTime = reader.ReadDouble();
                             double clientTime = reader.ReadDouble();
-#if !UNITY_SERVER
+#if !UNITY_SERVER && !UNITY_NEUTRON_LAN
                             double diff = Math.Abs(Time - clientTime);
                             if (!Application.isEditor || !NeutronServer.Initialized) //* O tempo só é cronemetado se não for o editor ou se o servidor no editor estiver desligado.
                             {
@@ -502,7 +501,7 @@ namespace NeutronNetwork
                         {
                             double serverTime = reader.ReadDouble();
                             double clientTime = reader.ReadDouble();
-#if !UNITY_SERVER
+#if !UNITY_SERVER && !UNITY_NEUTRON_LAN
                             if (ClientMode == ClientMode.Virtual && Client != null)
                             { }
                             else
@@ -867,7 +866,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Leave));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Leave));
             }
         }
 
@@ -1007,7 +1006,7 @@ namespace NeutronNetwork
                 if (!isServerSide)
                     Send(header, packet, protocol);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(packet.ToArray(), view.Player, view.Player, protocol, Packet.OnAutoSync));
+                    Server.AddPacket(OthersHelper.CreatePacket(packet.ToArray(), view.Player, view.Player, protocol, Packet.OnAutoSync));
             }
             else
                 LogHelper.Error("Invalid position, is not zero!");
@@ -1081,7 +1080,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Nickname));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.Nickname));
             }
             if (!IsServer)
                 Nickname = nickname;
@@ -1104,7 +1103,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinChannel));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinChannel));
             }
         }
 
@@ -1126,7 +1125,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinRoom));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.JoinRoom));
             }
         }
 
@@ -1146,7 +1145,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.CreateRoom));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.CreateRoom));
             }
         }
 
@@ -1170,7 +1169,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChached));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChached));
             }
         }
 
@@ -1188,7 +1187,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChannels));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetChannels));
             }
         }
 
@@ -1206,7 +1205,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetRooms));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.GetRooms));
             }
         }
 
@@ -1225,7 +1224,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetPlayerProperties));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetPlayerProperties));
             }
         }
 
@@ -1244,7 +1243,7 @@ namespace NeutronNetwork
                 if (player == null)
                     Send(writer);
                 else
-                    Server.AddPacket(OthersHelper.GetPacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetRoomProperties));
+                    Server.AddPacket(OthersHelper.CreatePacket(writer.ToArray(), player, player, Protocol.Tcp, Packet.SetRoomProperties));
             }
         }
         #endregion
@@ -1306,44 +1305,6 @@ namespace NeutronNetwork
         /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
         /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
         /// <param name="onResult">O resultado da requisição.</param>
-        public static void Post(string url, WWWForm formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
-        {
-            IEnumerator Request()
-            {
-                UnityWebRequest request = UnityWebRequest.Post(url, formData);
-                onAwake.Invoke(request);
-                yield return request.SendWebRequest();
-                onResult.Invoke(request);
-            }
-            NeutronSchedule.ScheduleTask(Request());
-        }
-
-        /// <summary>
-        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
-        /// </summary>
-        /// <param name="url">O url no qual que será enviado a requisição.</param>
-        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
-        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
-        /// <param name="onResult">O resultado da requisição.</param>
-        public static void Post(string url, string formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
-        {
-            IEnumerator Request()
-            {
-                UnityWebRequest request = UnityWebRequest.Post(url, formData);
-                onAwake.Invoke(request);
-                yield return request.SendWebRequest();
-                onResult.Invoke(request);
-            }
-            NeutronSchedule.ScheduleTask(Request());
-        }
-
-        /// <summary>
-        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
-        /// </summary>
-        /// <param name="url">O url no qual que será enviado a requisição.</param>
-        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
-        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
-        /// <param name="onResult">O resultado da requisição.</param>
         public static void Post(string url, Dictionary<string, string> formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
         {
             IEnumerator Request()
@@ -1361,33 +1322,21 @@ namespace NeutronNetwork
         /// </summary>
         /// <param name="url">O url no qual que será enviado a requisição.</param>
         /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
         /// <param name="onResult">O resultado da requisição.</param>
-        public static void Post(string url, WWWForm formData, Action<UnityWebRequest> onResult)
+        public static Task PostAsync(string url, Dictionary<string, string> formData, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
         {
+            TaskCompletionSource<bool> task = new TaskCompletionSource<bool>();
             IEnumerator Request()
             {
                 UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                onAwake.Invoke(request);
                 yield return request.SendWebRequest();
                 onResult.Invoke(request);
+                task.TrySetResult(true);
             }
             NeutronSchedule.ScheduleTask(Request());
-        }
-
-        /// <summary>
-        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
-        /// </summary>
-        /// <param name="url">O url no qual que será enviado a requisição.</param>
-        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
-        /// <param name="onResult">O resultado da requisição.</param>
-        public static void Post(string url, string formData, Action<UnityWebRequest> onResult)
-        {
-            IEnumerator Request()
-            {
-                UnityWebRequest request = UnityWebRequest.Post(url, formData);
-                yield return request.SendWebRequest();
-                onResult.Invoke(request);
-            }
-            NeutronSchedule.ScheduleTask(Request());
+            return task.Task;
         }
 
         /// <summary>
@@ -1405,6 +1354,26 @@ namespace NeutronNetwork
                 onResult.Invoke(request);
             }
             NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* Uma requisição POST é usado para enviar dados a um servidor para criar ou atualizar um recurso.
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="formData">Os parâmetros que serão enviados para o metódo POST.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static Task PostAsync(string url, Dictionary<string, string> formData, Action<UnityWebRequest> onResult)
+        {
+            TaskCompletionSource<bool> task = new TaskCompletionSource<bool>();
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Post(url, formData);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+                task.TrySetResult(true);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+            return task.Task;
         }
 
         /// <summary>
@@ -1427,6 +1396,25 @@ namespace NeutronNetwork
         ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
         /// </summary>
         /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static Task GetAsync(string url, Action<UnityWebRequest> onResult)
+        {
+            TaskCompletionSource<bool> task = new TaskCompletionSource<bool>();
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Get(url);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+                task.TrySetResult(true);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+            return task.Task;
+        }
+
+        /// <summary>
+        ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
         /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
         /// <param name="onResult">O resultado da requisição.</param>
         public static void Get(string url, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
@@ -1439,6 +1427,27 @@ namespace NeutronNetwork
                 onResult.Invoke(request);
             }
             NeutronSchedule.ScheduleTask(Request());
+        }
+
+        /// <summary>
+        ///* A requisição GET é usado para solicitar dados de um recurso especificado. 
+        /// </summary>
+        /// <param name="url">O url no qual que será enviado a requisição.</param>
+        /// <param name="onAwake">Definido antes da requisição ser requisitada.</param>
+        /// <param name="onResult">O resultado da requisição.</param>
+        public static Task GetAsync(string url, Action<UnityWebRequest> onAwake, Action<UnityWebRequest> onResult)
+        {
+            TaskCompletionSource<bool> task = new TaskCompletionSource<bool>();
+            IEnumerator Request()
+            {
+                UnityWebRequest request = UnityWebRequest.Get(url);
+                onAwake.Invoke(request);
+                yield return request.SendWebRequest();
+                onResult.Invoke(request);
+                task.TrySetResult(true);
+            }
+            NeutronSchedule.ScheduleTask(Request());
+            return task.Task;
         }
         #endregion
     }

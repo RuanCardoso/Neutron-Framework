@@ -1,6 +1,6 @@
-﻿using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Internal.Wrappers;
+﻿using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -50,7 +50,7 @@ namespace NeutronNetwork.Server
 #if UNITY_SERVER
         Console.Clear();
 #endif
-#if UNITY_SERVER || UNITY_EDITOR
+#if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
             if (NeutronModule.Settings != null)
             {
                 try

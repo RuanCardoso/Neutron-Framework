@@ -39,7 +39,7 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             CreateLogDelegate();
 #endif
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_NEUTRON_LAN
             Chronometer.Start();
 #endif
             LoadSettings();

@@ -1,5 +1,5 @@
 using NeutronNetwork.Internal.Attributes;
-using NeutronNetwork.Wrappers;
+using NeutronNetwork.Internal.Wrappers;
 using System;
 
 namespace NeutronNetwork
@@ -8,34 +8,21 @@ namespace NeutronNetwork
     public class NeutronPool<T>
     {
         //* Inicializa um queue para o pool.
-        private readonly NeutronQueue<T> _queue = new NeutronQueue<T>();
+        private readonly NeutronSafeQueueNonAlloc<T> _queue;
         //* Objeto que irá gerar novas instâncias quando necessário.
         private readonly Func<T> _generator;
-        //* Objeto para sincronizar a inserção e remoção de objetos em multiplos threads.
-        private readonly object _lock = new object();
-
-        //* Obtém a quantidade de objetos no pool de threads.
-        [ThreadSafe]
-        public int Count {
-            get {
-                lock (_lock)
-                {
-                    return _queue.Count;
-                }
-            }
-        }
-        /// <summary>
-        ///* Obtém a capacidade máxima de objetos permitida no pool.
-        /// </summary>
-        public int Capacity { get; }
         /// <summary>
         ///* Define se a capacidade é aumentada conforme o necessário.
         /// </summary>
-        public bool Resizable { get; }
+        public bool Resizable {
+            get;
+        }
         /// <summary>
         ///* Nome do pool de objetos.
         /// </summary>
-        public string Name { get; }
+        public string Name {
+            get;
+        }
 
         /// <summary>
         /// Inicializa um novo pool do tipo especificado em T.
@@ -43,7 +30,9 @@ namespace NeutronNetwork
         public NeutronPool(Func<T> generator, int capacity, bool resizable, string name)
         {
             _generator = generator;
-            Capacity = capacity;
+            //***************************************************
+            _queue = new NeutronSafeQueueNonAlloc<T>(capacity);
+            //***************************************************
             Resizable = resizable;
             Name = name;
         }
@@ -54,19 +43,16 @@ namespace NeutronNetwork
         [ThreadSafe]
         public T Pull()
         {
-            lock (_lock)
+            if (_queue.TryDequeue(out T item))
+                return item;
+            else
             {
-                if (_queue.Count > 0)
-                    return _queue.Dequeue();
+                if (Resizable)
+                    return _generator();
                 else
-                {
-                    if (Resizable)
-                        return _generator();
-                    else
-                        LogHelper.Error($"{Name}: You overflowed the pool! You won't get the performance benefits of the pool, it increases capacity.");
-                }
-                return _generator();
+                    LogHelper.Error($"{Name}: You overflowed the pool! You won't get the performance benefits of the pool, it increases capacity.");
             }
+            return _generator();
         }
 
         /// <summary>
@@ -75,11 +61,7 @@ namespace NeutronNetwork
         [ThreadSafe]
         public void Push(T obj)
         {
-            lock (_lock)
-            {
-                if (_queue.Count < Capacity)
-                    _queue.Enqueue(obj);
-            }
+            _queue.Enqueue(obj);
         }
     }
 }

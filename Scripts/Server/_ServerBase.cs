@@ -57,7 +57,6 @@ namespace NeutronNetwork.Server
         {
             using (player)
             {
-                player.TokenSource.Cancel();
                 if (SocketHelper.RemovePlayerFromServer(player))
                     OnPlayerDisconnected?.Invoke(player);
             }
@@ -124,7 +123,7 @@ namespace NeutronNetwork.Server
                         player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
                     else if (packet == ChatMode.Private)
                     {
-                        if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer playerFound))
+                        if (MatchmakingHelper.Server.GetPlayer(viewId, out NeutronPlayer playerFound))
                             playerFound.Write(player, writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
                         else
                             player.Message(Packet.Chat, "Player not found!");
@@ -153,14 +152,14 @@ namespace NeutronNetwork.Server
                         writer.Write(instanceId);
                         writer.WriteNextBytes(buffer);
                         //////////////////////////////////////////////////////////////////////////////////
-                        MatchmakingHelper.AddCache(rpcId, viewId, writer, owner, cache, CachedPacket.iRPC);
+                        MatchmakingHelper.Internal.AddCache(rpcId, viewId, writer, owner, cache, CachedPacket.iRPC);
                         //////////////////////////////////////////////////////////////////////////////////
                         owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                     }
                     return true;
                 }
 
-                if (MatchmakingHelper.GetNetworkObject(key, owner, out NeutronView neutronView))
+                if (MatchmakingHelper.Server.GetNetworkObject(key, owner, out NeutronView neutronView))
                 {
                     if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPCInvoker remoteProceduralCall))
                     {
@@ -221,7 +220,7 @@ namespace NeutronNetwork.Server
                     writer.Write(id);
                     writer.WriteNextBytes(buffer);
                     //////////////////////////////////////////////////////////////////////////////////
-                    MatchmakingHelper.AddCache(id, 0, writer, owner, cache, CachedPacket.gRPC);
+                    MatchmakingHelper.Internal.AddCache(id, 0, writer, owner, cache, CachedPacket.gRPC);
                     //////////////////////////////////////////////////////////////////////////////////
                     owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                 }
@@ -492,7 +491,7 @@ namespace NeutronNetwork.Server
                 if (matchmaking != null)
                 {
                     if (matchmaking.Remove(player))
-                        MatchmakingHelper.Leave(player, leaveChannel: false);
+                        MatchmakingHelper.Internal.Leave(player, leaveChannel: false);
                 }
             }
             else player.Message(Packet.Leave, "ERROR: LeaveRoom Failed");
@@ -597,7 +596,7 @@ namespace NeutronNetwork.Server
 
         protected void CustomPacketHandler(NeutronPlayer player, bool isMine, int viewId, byte[] parameters, CustomPacket packet, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
         {
-            if (MatchmakingHelper.GetPlayer(viewId, out NeutronPlayer nPlayer))
+            if (MatchmakingHelper.Server.GetPlayer(viewId, out NeutronPlayer nPlayer))
             {
                 using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
                 {
@@ -624,8 +623,8 @@ namespace NeutronNetwork.Server
             NeutronPlayer player = packet.Owner;
             void Run((int, int, RegisterMode) key)
             {
-                void Send() => SocketHelper.Redirect(packet, MatchmakingHelper.GetTargetTo(packet.IsServerSide), MatchmakingHelper.Tunneling(player, TunnelingTo.Auto));
-                if (MatchmakingHelper.GetNetworkObject(key, player, out NeutronView neutronView))
+                void Send() => SocketHelper.Redirect(packet, MatchmakingHelper.Internal.GetTargetTo(packet.IsServerSide), MatchmakingHelper.Internal.Tunneling(player, TunnelingTo.Auto));
+                if (MatchmakingHelper.Server.GetNetworkObject(key, player, out NeutronView neutronView))
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))
                     {

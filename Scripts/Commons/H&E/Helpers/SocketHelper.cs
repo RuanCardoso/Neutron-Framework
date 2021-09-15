@@ -22,7 +22,7 @@ namespace NeutronNetwork.Helpers
         public static bool AddPlayer(NeutronPlayer player)
         {
             return Neutron.Server.PlayersBySocket.TryAdd(player.TcpClient, player)
-                && MatchmakingHelper.AddPlayer(player);
+                && MatchmakingHelper.Internal.AddPlayer(player);
         }
 
         public static bool RemovePlayerFromServer(NeutronPlayer player)
@@ -43,12 +43,12 @@ namespace NeutronNetwork.Helpers
                     if (matchmaking != null)
                     {
                         if (matchmaking.Remove(player))
-                            MatchmakingHelper.Leave(player, leaveChannel: false);
+                            MatchmakingHelper.Internal.Leave(player, leaveChannel: false);
                         if (player.IsInChannel())
                         {
                             matchmaking = player.Matchmaking;
                             if (matchmaking.Remove(player))
-                                MatchmakingHelper.Leave(player, leaveRoom: false);
+                                MatchmakingHelper.Internal.Leave(player, leaveRoom: false);
                         }
                     }
                     else
@@ -60,7 +60,7 @@ namespace NeutronNetwork.Helpers
                     if (matchmaking != null)
                     {
                         if (matchmaking.Remove(player))
-                            MatchmakingHelper.Leave(player, leaveRoom: false);
+                            MatchmakingHelper.Internal.Leave(player, leaveRoom: false);
                     }
                 }
                 Interlocked.Decrement(ref Neutron.Server.PlayerCount);

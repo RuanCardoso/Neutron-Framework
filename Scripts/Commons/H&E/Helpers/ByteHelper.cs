@@ -1,4 +1,3 @@
-using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Packets;
 using Newtonsoft.Json;
 using System;

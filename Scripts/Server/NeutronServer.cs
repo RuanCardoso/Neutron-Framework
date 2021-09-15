@@ -69,7 +69,7 @@ namespace NeutronNetwork.Server
         private readonly NeutronBlockingQueue<NeutronPacket> _dataForProcessing = new NeutronBlockingQueue<NeutronPacket>(NeutronConstantsSettings.BOUNDED_CAPACITY);
         //* Esta fila irá fornecer um pool de ID's e atribuirá um ID único para cada cliente novo.
         //* Quando um cliente é desconectado seu ID é reutilizado sendo adicionado a fila novamente.
-        public NeutronSafeQueue<int> _pooledIds = new NeutronSafeQueue<int>();
+        public NeutronSafeQueueNonAlloc<int> _pooledIds = new NeutronSafeQueueNonAlloc<int>(0);
         #endregion
 
         #region Threading
@@ -94,7 +94,7 @@ namespace NeutronNetwork.Server
                 Player = Player
             };
 
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_NEUTRON_LAN
             Neutron.Client = Neutron;
 #endif
 
@@ -818,7 +818,7 @@ namespace NeutronNetwork.Server
         }
         #endregion
 
-        #region MonoBehaviour
+        #region Mono Behaviour
         private void Start()
         {
 #if UNITY_SERVER
@@ -841,23 +841,21 @@ namespace NeutronNetwork.Server
 #endif
         }
 
-        private async void OnApplicationQuit()
+        private void OnApplicationQuit()
         {
             using (TokenSource)
             {
                 if (Initialized)
                 {
-                    Initialized = false;
-                    TokenSource.Cancel();
-                    await Task.Delay(50);
-                    foreach (var player in PlayersById.Values)
-                    {
-                        player.TokenSource.Cancel();
-                        await Task.Delay(20);
-                        player.Dispose();
-                    }
+                    Initialized = false; //* Marca o servidor como off.
+                    TokenSource.Cancel(); //* Cancela todos os threads.
+                    //*****************************************************
+                    foreach (NeutronPlayer player in PlayersById.Values)
+                        player.Dispose(); //* Libera todos os recursos não gerenciados.
+                    //*****************************************************
                     _acceptedClients.Dispose();
                     _dataForProcessing.Dispose();
+                    //*********************************
                     TcpListener.Stop();
                 }
             }

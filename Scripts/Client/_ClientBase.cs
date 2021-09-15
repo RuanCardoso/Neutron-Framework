@@ -185,7 +185,7 @@ namespace NeutronNetwork.Client
         {
             async Task Run((int, int, RegisterMode) key) //* a key do objeto, o primeiro parâmetro é o ID do jogador ou do Objeto de Rede ou 0(se for objeto de cena), e o segundo é o ID do objeto, e o terceiro é o tipo de objeto.
             {
-                if (MatchmakingHelper.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
+                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
                 {
                     if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPCInvoker remoteProceduralCall)) //* Obtém o RPC com o ID enviado para a rede.
                     {
@@ -242,7 +242,7 @@ namespace NeutronNetwork.Client
         {
             void Run((int, int, RegisterMode) key)
             {
-                if (MatchmakingHelper.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID especificado.
+                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID especificado.
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour)) //* obtém a instância que está sincronizando os dados.
                     {
@@ -458,7 +458,7 @@ namespace NeutronNetwork.Client
             {
                 if (success && ClientMode == ClientMode.Player)
                 {
-#if !UNITY_SERVER
+#if !UNITY_SERVER && !UNITY_NEUTRON_LAN
                     NeutronModule.Chronometer.Start();
 #endif
                     SceneHelper.CreateContainer(OthersHelper.GetConstants().ContainerName, hasPhysics: Neutron.Server.ClientHasPhysics, physics: Neutron.Server.Physics);
