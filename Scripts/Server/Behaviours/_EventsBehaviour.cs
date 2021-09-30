@@ -1,10 +1,12 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
+using NeutronNetwork.Server.Internal;
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -17,11 +19,26 @@ namespace NeutronNetwork
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_EVENTS)]
     public class EventsBehaviour : MonoBehaviour
     {
+        #region Properties
+        protected virtual bool SimulateOnFixedUpdate {
+            get;
+        }
+        protected Neutron Instance {
+            get;
+            private set;
+        }
+        #endregion
+
+        #region Fields
+        private float _physicsTimer;
+        #endregion
+
         #region MonoBehaviour
         protected virtual void OnEnable()
         {
             ServerBase.OnAwake += OnServerAwake;
             ServerBase.OnCustomTunneling += OnCustomBroadcast;
+            ServerBase.OnCustomTarget += OnCustomTarget;
             ServerBase.OnMessageReceived += OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed += OnPlayerDestroyed;
@@ -35,12 +52,18 @@ namespace NeutronNetwork
             ServerBase.OnRoomPropertiesChanged += OnRoomPropertiesChanged;
             ServerBase.OnAuthentication += OnAuthentication;
             ServerBase.OnReceivePacket += OnReceivePacket;
+            //-----------------------------------------------------------------
+            NeutronServer.OnStart += OnStart;
+            //-----------------------------------------------------------------
+            PhysicsManager.OnPhysics += OnPhysics;
+            PhysicsManager.OnPhysics2D += OnPhysics2D;
         }
 
         protected virtual void OnDisable()
         {
             ServerBase.OnAwake -= OnServerAwake;
             ServerBase.OnCustomTunneling -= OnCustomBroadcast;
+            ServerBase.OnCustomTarget -= OnCustomTarget;
             ServerBase.OnMessageReceived -= OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom -= OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed -= OnPlayerDestroyed;
@@ -54,16 +77,68 @@ namespace NeutronNetwork
             ServerBase.OnRoomPropertiesChanged -= OnRoomPropertiesChanged;
             ServerBase.OnAuthentication -= OnAuthentication;
             ServerBase.OnReceivePacket -= OnReceivePacket;
+            //-----------------------------------------------------------------
+            NeutronServer.OnStart -= OnStart;
+            //-----------------------------------------------------------------
+            PhysicsManager.OnPhysics -= OnPhysics;
+            PhysicsManager.OnPhysics2D -= OnPhysics2D;
         }
 
         protected virtual void OnServerAwake()
         {
-            CreateDefaultContainer();
-            CreateDefaultChannelsContainer();
+            PhysicsManager.IsFixedUpdate = SimulateOnFixedUpdate;
+        }
+
+        protected virtual void OnStart()
+        {
+            Instance = Neutron.Server.Instance;
+            //----------------------------------
+            MakeServerContainer();
+            MakeContainerOnChannels();
         }
         #endregion
 
         #region Registered Methods
+        protected virtual void OnPhysics(PhysicsScene physicsScene)
+        {
+            if (!physicsScene.IsValid())
+                return; // do nothing if the physics Scene is not valid.
+
+            _physicsTimer += Time.deltaTime;
+
+            // Catch up with the game time.
+            // Advance the physics simulation in portions of Time.fixedDeltaTime
+            // Note that generally, we don't want to pass variable delta to Simulate as that leads to unstable results.
+            while (_physicsTimer >= Time.fixedDeltaTime)
+            {
+                _physicsTimer -= Time.fixedDeltaTime;
+                //------------------------------------------
+                physicsScene.Simulate(Time.fixedDeltaTime);
+            }
+
+            // Here you can access the transforms state right after the simulation, if needed...
+        }
+
+        protected virtual void OnPhysics2D(PhysicsScene2D physicsScene)
+        {
+            if (!physicsScene.IsValid())
+                return; // do nothing if the physics Scene is not valid.
+
+            _physicsTimer += Time.deltaTime;
+
+            // Catch up with the game time.
+            // Advance the physics simulation in portions of Time.fixedDeltaTime
+            // Note that generally, we don't want to pass variable delta to Simulate as that leads to unstable results.
+            while (_physicsTimer >= Time.fixedDeltaTime)
+            {
+                _physicsTimer -= Time.fixedDeltaTime;
+                //------------------------------------------
+                physicsScene.Simulate(Time.fixedDeltaTime);
+            }
+
+            // Here you can access the transforms state right after the simulation, if needed...
+        }
+
         protected virtual bool OnReceivePacket(Packet packet)
         {
             return true;
@@ -86,13 +161,14 @@ namespace NeutronNetwork
             LogHelper.Info($"Usando hack porraaaaaaaa -> {player.Nickname}");
         }
 
-        protected virtual bool OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
+        protected async virtual Task<bool> OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
         {
-            NeutronSchedule.ScheduleTask(() =>
+            return await NeutronSchedule.ScheduleTaskAsync(() =>
             {
-                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Player, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
+                MakeRoomContainer(room);
+                //-----------------------//
+                return true;
             });
-            return true;
         }
 
         protected virtual bool OnRoomPropertiesChanged(NeutronPlayer player, string properties)
@@ -100,7 +176,7 @@ namespace NeutronNetwork
             return true;
         }
 
-        protected virtual bool OnPlayerPropertiesChanged(NeutronPlayer player, string propertie)
+        protected virtual bool OnPlayerPropertiesChanged(NeutronPlayer player, string properties)
         {
             return true;
         }
@@ -149,53 +225,63 @@ namespace NeutronNetwork
                     return null;
             }
         }
+
+        protected virtual void OnCustomTarget(NeutronPlayer player, NeutronPacket packet, TargetTo targetTo, NeutronPlayer[] players)
+        {
+            throw new NotImplementedException("Ué cara???");
+        }
         #endregion
 
         #region Internal
-        private void CreateDefaultContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
+        private void MakeRoomContainer(NeutronRoom room)
+        {
+            //* Cria um container para a nova sala.
+            room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server._localPhysicsMode);
+            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, true, Neutron.Server.Instance);
+            SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.ID}]");
+        }
 
-        private void CreateDefaultChannelsContainer()
+        private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
+
+        private void MakeContainerOnChannels()
         {
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
-                SetOwner(channel, channel);
-                SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", channel.Player, channel.SceneView.HasPhysics, channel.SceneView.GameObjects, Neutron.Server.Physics);
-                CreateDefaultRoomsContainer(channel);
+                MakeVirtualOwner(channel, channel, null);
+                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server._localPhysicsMode);
+                if (Neutron.Server._enableActionsOnChannel)
+                {
+                    GameObject roomManager = SceneHelper.OnMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
+                    SceneHelper.MoveToContainer(roomManager, $"[Container] -> Channel[{channel.ID}]");
+                }
+                MakeContainerOnRooms(channel);
             }
         }
 
-        private void CreateDefaultRoomsContainer(NeutronChannel channel)
+        private void MakeContainerOnRooms(NeutronChannel channel)
         {
             foreach (NeutronRoom room in channel.GetRooms())
             {
-                SetOwner(room, channel, room);
-                SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", room.Player, room.SceneView.HasPhysics, room.SceneView.GameObjects, Neutron.Server.Physics);
+                MakeVirtualOwner(room, channel, room);
+                MakeRoomContainer(room);
             }
         }
 
-        private void SetOwner<T>(T matchmakingMode, NeutronChannel channel, NeutronRoom room = null) where T : INeutronMatchmaking
+        private void MakeVirtualOwner(INeutronMatchmaking matchmaking, NeutronChannel channel, NeutronRoom room)
         {
-            Type type = matchmakingMode.GetType();
-            if (matchmakingMode.Player == null)
+            if (matchmaking.Owner != null)
+                LogHelper.Error("Matchmaking already has an owner!");
+            else
             {
-                NeutronPlayer player = new NeutronPlayer
-                {
-                    IsServer = true,
-                    Nickname = "Server",
-                    ID = 0
-                };
+                //* Não pode aproveitar o Neutron.Server.Player? não, não podemos compartilhar a mesma instãncia pra vários matchmaking, um jogador só pode está em um Matchmaking ao mesmo tempo.
+                NeutronPlayer player = PlayerHelper.MakeTheServerPlayer();
                 //************************************************************************
-                if (type == typeof(NeutronChannel))
-                    player.Channel = channel;
-                else if (type == typeof(NeutronRoom))
-                {
-                    player.Channel = channel;
-                    player.Room = room;
-                }
+                player.Channel = channel;
+                player.Room = room;
                 //************************************************************************
                 player.Matchmaking = MatchmakingHelper.Matchmaking(player);
                 //************************************************************************
-                matchmakingMode.Player = player;
+                matchmaking.Owner = player; //! reforço: um jogador só pode está em um Matchmaking ao mesmo tempo.
             }
         }
 
@@ -208,12 +294,15 @@ namespace NeutronNetwork
         /// <returns></returns>
         protected bool OnAuth(NeutronPlayer user, string properties, bool status)
         {
-            using (NeutronWriter auth = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
-                auth.WritePacket((byte)Packet.AuthStatus);
-                auth.Write(properties);
-                auth.Write(status);
-                user.Write(auth);
+                NeutronStream.IWriter writer = stream.Writer;
+                //**********************************************
+                writer.WritePacket((byte)Packet.AuthStatus);
+                writer.Write(properties);
+                writer.Write(status);
+                //**********************************************
+                user.Write(writer);
             }
             return status;
         }

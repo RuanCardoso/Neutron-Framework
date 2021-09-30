@@ -1,4 +1,3 @@
-using NeutronNetwork.Internal.Packets;
 using System.Threading;
 
 namespace NeutronNetwork.Editor
@@ -8,19 +7,8 @@ namespace NeutronNetwork.Editor
         private int _bytesOutgoing;
         private int _bytesIncoming;
 
-        public void AddIncoming(int value, Packet packet = Packet.Empty)
-        {
-            if (packet == Packet.Ping || packet == Packet.TcpKeepAlive)
-                return;
-            Interlocked.Add(ref _bytesIncoming, value);
-        }
-
-        public void AddOutgoing(int value, Packet packet = Packet.Empty)
-        {
-            if (packet == Packet.Ping || packet == Packet.TcpKeepAlive)
-                return;
-            Interlocked.Add(ref _bytesOutgoing, value);
-        }
+        public void AddIncoming(int value) => Interlocked.Add(ref _bytesIncoming, value);
+        public void AddOutgoing(int value) => Interlocked.Add(ref _bytesOutgoing, value);
 
         public void Get(out int Outgoing, out int Incoming)
         {

@@ -20,7 +20,6 @@ namespace NeutronNetwork.Constants
         public SerializationMode Serialization = SerializationMode.Json;
         public CompressionMode Compression = CompressionMode.None;
         public bool NoDelay = true;
-        [ReadOnly] [AllowNesting] public bool PeerToPeer;
         [HideInInspector] public bool PerfomanceMode;
     }
 
@@ -34,36 +33,22 @@ namespace NeutronNetwork.Constants
     [Serializable]
     public class NeutronClientSettings
     {
-        [Range(0.1F, 1)] public float PingRate = 0.2F;
-        [Range(1, 60)] public float TcpKeepAlive = 5F;
+        [Range(0.1F, 5F)] public float UdpKeepAlive = 2F;
+        [Range(1F, 15F)] public float TcpKeepAlive = 5F;
+        public string SceneName = "[Container] -> Player[Main]";
     }
 
     [Serializable]
     public class NeutronConstantsSettings
     {
-        #region String's
-        public string ContainerName = "[Container] -> Player[Main]";
-        #endregion
-
         #region Integers
-        [Range(1, 1472)]
-        public int MaxUdpPacketSize = (int)(0.5 * 1024); // bytes
-        [Range(1, 65535)]
-        public int MaxTcpPacketSize = 2 * 1024; // bytes
-        [Range(1, 65535)]
-        public int TcpReceiveBufferSize = 8 * 1024; // bytes
-        [Range(1, 65535)]
-        public int TcpSendBufferSize = 8 * 1024; // bytes
-        [Range(1, 65535)]
-        public int UdpReceiveBufferSize = 8 * 1024; // bytes
-        [Range(1, 65535)]
-        public int UdpSendBufferSize = 8 * 1024; // bytes
         [Range(1, 5)]
         public int MaxConnectionsPerIp = 2;
+        [Range(1, 150)]
         public int MaxLatency = 150; // ms
-        //////////////////////////////////////////////////
+        //---------------------------------------------------
         public const int GENERATE_PLAYER_ID = 0;
-        public const int BOUNDED_CAPACITY = int.MaxValue;
+        public const int TIME_DECIMAL_PLACES = 3;
         public const int MIN_SEND_RATE = 1;
         public const int MAX_SEND_RATE = 128;
         #endregion
@@ -73,7 +58,9 @@ namespace NeutronNetwork.Constants
         #endregion
 
         #region Double's
+        [Range(0, 5)]
         public double TimeDesyncTolerance = 1D;
+        [Range(0, 1)]
         public double TimeResyncTolerance = 0.001D;
         #endregion
 
@@ -88,10 +75,8 @@ namespace NeutronNetwork.Constants
         public HeaderSizeType HeaderSize = HeaderSizeType.Short;
         #endregion
 
-        #region Bool's
-        public bool BufferedStream = false;
-        [ShowIf("BufferedStream")] [AllowNesting] public int BufferedStreamSize = 8 * 1024; // bytes
-        #endregion
+        public TcpOptions Tcp = new TcpOptions();
+        public UdpOptions Udp = new UdpOptions();
     }
 
     [Serializable]
@@ -106,5 +91,29 @@ namespace NeutronNetwork.Constants
         public HandlerOptions OnPlayerPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public HandlerOptions OnRoomPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
         public HandlerOptions OnPlayerDestroyed = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+    }
+
+    [Serializable]
+    public class TcpOptions
+    {
+        [Range(1, 65535)]
+        public int MaxTcpPacketSize = 2 * 1024; // bytes
+        [Range(1, 65535)]
+        public int TcpReceiveBufferSize = 8 * 1024; // bytes
+        [Range(1, 65535)]
+        public int TcpSendBufferSize = 8 * 1024; // bytes
+        public bool BufferedStream = false;
+        [ShowIf("BufferedStream")] [AllowNesting] public int BufferedStreamSize = 8 * 1024; // bytes
+    }
+
+    [Serializable]
+    public class UdpOptions
+    {
+        [Range(1, 1472)]
+        public int MaxUdpPacketSize = (int)(0.5 * 1024); // bytes
+        [Range(1, 65535)]
+        public int UdpReceiveBufferSize = 8 * 1024; // bytes
+        [Range(1, 65535)]
+        public int UdpSendBufferSize = 8 * 1024; // bytes
     }
 }

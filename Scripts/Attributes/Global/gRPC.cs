@@ -10,19 +10,53 @@ using System;
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* É Usado para a comunicação geral, ex: Eventos, Criação de objetos.....etc.<br/>
-    ///* É usado por instâncias globais, isto é, não pode existir em objetos de rede, funciona mas como um metódo estático/global.
+    ///* É Usado para a comunicação geral, ex: Eventos, Chat, Criação de objetos.....etc.<br/>
+    ///* É usado por instâncias globais, isto é, funciona mas como um metódo estático/global.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 #pragma warning disable IDE1006
     public class gRPC : Attribute
 #pragma warning restore IDE1006
     {
-        public byte ID { get; set; }
-        public bool FirstValidation { get; set; }
-        public CacheMode Cache { get; set; }
-        public TargetTo TargetTo { get; set; }
-        public TunnelingTo TunnelingTo { get; set; }
+        /// <summary>
+        ///* Id globalmente exclusivo para a identificação do metódo na rede.
+        /// </summary>
+        public byte ID {
+            get;
+            set;
+        }
+
+        /// <summary>
+        ///* Se verdadeiro, o servidor executa o metódo antes de redirecionar em rede, se falso, o redirecionamento é feito antes da execução do metódo no servidor.
+        /// </summary>
+        public bool FirstValidation {
+            get;
+            set;
+        }
+
+        /// <summary>
+        ///* Defina como o metódo será "cachado" no servidor.
+        /// </summary>
+        public CacheMode Cache {
+            get;
+            set;
+        }
+
+        /// <summary>
+        ///* Defina para quem os dados devem ser redirecionados.
+        /// </summary>
+        public TargetTo TargetTo {
+            get;
+            set;
+        }
+
+        /// <summary>
+        ///* Defina o túnel que será usado para redirecionar os dados.
+        /// </summary>
+        public TunnelingTo TunnelingTo {
+            get;
+            set;
+        }
 
         public gRPC()
         { }

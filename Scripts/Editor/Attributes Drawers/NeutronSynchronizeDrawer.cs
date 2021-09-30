@@ -2,7 +2,7 @@ using NeutronNetwork;
 using UnityEditor;
 using UnityEngine;
 
-[CustomPropertyDrawer(typeof(SyncAttribute), true)]
+[CustomPropertyDrawer(typeof(SyncVarAttribute), true)]
 public class NeutronSynchronizeDrawer : PropertyDrawer
 {
     private Texture2D m_Texture = new Texture2D(4, 4);

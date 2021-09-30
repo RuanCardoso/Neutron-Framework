@@ -10,9 +10,9 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* Define se um campo é serializado e sincronizado via rede.
+    ///* Defina para serializar um campo ou propriedade via rede.<br/>
     /// </summary>
-    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
-    public class SyncAttribute : PropertyAttribute
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public class SyncVarAttribute : PropertyAttribute
     { }
 }

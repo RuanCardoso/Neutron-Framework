@@ -1,10 +1,12 @@
 using NeutronNetwork.Extensions;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
 using NeutronNetwork.Server.Internal;
+using System;
 using System.Linq;
 
 namespace NeutronNetwork.Helpers
@@ -20,17 +22,17 @@ namespace NeutronNetwork.Helpers
         public static class Internal
         {
             /// <summary>
-            ///* Disponível somente ao lado do servidor.<br/>
             ///* Recomendado o uso dos pré-processadores #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN<br/>
             /// </summary>
             [Internal]
             [ThreadSafe]
-            public static void Leave(NeutronPlayer player, bool leaveRoom = true, bool leaveChannel = true)
+            public static void Leave(NeutronPlayer player, MatchmakingMode matchmakingMode)
             {
-                if (leaveChannel)
+                if (matchmakingMode == MatchmakingMode.Channel)
                     player.Channel = null;
-                if (leaveRoom)
+                if (matchmakingMode == MatchmakingMode.Room)
                     player.Room = null;
+                //******************************************
                 player.Matchmaking = Matchmaking(player);
             }
 
@@ -62,7 +64,7 @@ namespace NeutronNetwork.Helpers
             /// </summary>
             [Internal]
             [ThreadSafe]
-            public static void AddCache(int id, int viewId, NeutronWriter writer, NeutronPlayer player, CacheMode cache, CachedPacket cachedPacket)
+            public static void AddCache(int id, int viewId, NeutronStream.IWriter writer, NeutronPlayer player, CacheMode cache, CachedPacket cachedPacket)
             {
                 if (cache != CacheMode.None)
                 {
@@ -73,7 +75,7 @@ namespace NeutronNetwork.Helpers
                         neutronMatchmaking.Add(dataCache, viewId);
                     }
                     else
-                        LogHelper.Error("Cache -> Invalid matchmaking");
+                        LogHelper.Error("Cache: Matchmaking not found!");
                 }
             }
 
@@ -98,20 +100,16 @@ namespace NeutronNetwork.Helpers
                             if (player.IsInChannel())
                                 return player.Channel.Players();
                             else
-                            {
-                                player.Message(Packet.Empty, "Failed to direct packet, channel not found. Join a channel before sending the packet.");
-                                return null;
-                            }
+                                LogHelper.Error("Failed to direct packet, channel not found. Join a channel before sending the packet.");
+                            return default;
                         }
                     case TunnelingTo.Room:
                         {
                             if (player.IsInRoom())
                                 return player.Room.Players();
                             else
-                            {
-                                player.Message(Packet.Empty, "Failed to direct packet, room not found. Join a room before sending the packet.");
-                                return null;
-                            }
+                                LogHelper.Error("Failed to direct packet, room not found. Join a room before sending the packet.");
+                            return default;
                         }
                     case TunnelingTo.Auto:
                         {
@@ -124,6 +122,95 @@ namespace NeutronNetwork.Helpers
                     default:
                         return ServerBase.OnCustomTunneling?.Invoke(player, tunnelingTo);
                 }
+            }
+
+            /// <summary>
+            ///* Recomendado o uso dos pré-processadores #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
+            /// </summary>
+            [Internal]
+            [ThreadSafe]
+            public static void Redirect(NeutronPacket packet, TargetTo targetTo, NeutronPlayer[] players)
+            {
+                switch (targetTo)
+                {
+                    case TargetTo.Me:
+                        {
+                            if (!packet.Owner.IsServerPlayer)
+                                Neutron.Server.OnSendingData(packet.Owner, packet);
+                            else
+                                throw new Exception("The Server cannot transmit data to itself.");
+                        }
+                        break;
+                    case TargetTo.Server:
+                        //* Servidor não redireciona pacote, somente ele recebe (:
+                        //* Redirecionamento manual?
+                        break;
+                    case TargetTo.All:
+                        {
+                            for (int i = 0; i < players.Length; i++)
+                                Neutron.Server.OnSendingData(players[i], packet);
+                        }
+                        break;
+                    case TargetTo.Others:
+                        {
+                            for (int i = 0; i < players.Length; i++)
+                            {
+                                if (players[i].Equals(packet.Owner))
+                                    continue;
+                                Neutron.Server.OnSendingData(players[i], packet);
+                            }
+                        }
+                        break;
+                    default:
+                        ServerBase.OnCustomTarget?.Invoke(packet.Owner, packet, targetTo, players);
+                        break;
+                }
+                packet.Recycle();
+            }
+
+            /// <summary>
+            ///* Recomendado o uso dos pré-processadores #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
+            /// </summary>
+            [Internal]
+            [ThreadSafe]
+            public static void Redirect(NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, TargetTo targetTo, byte[] buffer, NeutronPlayer[] players)
+            {
+                NeutronPacket packet = new NeutronPacket(buffer, owner, sender, protocol);
+                switch (targetTo)
+                {
+                    case TargetTo.Me:
+                        {
+                            if (!owner.IsServerPlayer)
+                                Neutron.Server.OnSendingData(owner, packet);
+                            else
+                                throw new Exception("The Server cannot transmit data to itself.");
+                        }
+                        break;
+                    case TargetTo.Server:
+                        //* Servidor não redireciona pacote, somente ele recebe (:
+                        //* Redirecionamento manual?
+                        break;
+                    case TargetTo.All:
+                        {
+                            for (int i = 0; i < players.Length; i++)
+                                Neutron.Server.OnSendingData(players[i], packet);
+                        }
+                        break;
+                    case TargetTo.Others:
+                        {
+                            for (int i = 0; i < players.Length; i++)
+                            {
+                                if (players[i].Equals(owner))
+                                    continue;
+                                Neutron.Server.OnSendingData(players[i], packet);
+                            }
+                        }
+                        break;
+                    default:
+                        ServerBase.OnCustomTarget?.Invoke(owner, packet, targetTo, players);
+                        break;
+                }
+                packet.Recycle();
             }
         }
         /// <summary>
@@ -179,7 +266,7 @@ namespace NeutronNetwork.Helpers
                 view = null;
                 INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
                 if (neutronMatchmaking != null)
-                    return neutronMatchmaking.SceneView.Views.TryGetValue(id, out view);
+                    return neutronMatchmaking.Views.TryGetValue(id, out view);
                 else
                     return false;
             }
@@ -200,6 +287,15 @@ namespace NeutronNetwork.Helpers
             }
             else
                 return null;
+        }
+
+        /// <summary>
+        ///* Remove todos os objetos de rede do jogador.
+        /// </summary>
+        public static void Destroy(NeutronPlayer player)
+        {
+            var @event = player.OnDestroy;
+            @event?.Invoke();
         }
     }
 }

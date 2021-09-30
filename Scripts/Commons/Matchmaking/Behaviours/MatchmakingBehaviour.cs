@@ -1,5 +1,6 @@
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Packets;
@@ -34,7 +35,6 @@ namespace NeutronNetwork.Internal
         [SerializeField] private string _properties = "{\"Neutron\":\"Neutron\"}";
         [HorizontalLine]
         [SerializeField] private PlayerDictionary _players = new PlayerDictionary();
-        [SerializeField] private SceneView _sceneView = new SceneView();
         #endregion
 
         #region Properties
@@ -70,13 +70,17 @@ namespace NeutronNetwork.Internal
         [Network("Serialized")]
         public string Properties {
             get => _properties;
-            set => _properties = value;
+            set {
+                _properties = value;
+                //*********************************
+                Get = JObject.Parse(value);
+            }
         }
 
         /// <summary>
         ///* O jogador dono do atual Matchmaking.
         /// </summary>
-        public NeutronPlayer Player {
+        public NeutronPlayer Owner {
             get;
             set;
         }
@@ -84,15 +88,16 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* O SceneView do atual Matchmaking.
         /// </summary>
-        public SceneView SceneView {
-            get => _sceneView;
-        }
+        public NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views {
+            get;
+        } = new NeutronSafeDictionary<(int, int, RegisterMode), NeutronView>();
 
         /// <summary>
         ///* As propriedades do atual Matchmaking.
         /// </summary>
         public JObject Get {
             get;
+            private set;
         } = new JObject();
 
         /// <summary>
@@ -108,6 +113,14 @@ namespace NeutronNetwork.Internal
         private PlayerDictionary PlayerDictionary {
             get => _players;
         }
+
+        /// <summary>
+        ///* Obtém o gerenciador de física do Matchmaking.
+        /// </summary>
+        public PhysicsManager PhysicsManager {
+            get;
+            set;
+        }
         #endregion
 
         public MatchmakingBehaviour() { } //* the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
@@ -117,8 +130,6 @@ namespace NeutronNetwork.Internal
             Name = roomName;
             MaxPlayers = maxPlayers;
             Properties = properties;
-            //*********************************************
-            Get = JObject.Parse(Properties);
         }
 
         public MatchmakingBehaviour(SerializationInfo info, StreamingContext context)
@@ -126,10 +137,12 @@ namespace NeutronNetwork.Internal
             Name = info.GetString("name");
             MaxPlayers = info.GetInt32("maxPlayers");
             Properties = info.GetString("properties");
+            Owner = new NeutronPlayer()
+            {
+                ID = info.GetInt32("owner")
+            };
             //*********************************************
             _playerCount = info.GetInt32("playerCount");
-            //*********************************************
-            Get = JObject.Parse(Properties);
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -138,6 +151,7 @@ namespace NeutronNetwork.Internal
             info.AddValue("playerCount", PlayerCount);
             info.AddValue("maxPlayers", MaxPlayers);
             info.AddValue("properties", Properties);
+            info.AddValue("owner", Owner.ID);
         }
 
         public bool Add(NeutronPlayer player)
@@ -189,6 +203,19 @@ namespace NeutronNetwork.Internal
             return TryValue;
         }
 
+        /// <summary>
+        ///* Reseta o estado do Matchmaking.
+        /// </summary>
+        public void Clear()
+        {
+            //* Limpa todo o cache do matchmaking.
+            CachedPackets.Clear();
+            //* Destroí todos os objetos de rede do matchmaking.
+            foreach (NeutronView view in Views.Values.ToArray())
+                view.Destroy();
+            Views.Clear();
+        }
+
         public NeutronPlayer[] Players()
         {
             return PlayerDictionary.Values.ToArray();
@@ -210,7 +237,6 @@ namespace NeutronNetwork.Internal
             Title = _name;
 #endif
         }
-
         public virtual void OnAfterDeserialize()
         {
 #if UNITY_EDITOR

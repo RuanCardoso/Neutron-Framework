@@ -11,8 +11,14 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties
-        public static float Fps { get; set; }
-        public static float Ms { get; set; }
+        public static float Fps {
+            get;
+            private set;
+        }
+        public static float Ms {
+            get;
+            private set;
+        }
         #endregion
 
         private void Update()
@@ -22,8 +28,8 @@ namespace NeutronNetwork
 
             if (_deltaTime > 1f / _updateRate)
             {
-                Fps = _frameCount / _deltaTime;
-                Ms = _deltaTime / _frameCount * 1000f;
+                Fps = Mathf.Round(_frameCount / _deltaTime);
+                Ms = Mathf.Round(_deltaTime / _frameCount * 1000f);
 
                 _deltaTime = 0f;
                 _frameCount = 0;

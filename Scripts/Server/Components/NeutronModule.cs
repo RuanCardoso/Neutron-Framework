@@ -3,7 +3,6 @@ using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using System;
-using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
@@ -14,20 +13,42 @@ namespace NeutronNetwork
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CONFIG)]
     public class NeutronModule : MonoBehaviour
     {
-        public static Stopwatch Chronometer = new Stopwatch();
-
         #region Properties
-        public static Settings Settings { get; set; }
-        public static Synchronization Synchronization { get; set; }
-        public static Encoding Encoding { get; set; }
-        public static int HeaderSize { get; set; }
+        public static Settings Settings {
+            get;
+            private set;
+        }
+        public static Synchronization Synchronization {
+            get;
+            private set;
+        }
+        public static Encoding Encoding {
+            get;
+            private set;
+        }
+        public static int HeaderSize {
+            get;
+            private set;
+        }
         #endregion
 
         #region Properties -> Events
-        public static NeutronEventNoReturn OnUpdate { get; set; }
-        public static NeutronEventNoReturn OnFixedUpdate { get; set; }
-        public static NeutronEventNoReturn OnLateUpdate { get; set; }
-        public static NeutronEventNoReturn<Settings> OnLoadSettings { get; set; }
+        public static NeutronEventNoReturn OnUpdate {
+            get;
+            set;
+        }
+        public static NeutronEventNoReturn OnFixedUpdate {
+            get;
+            set;
+        }
+        public static NeutronEventNoReturn OnLateUpdate {
+            get;
+            set;
+        }
+        public static NeutronEventNoReturn<Settings> OnLoadSettings {
+            get;
+            set;
+        }
         #endregion
 
         #region Fields
@@ -39,22 +60,21 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             CreateLogDelegate();
 #endif
-#if UNITY_SERVER || UNITY_NEUTRON_LAN
-            Chronometer.Start();
-#endif
             LoadSettings();
-            LoadSynchronization();
+            LoadSynchronizationSettings();
             InitializePools();
         }
 
         private void Start()
         {
-            Framerate();
+            SetFramerate();
+            //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
+            Physics.autoSimulation = false;
+            Physics2D.simulationMode = SimulationMode2D.Script;
         }
 
         private void Update()
         {
-            Neutron.Time = Chronometer.Elapsed.TotalSeconds + Neutron.DiffTime;
 #if UNITY_EDITOR
             if (Settings.GlobalSettings.PerfomanceMode)
                 UnityEditor.Selection.activeGameObject = null;
@@ -77,7 +97,7 @@ namespace NeutronNetwork
             DontDestroyOnLoad(transform.root);
         }
 
-        private void Framerate()
+        private void SetFramerate()
         {
             _framerate = Settings.GlobalSettings.FPS;
             if (_framerate > 0)
@@ -91,21 +111,14 @@ namespace NeutronNetwork
         {
             int maxCapacity = Settings.GlobalSettings.StreamPoolCapacity;
             int maxCapacityPackets = Settings.GlobalSettings.PacketPoolCapacity;
-            Neutron.PooledNetworkWriters = new NeutronPool<NeutronWriter>(() => new NeutronWriter(), maxCapacity, false, "Neutron Writers");
-            Neutron.PooledNetworkReaders = new NeutronPool<NeutronReader>(() => new NeutronReader(), maxCapacity, false, "Neutron Readers");
+            //*********************************************************************************************************************************
             Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true), maxCapacity, false, "Neutron Streams");
             Neutron.PooledNetworkPackets = new NeutronPool<NeutronPacket>(() => new NeutronPacket(), maxCapacityPackets, false, "Neutron Packets");
+            //*********************************************************************************************************************************
             for (int i = 0; i < maxCapacity; i++)
-            {
-                Neutron.PooledNetworkWriters.Push(new NeutronWriter());
-                Neutron.PooledNetworkReaders.Push(new NeutronReader());
                 Neutron.PooledNetworkStreams.Push(new NeutronStream(true));
-            }
-
             for (int i = 0; i < maxCapacityPackets; i++)
-            {
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
-            }
         }
 
         private void LoadSettings()
@@ -121,6 +134,7 @@ namespace NeutronNetwork
                 else
                 {
                     OnLoadSettings?.Invoke(Settings);
+                    //****************************************
                     switch (Settings.NetworkSettings.Encoding)
                     {
                         case EncodingType.ASCII:
@@ -158,12 +172,13 @@ namespace NeutronNetwork
                             HeaderSize = sizeof(int);
                             break;
                     }
-                    StateObject.Size = OthersHelper.GetConstants().MaxUdpPacketSize;
+                    //*************************************************************
+                    StateObject.Size = Helper.GetConstants().Udp.MaxUdpPacketSize;
                 }
             }
         }
 
-        private void LoadSynchronization()
+        private void LoadSynchronizationSettings()
         {
             if (Synchronization == null)
             {
@@ -186,10 +201,7 @@ namespace NeutronNetwork
         }
 #endif
 
-        public static void SetPassword(string password)
-        {
-            PassPhrase = password;
-        }
+        public static void SetPassword(string password) => PassPhrase = password;
 
         #region Log
         private void CreateLogDelegate()

@@ -11,6 +11,7 @@ namespace NeutronNetwork.Internal.Interfaces
         Int32 Read7BitEncodedInt();
         T[] ReadArray<T>(Int32 sizeOf, Int32 length);
         Byte ReadByte();
+        Boolean ReadBool();
         Byte[] ReadByteExactly();
         Byte[] ReadByteExactly(out Byte size);
         T ReadByteExactly<T>();
@@ -23,7 +24,7 @@ namespace NeutronNetwork.Internal.Interfaces
         Byte[] ReadIntExactly(out Int32 size);
         T ReadIntExactly<T>();
         Byte[] ReadNextBytes(Int32 size);
-        byte ReadPacket();
+        Byte ReadPacket();
         Quaternion ReadQuaternion();
         Int16 ReadShort();
         Byte[] ReadShortExactly();

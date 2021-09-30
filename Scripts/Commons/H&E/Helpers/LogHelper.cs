@@ -1,4 +1,3 @@
-using NeutronNetwork.Internal.Components;
 using System;
 using UnityEngine;
 
@@ -9,7 +8,7 @@ namespace NeutronNetwork
         public static Action<string, string, int, int> LogErrorWithoutStackTrace;
         public static void Info(object message)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             Console.WriteLine(message);
 #else
             Debug.Log(message);
@@ -18,7 +17,7 @@ namespace NeutronNetwork
 
         public static bool Info(object message, object obj)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             if (obj == null)
             {
                 Console.WriteLine(message);
@@ -39,7 +38,7 @@ namespace NeutronNetwork
 
         public static bool Error(object message)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             Console.WriteLine(message);
 #else
             Debug.LogError(message);
@@ -49,7 +48,7 @@ namespace NeutronNetwork
 
         public static bool Error(object message, object obj)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             if (obj == null)
             {
                 Console.WriteLine(message);
@@ -70,7 +69,7 @@ namespace NeutronNetwork
 
         public static void Warn(object message)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             Console.WriteLine(message);
 #else
             Debug.LogWarning(message);
@@ -79,7 +78,7 @@ namespace NeutronNetwork
 
         public static bool Warn(object message, object obj)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             if (obj == null)
             {
                 Console.WriteLine(message);
@@ -100,14 +99,14 @@ namespace NeutronNetwork
 
         public static void PrintInline(object message, string prefix)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             Console.Write("\r{0}{1}", message, prefix);
 #endif
         }
 
         public static bool ErrorWithoutStackTrace(object message)
         {
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
             Console.WriteLine(message);
 #else
             if (LogErrorWithoutStackTrace != null)

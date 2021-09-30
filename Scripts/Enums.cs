@@ -11,16 +11,8 @@ using System;
 namespace NeutronNetwork.Packets
 {
     /// <summary>
-    ///* Define pacotes personalizados para extender o Neutron com funcionalidades proprias.
-    /// </summary>
-    [Network]
-    public enum CustomPacket : byte
-    {
-        [Obsolete("Do not use this packet, it is only for testing (:", true)] CustomTest,
-    }
-
-    /// <summary>
-    ///* Define os alvos de recepção do pacote.
+    ///* Define os alvos de recepção do pacote.<br/>
+    ///* Você pode criar alvos personalizados(OnCustomTarget).
     /// </summary>
     [Network]
     public enum TargetTo : byte
@@ -51,7 +43,6 @@ namespace NeutronNetwork.Packets
     {
         Room,
         Channel,
-        Group
     }
 
     /// <summary>
@@ -61,21 +52,37 @@ namespace NeutronNetwork.Packets
     public enum ChatMode : byte
     {
         /// <summary>
-        ///* Envia uma mensagem de chat global, isto inclui todos os canais, salas e grupos.
+        ///* Envia uma mensagem global, isto inclui todos os canais e salas.
         /// </summary>
         Global,
         /// <summary>
-        ///* Envia uma mensagem de chat para um jogador específico.
+        ///* Envia uma mensagem para um jogador específico.
         /// </summary>
         Private,
     }
 
+    /// <summary>
+    ///* Define o pacote a ser obtido do cache.
+    /// </summary>
     [Network]
     public enum CachedPacket : byte
     {
+        /// <summary>
+        ///* Obtém todos ou um pacote específico do cache gRPC.
+        /// </summary>
         gRPC = 255,
+        /// <summary>
+        ///* Obtém todos ou um pacote específico do cache iRPC.
+        /// </summary>
         iRPC = 254,
+        /// <summary>
+        ///* Obtém todos ou um pacote específico do cache Custom.
+        /// </summary>
         Custom = 253,
+        /// <summary>
+        ///* Obtém todos os pacotes do Cache.
+        /// </summary>
+        All = 100,
     }
 
     /// <summary>
@@ -89,29 +96,21 @@ namespace NeutronNetwork.Packets
         /// </summary>
         Me,
         /// <summary>
-        ///* Tunela os dados no servidor, isto inclui todos os canais, salas e grupos.
+        ///* Tunela os dados no servidor, isto inclui todos os canais e salas.
         /// </summary>
         Server,
         /// <summary>
-        ///* Tunela os dados no canal, isto inclui as salas e grupos que pertencem ao canal.
+        ///* Tunela os dados no canal, isto inclui as salas que pertencem ao canal.
         /// </summary>
         Channel,
         /// <summary>
-        ///* Tunela os dados na sala, isto inclui os grupos que pertencem a sala.
+        ///* Tunela os dados na sala.
         /// </summary>
         Room,
-        /// <summary>
-        ///* Tunela os dados no grupo.
-        /// </summary>
-        Group,
         /// <summary>
         ///* Define automaticamente onde os dados devem ser tunelados.
         /// </summary>
         Auto,
-        //======================================================
-        // - CUSTOM PACKETS ADD HERE.
-        //======================================================
-        [Obsolete("Do not use this packet, it is only for testing (:", true)] CustomTest,
     }
 
     /// <summary>
@@ -126,11 +125,11 @@ namespace NeutronNetwork.Packets
         Tcp,
         /// <summary>
         ///* Transmissão não confiável e não ordenada.<br/>
-        ///! Em breve dará suporte a transmissão confiável e ordenada(RUDP).
         /// </summary>
         Udp,
         /// <summary>
-        /// 
+        ///* Transmissão confiável e ordenada.<br/>
+        ///* Em breve.
         /// </summary>
         ReliableUdp
     }
@@ -150,9 +149,17 @@ namespace NeutronNetwork.Packets
         /// </summary>
         Overwrite,
         /// <summary>
-        ///* É criado um novo cache para armazenar os dados.
+        ///* É criado um novo cache para armazenar os novos dados.
         /// </summary>
-        New
+        New,
+        /// <summary>
+        ///* O cache é substituído pelos dados mas recentes, persistente, isto é, o cache só é removido após a destruição do matchmaking.
+        /// </summary>
+        PersistentOverwrite,
+        /// <summary>
+        ///* É criado um novo cache para armazenar os novos dados, persistente, isto é, o cache só é removido após a destruição do matchmaking.
+        /// </summary>
+        PersistentNew
     }
 }
 
@@ -163,29 +170,29 @@ namespace NeutronNetwork.Internal.Packets
     public enum Packet : byte
     {
         Empty,
-        TcpKeepAlive,
         Handshake,
-        NewPlayer,
+        Nickname,
+        AuthStatus,
+        TcpKeepAlive,
+        UdpKeepAlive,
         Disconnection,
         iRPC,
         gRPC,
+        AutoSync,
+        CustomPacket,
         JoinChannel,
-        JoinRoom,
-        Leave,
-        CreateRoom,
-        Chat,
         GetChannels,
-        GetChached,
         GetRooms,
-        Fail,
-        DestroyPlayer,
-        Nickname,
+        GetCache,
+        JoinRoom,
+        CreateRoom,
         SetPlayerProperties,
         SetRoomProperties,
-        Ping,
-        CustomPacket,
-        OnAutoSync,
-        AuthStatus
+        Leave,
+        Synchronize,
+        Chat,
+        Destroy,
+        Error,
     }
 
     /// <summary>

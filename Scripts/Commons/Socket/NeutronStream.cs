@@ -1,5 +1,4 @@
 using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using System;
@@ -11,21 +10,35 @@ namespace NeutronNetwork
     public class NeutronStream : IDisposable
     {
         public static NeutronStream Empty = new NeutronStream();
-        public IWriter Writer { get; }
-        public IReader Reader { get; }
-        public bool IsRecyclable { get; }
-        public bool IsFixedSize { get; }
+        public IWriter Writer {
+            get;
+        }
+        public IWriter HeaderWriter {
+            get;
+        }
+        public IReader Reader {
+            get;
+        }
+        public bool IsRecyclable {
+            get;
+        }
+        public bool IsFixedSize {
+            get;
+        }
 
         public NeutronStream()
         {
             Writer = new IWriter();
             Reader = new IReader();
+            HeaderWriter = new IWriter();
         }
 
         public NeutronStream(int capacity)
         {
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
+            HeaderWriter = new IWriter(capacity);
+            //************************************
             IsFixedSize = capacity > 0;
         }
 
@@ -33,6 +46,8 @@ namespace NeutronNetwork
         {
             Writer = new IWriter();
             Reader = new IReader();
+            HeaderWriter = new IWriter();
+            //*****************************
             IsRecyclable = isRecyclable;
         }
 
@@ -40,14 +55,13 @@ namespace NeutronNetwork
         {
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
+            HeaderWriter = new IWriter(capacity);
+            //************************************
             IsRecyclable = isRecyclable;
             IsFixedSize = capacity > 0;
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-        }
+        public void Dispose() => Dispose(true);
 
         private bool _disposing;
         private void Dispose(bool disposing)
@@ -61,13 +75,15 @@ namespace NeutronNetwork
                     {
                         Writer.Close();
                         Reader.Close();
-                        //****************
+                        HeaderWriter.Close();
+                        //********************
                         _disposing = true;
                     }
                     else
                     {
                         Writer.Clear();
                         Reader.Clear();
+                        HeaderWriter.Clear();
                         //****************************************
                         Neutron.PooledNetworkStreams.Push(this);
                     }
@@ -134,7 +150,7 @@ namespace NeutronNetwork
 
             public void WriteSize(byte[] buffer)
             {
-                switch (OthersHelper.GetConstants().HeaderSize)
+                switch (Helper.GetConstants().HeaderSize)
                 {
                     case HeaderSizeType.Byte:
                         WriteByteExactly(buffer);
@@ -223,6 +239,11 @@ namespace NeutronNetwork
             public void Write(byte value)
             {
                 _stream.WriteByte(value);
+            }
+
+            public void Write(bool value)
+            {
+                _stream.WriteByte((byte)(value ? 1 : 0));
             }
 
             public void Write(byte[] buffer)
@@ -315,9 +336,17 @@ namespace NeutronNetwork
                 SetPosition(0);
             }
 
+            public void Finish()
+            {
+                if (!IsFixedSize())
+                    EndWrite();
+                else
+                    EndWriteWithFixedCapacity();
+            }
+
             public byte[] ToArray()
             {
-                if (!_isFixedSize)
+                if (!IsFixedSize())
                     return _stream.ToArray();
                 else
                     return GetBuffer();
@@ -431,7 +460,7 @@ namespace NeutronNetwork
             public byte[] ReadSize(out int size)
             {
                 size = 0;
-                switch (OthersHelper.GetConstants().HeaderSize)
+                switch (Helper.GetConstants().HeaderSize)
                 {
                     case HeaderSizeType.Byte:
                         {
@@ -513,6 +542,11 @@ namespace NeutronNetwork
             public byte ReadByte()
             {
                 return (byte)_stream.ReadByte();
+            }
+
+            public bool ReadBool()
+            {
+                return ReadByte() != 0;
             }
 
             public byte[] ReadBytes(int size)

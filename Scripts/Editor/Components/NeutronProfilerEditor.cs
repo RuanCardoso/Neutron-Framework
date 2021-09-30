@@ -1,3 +1,4 @@
+using NeutronNetwork.Constants;
 using NeutronNetwork.Editor;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Components;
@@ -6,7 +7,9 @@ using UnityEngine;
 
 public class NeutronProfilerEditor : EditorWindow
 {
-    #region Client;
+    private GUIStyle _textAreaStyle;
+
+    #region Client
     private int m_ClientBytesOutgoingTCP;
     private int m_ClientBytesIncomingTCP;
 
@@ -14,7 +17,7 @@ public class NeutronProfilerEditor : EditorWindow
     private int m_ClientBytesIncomingUDP;
     #endregion
 
-    #region Server;
+    #region Server
     private int m_ServerBytesOutgoingTCP;
     private int m_ServerBytesIncomingTCP;
 
@@ -28,8 +31,8 @@ public class NeutronProfilerEditor : EditorWindow
         EditorWindow Window = GetWindow(typeof(NeutronProfilerEditor), true, "Profiler");
         if (Window != null)
         {
-            Window.maxSize = new Vector2(480, 220);
-            Window.minSize = new Vector2(480, 220);
+            Window.maxSize = new Vector2(480, 435);
+            Window.minSize = new Vector2(480, 435);
         }
     }
 
@@ -47,11 +50,35 @@ public class NeutronProfilerEditor : EditorWindow
 
     private void OnGUI()
     {
+        #region Style
+        if (_textAreaStyle == null)
+        {
+            _textAreaStyle = new GUIStyle(GUI.skin.window)
+            {
+                wordWrap = true,
+                richText = true,
+                fontSize = 14,
+            };
+        }
+        #endregion
+
         #region Windows
         BeginWindows();
-        GUILayout.Window(1, new Rect(5, 5, 230, 200), DrawClientStatistics, "Client");
-        GUILayout.Window(2, new Rect(245, 5, 230, 200), DrawServerStatistics, "Server");
+        Rect window = new Rect(5, 5, 230, 200);
+        window = GUILayout.Window(1, window, DrawClientStatistics, "Client");
+        window.x += (window.x + window.y) + window.width;
+        window = GUILayout.Window(2, window, DrawServerStatistics, "Server");
         EndWindows();
+        #endregion
+
+        #region About
+        window.x = 5;
+        window.y += window.height + 5;
+        window.width = (window.width * 2) + 10;
+        window.height += 15;
+        GUI.TextArea(window, $"<b><i>Bandwidth usage:</i></b>\r\n<i>AutoSync</i> = ({PacketSize.AutoSync}) Bytes + [parameters] + [header]\r\n<i>gRPC</i> = ({PacketSize.gRPC}) Bytes + [parameters] + [header]\r\n<i>iRPC</i> = ({PacketSize.iRPC}) Bytes + [parameters] + [header]" +
+        $"\r\n\r\n<b><i>Header:</i></b>\r\n<i>Client-Side</i> = (1 Byte, 2 Bytes or 4 Bytes)\r\n<i>Server-Side</i> = (1 Byte, 2 Bytes or 4 Bytes) + [2 Bytes]" +
+        $"\r\n\r\n<b><i>The default header size is short (2 bytes).\r\nI'm working to further reduce bandwidth usage (:.</i></b>", _textAreaStyle);
         #endregion
     }
 
@@ -65,16 +92,16 @@ public class NeutronProfilerEditor : EditorWindow
         EditorGUILayout.LabelField("TCP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {OthersHelper.SizeSuffix(m_ClientBytesIncomingTCP)} | [{OthersHelper.SizeSuffix(m_ClientBytesIncomingTCP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {OthersHelper.SizeSuffix(m_ClientBytesOutgoingTCP)} | [{OthersHelper.SizeSuffix(m_ClientBytesOutgoingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ClientBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ClientBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingTCP, 2, 4)}]");
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
         #region Header
         EditorGUILayout.LabelField("UDP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {OthersHelper.SizeSuffix(m_ClientBytesIncomingUDP)} | [{OthersHelper.SizeSuffix(m_ClientBytesIncomingUDP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {OthersHelper.SizeSuffix(m_ClientBytesOutgoingUDP)} | [{OthersHelper.SizeSuffix(m_ClientBytesOutgoingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ClientBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ClientBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingUDP, 2, 4)}]");
     }
 
     private void DrawServerStatistics(int unusedWindowID)
@@ -87,16 +114,16 @@ public class NeutronProfilerEditor : EditorWindow
         EditorGUILayout.LabelField("TCP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {OthersHelper.SizeSuffix(m_ServerBytesIncomingTCP)} | [{OthersHelper.SizeSuffix(m_ServerBytesIncomingTCP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {OthersHelper.SizeSuffix(m_ServerBytesOutgoingTCP)} | [{OthersHelper.SizeSuffix(m_ServerBytesOutgoingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ServerBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ServerBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingTCP, 2, 4)}]");
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
         #region Header
         EditorGUILayout.LabelField("UDP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {OthersHelper.SizeSuffix(m_ServerBytesIncomingUDP)} | [{OthersHelper.SizeSuffix(m_ServerBytesIncomingUDP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {OthersHelper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{OthersHelper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ServerBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}]");
     }
 
     private void OnChanged(InOutData[] nProfilers)

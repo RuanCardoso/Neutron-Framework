@@ -1,9 +1,12 @@
-﻿using NeutronNetwork.Helpers;
+﻿using NeutronNetwork.Client.Internal;
+using NeutronNetwork.Extensions;
+using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
+using NeutronNetwork.Server.Internal;
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -19,21 +22,87 @@ namespace NeutronNetwork.Client
 {
     public class ClientBase : ClientBehaviour
     {
-        short _objectSpawnid;
-        //* Define quando o cliente está pronto para uso.
-        protected bool IsReady { get; set; }
+        #region Fields
+        private GameObject _matchManager;
+        public string _sceneName;
+        #endregion
+
+        #region Properties
         //* Obtém a instância de Neutron, classe derivada.
-        protected Neutron This { get; set; }
+        protected Neutron This {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        ///* Obtém o gerenciador de física.
+        /// </summary>
+        public PhysicsManager PhysicsManager {
+            get;
+            protected set;
+        }
+
         //* Mantém o estado do jogador.
-        protected StateObject StateObject { get; set; }
+        protected StateObject StateObject {
+            get;
+        } = new StateObject();
+
+        /// <summary>
+        ///* Use para obter as estatísticas de rede.
+        /// </summary>
+        public NetworkTime NetworkTime { get; } = new NetworkTime();
+
+        //* Define quando o cliente está pronto para uso.
+        protected bool IsReady {
+            get;
+            private set;
+        }
+
         /// <summary>
         ///* Define se é a instância do servidor.
         /// </summary>
-        public bool IsServer { get; set; }
+        public bool IsServer {
+            get;
+            private set;
+        }
+
         /// <summary>
         ///* Obtém o tipo de cliente da instância.
         /// </summary>
-        public ClientMode ClientMode { get; set; }
+        public ClientMode ClientMode {
+            get;
+            private set;
+        }
+
+        protected bool WaitForInternalEvents {
+            get;
+            set;
+        }
+
+        //* Server instance.......
+        private Neutron Instance => Neutron.Server.Instance;
+        #endregion
+
+        /// <summary>
+        ///* Aguarda os eventos internos serem concluídos.
+        /// </summary>
+        /// <returns></returns>
+        public async Task WaitInternalEvents()
+        {
+            while (WaitForInternalEvents)
+                await Task.Delay(5);
+        }
+
+        //* Inicializa o cliente do servidor, o servidor também é um cliente dele mesmo.
+        public void Initialize(Neutron neutron)
+        {
+            This = neutron;
+            //* Inicia o timer do servidor....
+            NetworkTime.Stopwatch.Start();
+            //* Marca que a instância é do servidor.
+            IsServer = true;
+        }
+
         //* Inicializa o cliente e registra os eventos de Neutron.
         protected void Initialize(ClientMode clientMode)
         {
@@ -56,48 +125,79 @@ namespace NeutronNetwork.Client
                     This.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
                     This.OnPlayerLeftChannel += OnPlayerLeftChannel;
                     This.OnPlayerLeftRoom += OnPlayerLeftRoom;
-                    This.OnFail += OnFail;
+                    This.OnError += OnError;
                 }
+            }
+            _sceneName = Helper.GetSettings().ClientSettings.SceneName + $" - {UnityEngine.Random.Range(1, int.MaxValue)}";
+        }
+
+        //* Client->Server
+        //* Server->Client
+        protected void Send(NeutronStream stream, NeutronPlayer player, Protocol protocol)
+        {
+            NeutronStream.IWriter writer = stream.Writer;
+            //*******************************************
+            if (player == null)
+                Send(stream, protocol);
+            else
+            {
+                var packet = Helper.CreatePacket(writer.ToArray(), player, player, protocol);
+                //*****************************************************************************
+                Neutron.Server.AddPacket(packet);
+            }
+        }
+
+        //* Client->Server
+        //* Server->Client
+        protected void Send(NeutronStream stream, NeutronPlayer player, bool isServerSide, Protocol protocol)
+        {
+            NeutronStream.IWriter writer = stream.Writer;
+            //*******************************************
+            if (!isServerSide)
+                Send(stream, protocol);
+            else
+            {
+                var packet = Helper.CreatePacket(writer.ToArray(), player, player, protocol);
+                //*****************************************************************************
+                Neutron.Server.AddPacket(packet);
             }
         }
 
         //* Usado para enviar os dados para o servidor.
-        //* o ignore é usado apenas para ignorar este pacote no profiler de banda(bandwidth), pacote interno que não deve ser contado.
-        protected void Send(INeutronWriter header, INeutronWriter packet, Protocol protocol = Protocol.Tcp, Packet ignore = Packet.Empty)
+        //* Client->Server
+        protected void Send(NeutronStream stream, Protocol protocol = Protocol.Tcp)
         {
             try
             {
                 if (IsServer)
-                {
-                    LogHelper.Error("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
-                    return;
-                }
-#if !UNITY_SERVER
+                    throw new Exception("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
+#if !UNITY_SERVER || UNITY_EDITOR
                 if (This.IsConnected)
                 {
-                    byte[] packetBuffer = packet.ToArray().Compress(); //! Otimizado para evitar alocações, bom isso depende de como você usa o Neutron :p
+                    NeutronStream.IWriter wHeader = stream.HeaderWriter;
+                    NeutronStream.IWriter wPacket = stream.Writer;
+                    //**************************************************
+                    byte[] pBuffer = wPacket.ToArray().Compress(); //! Otimizado para evitar alocações, bom isso depende de como você usa o Neutron :p
                     switch (protocol)
                     {
                         //* ValueTask ainda não funciona na Unity, isso mesmo, em 2021 com .net 6 e standard 2.1, e a unity atrasada com essa merda de Mono, vê se pode?
                         case Protocol.Tcp:
                             {
-                                if (header.GetPosition() == 0)
+                                if (wHeader.GetPosition() == 0)
                                 {
-                                    header.WriteSize(packetBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro/short/byte(4/2/1 bytes), e a mensagem.
-                                    byte[] headerBuffer = header.ToArray();
-                                    if (header.IsFixedSize()) //* Verifica se o stream tem um tamanho fixo, é bom, evita alocações.
-                                        header.EndWriteWithFixedCapacity(); //* finaliza a a escrita resetando a posição pra zero.
-                                    else
-                                        header.EndWrite(); //* finaliza a a escrita resetando a posição pra zero.
+                                    wHeader.WriteSize(pBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro/short/byte(4/2/1 bytes), e a mensagem.
+                                    byte[] headerBuffer = wHeader.ToArray();
+                                    wHeader.Finish();
 
                                     NetworkStream networkStream = TcpClient.GetStream();
-                                    switch (OthersHelper.GetConstants().SendModel)
+                                    //**************************************************
+                                    switch (Helper.GetConstants().SendModel)
                                     {
                                         case SendType.Synchronous:
                                             networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo síncrono, esta opção é melhor, não aloca e tem performance de CPU.
                                             break;
                                         default:
-                                            if (OthersHelper.GetConstants().SendAsyncPattern == AsynchronousType.APM)
+                                            if (Helper.GetConstants().SendAsyncPattern == AsynchronousType.APM)
                                                 networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo assíncrono, mentira, envia da mesma forma de "SendType.Synchronous", preguiça mesmo. :p, porque BeginReceive e Endreceive é chato de fazer pro TCP :D
                                             else
                                                 SocketHelper.SendTcpAsync(networkStream, headerBuffer, TokenSource.Token); //* Envia os dados pro servidor de forma assíncrona., faz alocações pra caralho, no tcp não tanto, mas no UDP..... é foda. e usa muita cpu, evite, se souber como resolver, sinta-se a vontade para contribuir.
@@ -105,11 +205,11 @@ namespace NeutronNetwork.Client
                                     }
 #if UNITY_EDITOR
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.ClientTCP.AddOutgoing(packetBuffer.Length, ignore);
+                                    NeutronStatistics.ClientTCP.AddOutgoing(headerBuffer.Length);
 #endif
                                 }
                                 else
-                                    LogHelper.Error($"Send: Invalid position, is not zero! Pos -> {header.GetPosition()} Capacity -> {header.GetCapacity()}");
+                                    throw new Exception($"Send(Tcp): Invalid position, is not zero! Pos -> {wHeader.GetPosition()} Capacity -> {wHeader.GetCapacity()}. You called Finish() ?");
                             }
                             break;
                         case Protocol.Udp:
@@ -118,36 +218,36 @@ namespace NeutronNetwork.Client
                                     LogHelper.Error("Unauthenticated!");
                                 else
                                 {
-                                    StateObject.SendDatagram = packetBuffer; //* O datagrama a ser usado para enviar os dados para a rede.
-                                    switch (OthersHelper.GetConstants().SendModel)
+                                    StateObject.SendDatagram = pBuffer;
+                                    //**************************************
+                                    switch (Helper.GetConstants().SendModel)
                                     {
                                         case SendType.Synchronous:
-                                            SocketHelper.SendBytes(UdpClient, packetBuffer, UdpEndPoint); //* envia de modo síncrono, evita alocações e performance boa.
+                                            SocketHelper.SendBytes(UdpClient, pBuffer, UdpEndPoint); //* envia de modo síncrono, evita alocações e performance boa.
                                             break;
                                         default:
                                             {
-                                                switch (OthersHelper.GetConstants().SendAsyncPattern)
+                                                switch (Helper.GetConstants().SendAsyncPattern)
                                                 {
                                                     case AsynchronousType.APM:
                                                         {
                                                             //* aloca, mas não tanto, boa performance.
-                                                            SocketHelper.BeginSendBytes(UdpClient, packetBuffer, UdpEndPoint, (ar) =>
+                                                            SocketHelper.BeginSendBytes(UdpClient, pBuffer, UdpEndPoint, (ar) =>
                                                             {
                                                                 SocketHelper.EndSendBytes(UdpClient, ar);
-                                                            }); //* Envia os dados pro servidor.
+                                                            });
                                                             break;
                                                         }
-
                                                     default:
                                                         SocketHelper.SendUdpAsync(UdpClient, StateObject, UdpEndPoint); //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
                                                         break;
-                                                } //* se foder, aloca pra caralho e usa cpu como a unreal engine, ValueTask poderia resolver, mas......
+                                                }
                                                 break;
                                             }
                                     }
 #if UNITY_EDITOR
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.ClientUDP.AddOutgoing(packetBuffer.Length, ignore);
+                                    NeutronStatistics.ClientUDP.AddOutgoing(pBuffer.Length);
 #endif
                                 }
                             }
@@ -157,7 +257,7 @@ namespace NeutronNetwork.Client
                 else
                     LogHelper.Error("Non-connected socket, sending failed!");
 #else
-                    LogHelper.Error("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
+                    throw new Exception("To use this packet on the server side it is necessary to assign the \"Player\" parameter.");
 #endif
             }
             catch (ObjectDisposedException) { }
@@ -165,16 +265,6 @@ namespace NeutronNetwork.Client
             catch (Exception ex)
             {
                 LogHelper.StackTrace(ex);
-            }
-        }
-
-        //* Usado para enviar os dados para o servidor.
-        //* o ignoredPacket é usado apenas para definir se conta ou não os bytes enviados e recebidos.
-        protected void Send(INeutronWriter writer, Protocol protocol = Protocol.Tcp, Packet ignore = Packet.Empty)
-        {
-            using (NeutronStream stream = new NeutronStream())
-            {
-                Send(stream.Writer, writer, protocol, ignore);
             }
         }
 
@@ -199,7 +289,11 @@ namespace NeutronNetwork.Client
                             LogHelper.StackTrace(ex);
                         }
                     }
+                    else
+                        LogHelper.Warn("Ignore this: iRpc with this Id not found.");
                 }
+                else
+                    LogHelper.Warn("Ignore this: iRpc: Object not found.");
             }
 
             switch (registerMode)
@@ -237,22 +331,29 @@ namespace NeutronNetwork.Client
                 LogHelper.Error("Invalid gRPC ID, there is no attribute with this ID.");
         }
 
-        // Executa o AutoSync, observe que não usa reflexão e nem delegados, a invocação é direta, um metódo virtual, opte por usa isto sempre para sincronização constante, ex: movimentação.
+        //* Executa o AutoSync, observe que não usa reflexão e nem delegados, a invocação é direta, um metódo virtual, opte por usar isto sempre para sincronização constante, ex: movimentação.
         protected void OnAutoSyncHandler(NeutronPlayer player, short viewId, byte instanceId, byte[] buffer, RegisterMode registerType)
         {
             void Run((int, int, RegisterMode) key)
             {
-                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID especificado.
+                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID específicado.
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour)) //* obtém a instância que está sincronizando os dados.
                     {
-                        using (NeutronReader reader = Neutron.PooledNetworkReaders.Pull())
+                        using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                         {
+                            NeutronStream.IReader reader = stream.Reader;
+                            //********************************************
                             reader.SetBuffer(buffer);
-                            neutronBehaviour.OnAutoSynchronization(null, reader, false);
+                            //********************************************
+                            neutronBehaviour.OnAutoSynchronization(stream, false);
                         }
                     }
+                    else
+                        LogHelper.Warn("Ignore this: iRpc: Auto sync behaviour not found.");
                 }
+                else
+                    LogHelper.Warn("Ignore this: iRpc: Auto sync object not found.");
             }
 
             switch (registerType)
@@ -275,36 +376,52 @@ namespace NeutronNetwork.Client
         /// <param name="parameters">* O escritor dos parâmetros.</param>
         /// <param name="position">* A posição inicial do spawn do objeto.</param>
         /// <param name="quaternion">* A rotação inicial do spawn do objeto.</param>
-        public void BeginCreatePlayer(NeutronWriter parameters, Vector3 position, Quaternion quaternion)
+        public NeutronStream.IWriter BeginPlayer(NeutronStream parameters, Vector3 position, Quaternion quaternion)
         {
-            parameters.Write(position);
-            parameters.Write(quaternion);
+            var writer = This.Begin_gRPC(parameters);
+            writer.Write(position);
+            writer.Write(quaternion);
+            //------------------------//
+            return writer;
         }
 
         /// <summary>
         ///* Envia uma chamada(gRPC) que inicia a criação do seu jogador.<br/>
+        ///*(Client-Side).
         /// </summary>
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void EndCreatePlayer(NeutronWriter parameters, byte id)
+        public void EndPlayer(NeutronStream parameters, byte id)
         {
-            This.gRPC(id, parameters, Protocol.Tcp);
+            This.End_gRPC(id, parameters, Protocol.Tcp);
+        }
+
+        /// <summary>
+        ///* Envia uma chamada(gRPC) do lado do servidor, que inicia a criação do seu jogador.<br/>
+        ///*(Server-Side).
+        /// </summary>
+        /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void EndPlayer(NeutronStream parameters, byte id, NeutronPlayer player)
+        {
+            Instance.End_gRPC(id, parameters, Protocol.Tcp, player);
         }
 
         /// <summary>
         ///* Finaliza a chamada de criação do jogador em rede.<br/>
         /// </summary>
-        public bool EndCreatePlayer(NeutronReader parameters, out Vector3 position, out Quaternion quaternion)
+        public bool EndPlayer(NeutronStream.IReader parameters, out Vector3 position, out Quaternion quaternion)
         {
             try
             {
                 position = parameters.ReadVector3();
                 quaternion = parameters.ReadQuaternion();
+                //------------//
                 return true;
             }
             catch
             {
                 position = Vector3.zero;
                 quaternion = Quaternion.identity;
+                //------------//
                 return false;
             }
         }
@@ -315,32 +432,47 @@ namespace NeutronNetwork.Client
         /// <param name="parameters">* O escritor dos parâmetros.</param>
         /// <param name="position">* A posição inicial do spawn do objeto.</param>
         /// <param name="quaternion">* A rotação inicial do spawn do objeto.</param>
-        public void BeginCreateObject(NeutronWriter parameters, Vector3 position, Quaternion quaternion)
+        public NeutronStream.IWriter BeginObject(NeutronStream parameters, Vector3 position, Quaternion quaternion, ref short spawnId)
         {
-            parameters.Write(position);
-            parameters.Write(quaternion);
-            parameters.Write(++_objectSpawnid);
+            var writer = This.Begin_gRPC(parameters);
+            writer.Write(position);
+            writer.Write(quaternion);
+            writer.Write(spawnId);
+            //---------------------//
+            return writer;
         }
 
         /// <summary>
         ///* Envia uma chamada(gRPC) que inicia a criação de um objeto de rede.<br/>
+        ///*(Client-Side).
         /// </summary>
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
-        public void EndCreateObject(NeutronWriter parameters, byte id)
+        public void EndObject(NeutronStream parameters, byte id)
         {
-            This.gRPC(id, parameters, Protocol.Tcp);
+            This.End_gRPC(id, parameters, Protocol.Tcp);
+        }
+
+        /// <summary>
+        ///* Envia uma chamada(gRPC) do lado do servidor que inicia a criação de um objeto de rede.<br/>
+        ///*(Server-Side).
+        /// </summary>
+        /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
+        public void EndObject(NeutronStream parameters, byte id, NeutronPlayer player)
+        {
+            Instance.End_gRPC(id, parameters, Protocol.Tcp, player);
         }
 
         /// <summary>
         ///* Finaliza a chamada de criação de um objeto de rede.<br/>
         /// </summary>
-        public bool EndCreateObject(NeutronReader parameters, out Vector3 position, out Quaternion quaternion, out short spawnId)
+        public bool EndObject(NeutronStream.IReader parameters, out Vector3 position, out Quaternion quaternion, out short spawnId)
         {
             try
             {
                 position = parameters.ReadVector3();
                 quaternion = parameters.ReadQuaternion();
-                spawnId = parameters.ReadInt16();
+                spawnId = parameters.ReadShort();
+                //------------//
                 return true;
             }
             catch
@@ -348,6 +480,7 @@ namespace NeutronNetwork.Client
                 position = Vector3.zero;
                 quaternion = Quaternion.identity;
                 spawnId = -1;
+                //------------//
                 return false;
             }
         }
@@ -355,121 +488,145 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Retorna se o jogador especificado é seu.
         /// </summary>
-        /// <param name="player">* O Jogador que será comparado.</param>
+        /// <param name="otherPlayer">* O Jogador que será comparado.</param>
         /// <returns></returns>
-        public bool IsMine(NeutronPlayer player)
-        {
-            return This.Player == null
-                ? LogHelper.Error("It is not possible to send data before initialization of the main player.")
-                : player.Equals(This.Player);
-        }
-
-        /// <summary>
-        ///* Retorna se você é o dono(master) da sala.<br/>
-        /// </summary>
-        /// <returns></returns>
-        public bool IsMasterClient()
-        {
-            return This.Player == null
-                ? LogHelper.Error("It is not possible to send data before initialization of the main player.")
-                : This.Player.Matchmaking == null
-                ? LogHelper.Error("It is not possible to send data before initialization of the matchmaking.")
-                : This.Player.Matchmaking.Player.Equals(This.Player);
-        }
+        public bool IsMine(NeutronPlayer otherPlayer) => otherPlayer.Equals(This.Player);
 
         #region Events
-        private void OnPlayerLeftRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron instance)
+        private void OnPlayerLeftRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron neutron)
         {
-            player.Room = null;
-            player.Matchmaking = null;
+            MatchmakingHelper.Destroy(player);
+            //****************************************************************
+            MatchmakingHelper.Internal.Leave(player, MatchmakingMode.Room);
         }
 
         private void OnPlayerLeftChannel(NeutronChannel channel, NeutronPlayer player, bool isMine, Neutron neutron)
         {
-            player.Channel = null;
-            player.Matchmaking = null;
+            MatchmakingHelper.Destroy(player);
+            //****************************************************************
+            MatchmakingHelper.Internal.Leave(player, MatchmakingMode.Channel);
         }
 
-        private void OnPlayerCustomPacketReceived(NeutronReader reader, NeutronPlayer player, CustomPacket packet, Neutron neutron)
-        {
+        private void OnPlayerNicknameChanged(NeutronPlayer player, string nickname, bool isMine, Neutron neutron) => player.Nickname = nickname;
 
+        private void OnPlayerPropertiesChanged(NeutronPlayer player, string properties, bool isMine, Neutron neutron) => player.Properties = properties;
+
+        private void OnRoomPropertiesChanged(NeutronPlayer player, string properties, bool isMine, Neutron neutron) => This.Player.Matchmaking.Properties = properties;
+
+        private void OnPlayerConnected(NeutronPlayer player, bool isMine, Neutron neutron)
+        {
+            player.IsConnected = true;
+            if (isMine)
+                IsReady = true;
         }
 
-        private void OnPlayerNicknameChanged(NeutronPlayer player, string nickname, bool isMine, Neutron neutron)
+        private async void OnPlayerJoinedChannel(NeutronChannel channel, NeutronPlayer player, bool isMine, Neutron neutron)
         {
-            player.Nickname = nickname;
-        }
-
-        private void OnPlayerPropertiesChanged(NeutronPlayer player, bool isMine, Neutron neutron)
-        {
-
-        }
-
-        private void OnRoomPropertiesChanged(NeutronPlayer nPlayer, bool isMine, Neutron instance)
-        {
-
-        }
-
-        private void OnRoomsReceived(NeutronRoom[] rooms, Neutron instance)
-        {
-
-        }
-
-        private void OnChannelsReceived(NeutronChannel[] nChannels, Neutron instance)
-        {
-
-        }
-
-        private void OnPlayerDisconnected(string reason, NeutronPlayer player, bool isMine, Neutron instance)
-        {
-
-        }
-
-        private void OnPlayerConnected(NeutronPlayer player, bool isMine, Neutron instance)
-        {
-
-        }
-
-        private void OnPlayerJoinedChannel(NeutronChannel channel, NeutronPlayer player, bool isMine, Neutron instance)
-        {
-            player.Channel = channel;
-            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-        }
-
-        private void OnPlayerJoinedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron instance)
-        {
-            player.Room = room;
-            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-        }
-
-        private void OnPlayerCreatedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron instance)
-        {
-
-        }
-
-        private void OnMessageReceived(String message, NeutronPlayer player, bool isMine, Neutron instance)
-        {
-
-        }
-
-        private void OnNeutronConnected(bool success, Neutron instance)
-        {
-            NeutronSchedule.ScheduleTask(() =>
+            if (isMine)
             {
-                if (success && ClientMode == ClientMode.Player)
+                await OnCreateMatchmakingManager(() =>
                 {
-#if !UNITY_SERVER && !UNITY_NEUTRON_LAN
-                    NeutronModule.Chronometer.Start();
-#endif
-                    SceneHelper.CreateContainer(OthersHelper.GetConstants().ContainerName, hasPhysics: Neutron.Server.ClientHasPhysics, physics: Neutron.Server.Physics);
-                }
+                    player.Channel = channel;
+                    //-----------------------------------
+                    SetMatchmakingOwner(player, channel);
+                }, player, neutron);
+            }
+            else
+            {
+                player.Channel = channel;
+                player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+            }
+        }
+
+        private async void OnPlayerJoinedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron neutron)
+        {
+            if (isMine)
+            {
+                await OnCreateMatchmakingManager(() =>
+                {
+                    player.Room = room;
+                    //-----------------------------------
+                    SetMatchmakingOwner(player, room);
+                }, player, neutron);
+            }
+            else
+            {
+                player.Room = room;
+                player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+            }
+        }
+
+        private async void OnPlayerCreatedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron neutron)
+        {
+            if (isMine)
+            {
+                await OnCreateMatchmakingManager(() =>
+                {
+                    player.Room = room;
+                    //-----------------------------------
+                    SetMatchmakingOwner(player, room);
+                }, player, neutron);
+            }
+        }
+
+        private void OnRoomsReceived(NeutronRoom[] rooms, Neutron neutron)
+        { }
+
+        private void OnChannelsReceived(NeutronChannel[] nChannels, Neutron neutron)
+        { }
+
+        private void OnPlayerDisconnected(string reason, NeutronPlayer player, bool isMine, Neutron neutron)
+        {
+            player.IsConnected = false;
+            //**********************************************
+            MatchmakingHelper.Destroy(player);
+            //* Após a desconexão invoca os eventos de saída do matchmaking;
+            neutron.OnPlayerLeftRoom?.Invoke(This.Player.Room, player, isMine, neutron);
+            neutron.OnPlayerLeftChannel?.Invoke(This.Player.Channel, player, isMine, neutron);
+        }
+
+        private void OnMessageReceived(string message, NeutronPlayer player, bool isMine, Neutron neutron)
+        { }
+
+        private void OnNeutronConnected(bool success, Neutron neutron)
+        {
+            //* Inicia o timer do cliente....
+            NetworkTime.Stopwatch.Start();
+        }
+
+        private void OnPlayerCustomPacketReceived(NeutronStream.IReader reader, NeutronPlayer player, byte packet, Neutron neutron) { }
+
+        private void OnError(Packet packet, string message, int errorcode, Neutron neutron) => LogHelper.Error($"[{packet}] -> {message} | errorCode: {errorcode}");
+        #endregion
+
+        private void SetMatchmakingOwner(NeutronPlayer player, INeutronMatchmaking matchmaking)
+        {
+            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+            if (matchmaking.Owner.Equals(player))
+                player.Matchmaking.Owner = player;
+            else
+                player.Matchmaking.Owner = Players[matchmaking.Owner.ID];
+        }
+
+        private async Task OnCreateMatchmakingManager(Action OnCreate, NeutronPlayer player, Neutron neutron)
+        {
+            //* Aguarda os eventos anteriores....
+            await WaitInternalEvents();
+            //***********************************************
+            WaitForInternalEvents = true;
+            //***********************************************
+            await NeutronSchedule.ScheduleTaskAsync(() =>
+            {
+                OnCreate();
+                //* Cacha o match manager, para depois ser destruído.
+                if (_matchManager != null)
+                    GameObject.Destroy(_matchManager);
+                _matchManager = SceneHelper.OnMatchmakingManager(player, false, neutron);
+                //* Move a o gerenciador de sala pro seu container.
+                SceneHelper.MoveToContainer(_matchManager, _sceneName);
+                //* Libera os próximos eventos.
+                WaitForInternalEvents = false;
             });
         }
-
-        private void OnFail(Packet packet, string message, Neutron instance)
-        {
-            LogHelper.Error($"[{packet}] -> | ERROR | {message}");
-        }
-        #endregion
     }
 }

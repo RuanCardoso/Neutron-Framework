@@ -21,42 +21,89 @@ namespace NeutronNetwork.Internal
     ///* Esta classe é a base do objeto de rede(NeutronView).
     public class ViewBehaviour : MonoBehaviour
     {
-        #region Fields -> Public
+        //* Preguiça de transformar isto aqui em propriedade, deixa assim por enquanto...
+        #region Fields
         /// <summary>
         ///* Este ID é usado para identificar a instância que irá invocar os iRPC'S.
         /// </summary>
-        [ReadOnly] public int Id;
+        [SerializeField]
+        [ReadOnly] private int _id;
         /// <summary>
         ///* Define o ambiente que o objeto deve ser criado, Client, Server ou ambos.
         /// </summary>
-        public Side Side = Side.Both;
+        [SerializeField]
+        private Side _side = Side.Both;
+        /// <summary>
+        ///* Define se o objeto deve ser destruído automaticamente.
+        /// </summary>
+        [SerializeField]
+        private bool _autoDestroy = true;
+        /// <summary>
+        ///* Retorna o jogador que é dono do objeto.
+        /// </summary>
+        [SerializeField]
+        [InfoBox("The properties of the owner of this network object.")]
+        private NeutronPlayer _owner;
         #endregion
 
         #region Properties
         /// <summary>
-        ///* Retorna o jogador que é dono do objeto.
+        ///*Id do objeto de rede.
         /// </summary>
-        public NeutronPlayer Player { get; set; }
+        public int Id {
+            get => _id;
+            set => _id = value;
+        }
         /// <summary>
         ///* A instância de Neutron a qual este objeto pertence.
         /// </summary>
-        public Neutron This { get; set; }
+        public Neutron This {
+            get;
+            set;
+        }
+        /// <summary>
+        ///* Retorna o dono deste objeto.
+        /// </summary>
+        public NeutronPlayer Owner {
+            get => _owner;
+            set => _owner = value;
+        }
         /// <summary>
         ///* Retorna se o objeto é o objeto do lado do servidor.
         /// </summary>
-        public bool IsServer { get; set; }
+        public bool IsServer {
+            get;
+            set;
+        }
         /// <summary>
-        ///* Retorna se o objeto é um objeto de cena, falso, se for um jogador.
+        ///* Retorna se o objeto será destruído quando seu dono for desconectado ou sair do matchmaking.
         /// </summary>
-        public bool IsSceneObject => RegisterType == RegisterMode.Scene;
+        public bool AutoDestroy {
+            get => _autoDestroy;
+            set => _autoDestroy = value;
+        }
+        /// <summary>
+        ///* Retorna o lado que o objeto de rede será instanciado.
+        /// </summary>
+        public Side Side => _side;
+        /// <summary>
+        ///* Retorna se o objeto é um objeto de cena.
+        /// </summary>
+        public bool IsSceneObject => RegisterMode == RegisterMode.Scene;
         /// <summary>
         ///* O tipo de registro usado para o objeto.
         /// </summary>
-        public RegisterMode RegisterType { get; set; }
+        public RegisterMode RegisterMode {
+            get;
+            set;
+        }
         /// <summary>
-        ///* Define o matchmaking em que esse objeto existe.
+        ///* O Transform anexado a este GameObject. 
         /// </summary>
-        public INeutronMatchmaking Matchmaking { get; set; }
+        public Transform Transform {
+            get;
+            set;
+        }
         #endregion
 
         #region Collections
@@ -65,27 +112,11 @@ namespace NeutronNetwork.Internal
         [NonSerialized] public Dictionary<int, NeutronBehaviour> NeutronBehaviours = new Dictionary<int, NeutronBehaviour>();
         #endregion
 
-        #region Default Properties
-        /// <summary>
-        ///* Esta propriedade é usada para sincronizar a posição atual do objeto em todos os clientes que ingressarem posteriormente.
-        /// </summary>
-        public Vector3 LastPosition { get; set; }
-        /// <summary>
-        ///* Esta propriedade é usada para sincronizar a rotação atual do objeto em todos os clientes que ingressarem posteriormente.
-        /// </summary>
-        public Quaternion LastRotation { get; set; }
-        /// <summary>
-        ///* Obtém o transform anexado ao objeto.
-        /// </summary>
-        public Transform Transform { get; set; }
-        #endregion
-
         #region Mono Behaviour
-        private void Awake() => GetRpcs();
-
         private void Start()
         {
             Transform = transform;
+            //*****************************************
             NeutronModule.OnUpdate += OnNeutronUpdate;
         }
 
@@ -116,8 +147,7 @@ namespace NeutronNetwork.Internal
 
         private void OnNeutronUpdate()
         {
-            LastPosition = Transform.position;
-            LastRotation = Transform.rotation;
+
         }
 
         private void Reset()
@@ -133,7 +163,7 @@ namespace NeutronNetwork.Internal
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                if (gameObject.activeInHierarchy)
+                if (SceneHelper.IsInScene(gameObject))
                 {
                     if (Id == 0)
                         Id = UnityEngine.Random.Range(1, short.MaxValue);
@@ -163,12 +193,12 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Registra seu objeto em rede.
         /// </summary>
-        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerType, Neutron instance, int dynamicId = 0) => true;
+        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron instance, short dynamicId = 0) => true;
         #endregion
 
         #region Reflection
         //* Este método usa reflexão(Lento? é, mas só uma vez, foda-se hehehehhe), é chamado apenas uma vez quando o objeto é instanciado.
-        private void GetRpcs()
+        public void MakeAttributes()
         {
             var childs = GetComponentsInChildren<NeutronBehaviour>(); //* pega todas as instâncias que herdam de NeutronBehaviour
             if (childs.Length > 0)

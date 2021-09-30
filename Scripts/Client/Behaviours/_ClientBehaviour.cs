@@ -1,10 +1,8 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
-using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Packets;
-using NeutronNetwork.Server;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -21,16 +19,30 @@ namespace NeutronNetwork.Client
     public class ClientBehaviour
     {
         #region Socket
-        protected TcpClient TcpClient { get; set; }
-        protected UdpClient UdpClient { get; set; }
-        protected NonAllocEndPoint UdpEndPoint { get; set; }
-        protected CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
+        protected TcpClient TcpClient {
+            get;
+            private set;
+        }
+        protected UdpClient UdpClient {
+            get;
+            private set;
+        }
+        protected NonAllocEndPoint UdpEndPoint {
+            get;
+            set;
+        }
+        protected CancellationTokenSource TokenSource {
+            get;
+        } = new CancellationTokenSource();
         #endregion
 
         #region Collections
-        public NeutronSafeDictionary<int, NeutronPlayer> Players { get; set; } = new NeutronSafeDictionary<int, NeutronPlayer>();
+        public NeutronSafeDictionary<int, NeutronPlayer> Players {
+            get;
+        } = new NeutronSafeDictionary<int, NeutronPlayer>();
         #endregion
 
+        #region Functions
         protected void Initialize()
         {
             #region Provider
@@ -42,12 +54,14 @@ namespace NeutronNetwork.Client
                     if (Players.TryAdd(id, new NeutronPlayer()
                     {
                         ID = id,
+                        Nickname = $"Client#{id}"
                     })) { }
                 }
             }
             #endregion
 
             int port = SocketHelper.GetFreePort(Protocol.Tcp);
+            //*************************************************************
             TcpClient = new TcpClient(new IPEndPoint(IPAddress.Any, port));
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, port));
 
@@ -59,10 +73,12 @@ namespace NeutronNetwork.Client
         protected void Dispose()
         {
             TokenSource.Cancel();
+            //*******************//
             TcpClient.Dispose();
             UdpClient.Dispose();
         }
 
         private void OnQuit() => Dispose();
+        #endregion
     }
 }

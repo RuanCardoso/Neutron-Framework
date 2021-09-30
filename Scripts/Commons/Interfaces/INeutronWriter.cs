@@ -8,7 +8,9 @@ namespace NeutronNetwork.Internal.Interfaces
     {
         void EndWriteWithFixedCapacity();
         void EndWrite();
+        void Finish();
         void Write(Byte value);
+        void Write(bool value);
         void Write(Byte[] buffer);
         void Write(Byte[] buffer, Int32 offset, Int32 size);
         void Write(Color color);

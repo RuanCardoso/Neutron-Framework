@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e0f743d5b456616469a5f7cb20e0a4d3, type: 3}
-  m_Name: 
+  m_Name: Neutron Settings
   m_EditorClassIdentifier: 
   GlobalSettings:
     Addresses:
     - localhost
     Port: 1418
-    AppId: a5dd9c39-a1a4-4d80-aabc-8659ea8810b9
+    AppId: 84964730-ecb4-46f5-b471-22571dcfc91c
     FPS: 60
     MaxPlayers: 300
     StreamPoolCapacity: 1200
@@ -24,22 +24,15 @@ MonoBehaviour:
     Serialization: 1
     Compression: 0
     NoDelay: 1
-    PeerToPeer: 0
     PerfomanceMode: 0
   ClientSettings:
-    PingRate: 0.2
+    UdpKeepAlive: 2
     TcpKeepAlive: 5
+    SceneName: '[Container] -> Player[Main]'
   ServerSettings:
     BackLog: 10
     NeutronAntiCheat: 1
   NetworkSettings:
-    ContainerName: '[Container] -> Player[Main]'
-    MaxUdpPacketSize: 512
-    MaxTcpPacketSize: 2048
-    TcpReceiveBufferSize: 8192
-    TcpSendBufferSize: 8192
-    UdpReceiveBufferSize: 8192
-    UdpSendBufferSize: 8192
     MaxConnectionsPerIp: 2
     MaxLatency: 150
     TimeDesyncTolerance: 1
@@ -50,5 +43,13 @@ MonoBehaviour:
     ReceiveAsyncPattern: 1
     Encoding: 5
     HeaderSize: 2
-    BufferedStream: 0
-    BufferedStreamSize: 8192
+    Tcp:
+      MaxTcpPacketSize: 2048
+      TcpReceiveBufferSize: 8192
+      TcpSendBufferSize: 8192
+      BufferedStream: 0
+      BufferedStreamSize: 8192
+    Udp:
+      MaxUdpPacketSize: 512
+      UdpReceiveBufferSize: 8192
+      UdpSendBufferSize: 8192

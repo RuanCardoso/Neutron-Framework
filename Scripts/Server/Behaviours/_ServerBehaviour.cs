@@ -11,7 +11,10 @@ namespace NeutronNetwork.Server
     public class ServerBehaviour : MonoBehaviour
     {
         #region Socket
-        public TcpListener TcpListener { get; set; }
+        public TcpListener TcpListener {
+            get;
+            private set;
+        }
         #endregion
 
         #region Collections
@@ -22,32 +25,40 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Fields
-        public GameObject[] DestroyObjects;
-        [HorizontalLine] public LocalPhysicsMode Physics = LocalPhysicsMode.Physics3D;
-        public bool ClientHasPhysics = true;
-        public View View;
-        public EventsBehaviour EventsBehaviour;
-        [ReadOnly] [HorizontalLine] public int PlayerCount;
+        [HorizontalLine] public LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
+        public PlayerActions _playerActions;
+        public EventsBehaviour _eventsBehaviour;
+        public bool _enableActionsOnChannel;
+        public bool _serverOwnsTheMatchManager = true;
+        public bool _serverOwnsTheSceneObjects = true;
+        public NeutronBehaviour[] _actions;
+        [ReadOnly] [HorizontalLine] public int _playerCount;
         #endregion
 
         #region Properties
-        public bool IsReady { get; set; }
-        public int PacketProcessingStack_ManagedThreadId { get; set; }
+        public bool IsReady {
+            get;
+            set;
+        }
+        public int PacketProcessingStack_ManagedThreadId {
+            get;
+            set;
+        }
         #endregion
 
         protected virtual void Awake()
         {
 #if UNITY_2018_4_OR_NEWER
-            if (EventsBehaviour == null)
+            if (_eventsBehaviour == null)
             {
                 if (ServerBase.OnAwake == null)
-                    EventsBehaviour = gameObject.AddComponent<EventsBehaviour>();
+                    _eventsBehaviour = gameObject.AddComponent<EventsBehaviour>();
                 else if (!LogHelper.Error("Events Behaviour not defined!"))
                     return;
                 else
                     return;
             }
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
         Console.Clear();
 #endif
 #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
@@ -57,21 +68,22 @@ namespace NeutronNetwork.Server
                 {
                     TcpListener = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronModule.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
                     TcpListener.Start(NeutronModule.Settings.ServerSettings.BackLog);
+                    //* Marca o servidor como pronto para inicialização.
                     IsReady = true;
                 }
                 catch (SocketException ex)
                 {
                     if (ex.ErrorCode == 10048)
-                        LogHelper.Error("This Server instance has been disabled, because another instance is in use.");
+                        LogHelper.Info("This Server instance has been disabled, because another instance is in use.");
                     else
-                        LogHelper.Error(ex.Message);
+                        throw new Exception(ex.Message);
                 }
             }
             else
                 LogHelper.Error("Settings is missing!");
 #endif
 #else
-            NeutronLogger.LoggerError("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
+                LogHelper.Error("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
 #endif
         }
     }

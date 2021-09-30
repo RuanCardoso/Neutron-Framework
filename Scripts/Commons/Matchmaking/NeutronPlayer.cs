@@ -83,11 +83,17 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* Retorna se este jogador pertence ao servidor.
+        ///* Retorna se este jogador é o jogador que representa o servidor.
         /// </summary>
-        public bool IsServer {
-            get;
-            set;
+        public bool IsServerPlayer {
+            get => ID == 0;
+        }
+
+        /// <summary>
+        ///* Retorna se este jogador é o dono do Matchmaking atual.
+        /// </summary>
+        public bool IsMaster {
+            get => Matchmaking.Owner.Equals(this);
         }
 
         /// <summary>
@@ -99,7 +105,7 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* Retorna seu identificador de rede.
+        ///* Retorna seu identificador de rede(Player).
         /// </summary>
         public NeutronView NeutronView {
             get;
@@ -131,11 +137,26 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties -> Network
-        public TcpClient TcpClient { get; }
-        public UdpClient UdpClient { get; }
-        public Stream NetworkStream { get; }
-        public CancellationTokenSource TokenSource { get; set; }
-        public StateObject StateObject { get; } = new StateObject();
+        public TcpClient TcpClient {
+            get;
+        }
+        public UdpClient UdpClient {
+            get;
+        }
+        public Stream NetworkStream {
+            get;
+        }
+        public CancellationTokenSource TokenSource {
+            get;
+        }
+        public StateObject StateObject {
+            get;
+        } = new StateObject();
+        //***********************************************************
+        public NeutronEventNoReturn OnDestroy {
+            get;
+            set;
+        }
         #endregion
 
         public NeutronPlayer() { } // the default constructor is important for deserialization and serialization.(only if you implement the ISerializable interface or JSON.Net).
@@ -147,8 +168,8 @@ namespace NeutronNetwork
             //**************************************************************************************************
             TcpClient = tcpClient;
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
-            UdpClient.Client.ReceiveBufferSize = OthersHelper.GetConstants().UdpReceiveBufferSize;
-            UdpClient.Client.SendBufferSize = OthersHelper.GetConstants().UdpSendBufferSize;
+            UdpClient.Client.ReceiveBufferSize = Helper.GetConstants().Udp.UdpReceiveBufferSize;
+            UdpClient.Client.SendBufferSize = Helper.GetConstants().Udp.UdpSendBufferSize;
             //**************************************************************************************************
             NetworkStream = SocketHelper.GetStream(tcpClient);
             StateObject.UdpLocalEndPoint = (IPEndPoint)UdpClient.Client.LocalEndPoint;

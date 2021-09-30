@@ -8,12 +8,15 @@ namespace NeutronNetwork.Helpers
     {
         public static void Disconnect(NeutronPlayer player, string reason)
         {
-            using (NeutronWriter writer = Neutron.PooledNetworkWriters.Pull())
+            using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
+                NeutronStream.IWriter writer = stream.Writer;
+                //*******************************************
                 writer.WritePacket((byte)Packet.Disconnection);
                 writer.Write(player.ID);
                 writer.Write(reason);
-                player.Write(writer, OthersHelper.GetDefaultHandler().OnPlayerDisconnected);
+                //**************************************************************
+                player.Write(writer, Helper.GetHandlers().OnPlayerDisconnected);
             }
         }
 
@@ -31,7 +34,17 @@ namespace NeutronNetwork.Helpers
             }
             else
                 id = 0;
+            //******************************************************
             return id > NeutronConstantsSettings.GENERATE_PLAYER_ID;
+        }
+
+        public static NeutronPlayer MakeTheServerPlayer()
+        {
+            return new NeutronPlayer()
+            {
+                Nickname = "Server",
+                ID = 0,
+            };
         }
     }
 }

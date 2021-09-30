@@ -1,6 +1,5 @@
 using NeutronNetwork.Constants;
 using NeutronNetwork.Internal;
-using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using System;
 using System.Collections.Generic;
@@ -9,16 +8,16 @@ using UnityEngine;
 
 namespace NeutronNetwork.Helpers
 {
-    public static class OthersHelper
+    public static class Helper
     {
         #region Fields
-        private static readonly string[] SizeSuffixes = { "B/s", "kB/s", "mB/s", "gB/s" };
-        private static int[] ClassifiedOdds;
-        private static readonly System.Random Rnd = new System.Random();
+        private static readonly string[] _sizeSuffixes = { "B/s", "kB/s", "mB/s", "gB/s" };
+        private static int[] _classifiedOdds;
+        private static readonly System.Random _rnd = new System.Random();
         #endregion
 
         #region Collections
-        private static List<int> Numbers = new List<int>();
+        private static List<int> _numbers = new List<int>();
         #endregion
 
         public static string SizeSuffix(long value, int mag = 0, int decimalPlaces = 2) // From StackOverflow
@@ -45,7 +44,7 @@ namespace NeutronNetwork.Helpers
 
             return string.Format("{0:n" + decimalPlaces + "} {1}",
                 adjustedSize,
-                SizeSuffixes[mag]);
+                _sizeSuffixes[mag]);
         }
 
         public static void Odds(int percent)
@@ -54,25 +53,33 @@ namespace NeutronNetwork.Helpers
                 percent = 100;
 
             // Inicializa a Matriz
-            ClassifiedOdds = new int[percent];
+            _classifiedOdds = new int[percent];
             //Limpa a lista.
-            Numbers.Clear();
+            _numbers.Clear();
             // Adicionar 100 números para fazer a jogada de 0% a 100%.
             for (int i = 1; i <= 100; i++)
-                Numbers.Add(i);
+                _numbers.Add(i);
             // Bagunça a lista.
-            Numbers = new List<int>(Numbers.OrderBy(x => Rnd.Next(1, 100)));
+            _numbers = new List<int>(_numbers.OrderBy(x => _rnd.Next(1, 100)));
             // Faz o sorteio de sorte/porcetagem.
-            for (int i = 0; i < ClassifiedOdds.Length; i++)
-                ClassifiedOdds[i] = Numbers[i];
+            for (int i = 0; i < _classifiedOdds.Length; i++)
+                _classifiedOdds[i] = _numbers[i];
         }
 
         public static bool Odds()
         {
-            if (ClassifiedOdds == null)
+            if (_classifiedOdds == null)
                 return LogHelper.Error("ClassifiedOdds it cannot be null.");
             return
-                !ClassifiedOdds.Contains(Rnd.Next(1, 100));
+                !_classifiedOdds.Contains(_rnd.Next(1, 100));
+        }
+
+        public static int GetAvailableId<T>(T[] array, Func<T, int> predicate, int maxRange)
+        {
+            var Ids = array.Select(predicate);
+            if (maxRange == Ids.Count())
+                return maxRange;
+            return Enumerable.Range(0, maxRange).Except(Ids).ToArray()[0];
         }
 
         public static void SetColor(NeutronView neutronView, Color color)
@@ -82,18 +89,19 @@ namespace NeutronNetwork.Helpers
                 renderer.material.color = color;
         }
 
-        public static NeutronPacket CreatePacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol, Packet packet)
+        public static NeutronPacket CreatePacket(byte[] buffer, NeutronPlayer owner, NeutronPlayer sender, Protocol protocol)
         {
             NeutronPacket neutronPacket = Neutron.PooledNetworkPackets.Pull();
+            //****************************************************************
             neutronPacket.Buffer = buffer;
             neutronPacket.Owner = owner;
             neutronPacket.Sender = sender;
             neutronPacket.Protocol = protocol;
-            neutronPacket.Packet = packet;
+            //*********************//
             return neutronPacket;
         }
 
-        public static NeutronDefaultHandlerSettings GetDefaultHandler()
+        public static NeutronDefaultHandlerSettings GetHandlers()
         {
             return NeutronModule.Synchronization.DefaultHandlers;
         }
@@ -105,7 +113,7 @@ namespace NeutronNetwork.Helpers
 
         public static NeutronConstantsSettings GetConstants()
         {
-            return NeutronModule.Settings.NetworkSettings;
+            return GetSettings().NetworkSettings;
         }
 
 #if !UNITY_2019_2_OR_NEWER

@@ -23,6 +23,10 @@ namespace NeutronNetwork
         public string Name {
             get;
         }
+        /// <summary>
+        ///* Quantidade de objetos no pool.
+        /// </summary>
+        public int Count => _queue.Count;
 
         /// <summary>
         /// Inicializa um novo pool do tipo especificado em T.

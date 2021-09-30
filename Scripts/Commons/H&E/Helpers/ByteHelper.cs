@@ -1,3 +1,4 @@
+using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Packets;
 using Newtonsoft.Json;
 using System;
@@ -9,13 +10,16 @@ namespace NeutronNetwork.Helpers
 {
     public static class ByteHelper
     {
+        private static Settings Settings => Helper.GetSettings();
+        private static NeutronConstantsSettings Constants => Helper.GetConstants();
+
         public static NeutronEventWithReturn<object, byte[]> OnCustomSerialization;
         public static NeutronEventWithReturn<byte[], object> OnCustomDeserialization;
         public static NeutronEventWithReturn<byte[], byte[]> OnCustomCompression;
         public static NeutronEventWithReturn<byte[], byte[]> OnCustomDecompression;
-        public static byte[] Compress(this byte[] data)
+
+        public static byte[] Compress(this byte[] data, Internal.Packets.CompressionMode compression)
         {
-            Internal.Packets.CompressionMode compression = OthersHelper.GetSettings().GlobalSettings.Compression;
             switch (compression)
             {
                 case Internal.Packets.CompressionMode.Deflate:
@@ -49,9 +53,13 @@ namespace NeutronNetwork.Helpers
             }
         }
 
-        public static byte[] Decompress(this byte[] data)
+        public static byte[] Compress(this byte[] data)
         {
-            Internal.Packets.CompressionMode compression = OthersHelper.GetSettings().GlobalSettings.Compression;
+            return Compress(data, Settings.GlobalSettings.Compression);
+        }
+
+        public static byte[] Decompress(this byte[] data, Internal.Packets.CompressionMode compression)
+        {
             switch (compression)
             {
                 case Internal.Packets.CompressionMode.Deflate:
@@ -90,11 +98,16 @@ namespace NeutronNetwork.Helpers
             }
         }
 
+        public static byte[] Decompress(this byte[] data)
+        {
+            return Decompress(data, Settings.GlobalSettings.Compression);
+        }
+
         public static byte[] Serialize(this object obj)
         {
             try
             {
-                SerializationMode serializationMode = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                SerializationMode serializationMode = Settings.GlobalSettings.Serialization;
                 switch (serializationMode)
                 {
                     case SerializationMode.Json:
@@ -125,7 +138,7 @@ namespace NeutronNetwork.Helpers
         {
             try
             {
-                SerializationMode serialization = OthersHelper.GetSettings().GlobalSettings.Serialization;
+                SerializationMode serialization = Settings.GlobalSettings.Serialization;
                 switch (serialization)
                 {
                     case SerializationMode.Json:
@@ -153,7 +166,7 @@ namespace NeutronNetwork.Helpers
 
         public static int ReadSize(byte[] headerBuffer)
         {
-            switch (OthersHelper.GetConstants().HeaderSize)
+            switch (Constants.HeaderSize)
             {
                 case HeaderSizeType.Byte:
                     return headerBuffer[0];

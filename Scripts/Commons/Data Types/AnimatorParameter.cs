@@ -14,9 +14,18 @@ namespace NeutronNetwork.Editor
         #endregion
 
         #region Properties
-        public string ParameterName { get => _parameterName; set => _parameterName = value; }
-        public AnimatorControllerParameterType ParameterType { get => _parameterType; set => _parameterType = value; }
-        public SyncOnOff SyncMode { get => _syncMode; set => _syncMode = value; }
+        public string ParameterName {
+            get => _parameterName;
+            set => _parameterName = value;
+        }
+        public AnimatorControllerParameterType ParameterType {
+            get => _parameterType;
+            set => _parameterType = value;
+        }
+        public SyncOnOff SyncMode {
+            get => _syncMode;
+            set => _syncMode = value;
+        }
         #endregion
 
         public AnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType, SyncOnOff syncMode)

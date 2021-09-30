@@ -16,9 +16,20 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Properties
-        public TargetTo TargetTo { get => _targetTo; set => _targetTo = value; }
-        public TunnelingTo TunnelingTo { get => _tunnelingTo; set => _tunnelingTo = value; }
-        public Protocol Protocol { get => _protocol; set => _protocol = value; }
+        public TargetTo TargetTo {
+            get => _targetTo;
+            set => _targetTo = value;
+        }
+
+        public TunnelingTo TunnelingTo {
+            get => _tunnelingTo;
+            set => _tunnelingTo = value;
+        }
+
+        public Protocol Protocol {
+            get => _protocol;
+            set => _protocol = value;
+        }
         #endregion
 
         public HandlerOptions(TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
@@ -49,13 +60,40 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Properties
-        public byte RpcId { get => _rpcId; set => _rpcId = value; }
-        public string Name { get => _name; set => _name = value; }
-        public NeutronBehaviour Instance { get => _instance; set => _instance = value; }
-        public NeutronBehaviour OriginalInstance { get => _originalInstance; set => _originalInstance = value; }
-        public TargetTo TargetTo { get => _targetTo; set => _targetTo = value; }
-        public CacheMode Cache { get => _cache; set => _cache = value; }
-        public Protocol Protocol { get => _protocol; set => _protocol = value; }
+        public byte RpcId {
+            get => _rpcId;
+            set => _rpcId = value;
+        }
+
+        public string Name {
+            get => _name;
+            set => _name = value;
+        }
+
+        public NeutronBehaviour Instance {
+            get => _instance;
+            set => _instance = value;
+        }
+
+        public NeutronBehaviour OriginalInstance {
+            get => _originalInstance;
+            set => _originalInstance = value;
+        }
+
+        public TargetTo TargetTo {
+            get => _targetTo;
+            set => _targetTo = value;
+        }
+
+        public CacheMode Cache {
+            get => _cache;
+            set => _cache = value;
+        }
+
+        public Protocol Protocol {
+            get => _protocol;
+            set => _protocol = value;
+        }
 
         public Boolean Equals(iRpcOptions other)
         {
@@ -81,12 +119,23 @@ namespace NeutronNetwork.Internal
     [Serializable]
     public class AutoSyncOptions
     {
-        [SerializeField] private bool _highPerformance;
+        [SerializeField] private bool _fixedSize;
         [SerializeField] private Protocol _protocol;
-        [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _sendRate = 15; //* Quantidade de sincronizações por segundo.
+        [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _sendRate = 1; //* Quantidade de sincronizações por segundo.
 
-        public Protocol Protocol { get => _protocol; set => _protocol = value; }
-        public int SendRate { get => _sendRate; set => _sendRate = value; }
-        public bool HighPerformance { get => _highPerformance; set => _highPerformance = value; }
+        public Protocol Protocol {
+            get => _protocol;
+            set => _protocol = value;
+        }
+
+        public int SendRate {
+            get => _sendRate;
+            set => _sendRate = value;
+        }
+
+        public bool HighPerformance {
+            get => _fixedSize;
+            set => _fixedSize = value;
+        }
     }
 }

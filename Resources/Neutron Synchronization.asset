@@ -15,37 +15,37 @@ MonoBehaviour:
   DefaultHandlers:
     OnPlayerNicknameChanged:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerDisconnected:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerCreatedRoom:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerJoinedRoom:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerLeaveRoom:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerLeaveChannel:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerPropertiesChanged:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnRoomPropertiesChanged:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0
     OnPlayerDestroyed:
       _targetTo: 0
-      _tunnelingTo: 5
+      _tunnelingTo: 4
       _protocol: 0

@@ -8,12 +8,16 @@ using UnityEngine;
 /// </summary>
 namespace NeutronNetwork
 {
-    public class View : MonoBehaviour
+    public class PlayerActions : MonoBehaviour
     {
         /// <summary>
         ///* O Jogador a qual este View pertence.
         /// </summary>
-        public NeutronPlayer Player { get; set; }
+        public NeutronPlayer Player {
+            get;
+            set;
+        }
+
         /// <summary>
         ///* Define se está pronto para o uso.
         /// </summary>
@@ -31,8 +35,7 @@ namespace NeutronNetwork
 
         protected virtual void OnNeutronUpdate()
         {
-            //if (IsReady)
-            //    name = $"{Player.Nickname} [{Player.ID}]";
+
         }
     }
 }

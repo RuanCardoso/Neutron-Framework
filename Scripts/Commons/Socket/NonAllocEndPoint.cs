@@ -10,10 +10,17 @@ using System.Net.Sockets;
 /// </summary>
 namespace NeutronNetwork.Internal
 {
+    //* Uma gambiarra para evitar alocaçoes em excesso pelo socket Udp, coé microsoft resolve isso ae pá noix.
     public class NonAllocEndPoint : IPEndPoint
     {
-        public SocketAddress SocketAddress { get; set; }
-        public IPEndPoint IPEndPoint { get; set; }
+        public SocketAddress SocketAddress {
+            get;
+            set;
+        }
+        public IPEndPoint IPEndPoint {
+            get;
+            set;
+        }
 
         public NonAllocEndPoint(long address, int port) : base(address, port)
         {
