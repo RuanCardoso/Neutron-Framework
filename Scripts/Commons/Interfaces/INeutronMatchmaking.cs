@@ -22,6 +22,9 @@ namespace NeutronNetwork.Internal.Interfaces
         bool Add(NeutronPlayer player);
         bool Remove(NeutronPlayer player);
         void Add(NeutronCache cache, int viewId);
+        void Apply(NeutronRoom room);
+        void Apply(NeutronChannel channel);
+        void Apply(INeutronMatchmaking matchmaking);
         void Clear();
         NeutronPlayer[] Players();
         NeutronCache[] Caches();

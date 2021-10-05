@@ -54,7 +54,6 @@ namespace NeutronNetwork
         public NeutronChannel(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             ID = info.GetInt32("id");
-            //***************************************
             _roomCount = info.GetInt32("roomCount");
             _maxRooms = info.GetInt32("maxRooms");
         }
@@ -67,6 +66,12 @@ namespace NeutronNetwork
                 info.AddValue("roomCount", RoomCount);
                 info.AddValue("maxRooms", MaxRooms);
             }
+        }
+
+        public override void Apply(NeutronChannel channel)
+        {
+            base.Apply(channel);
+            _roomCount = channel.RoomCount;
         }
 
         public bool AddRoom(NeutronRoom room)

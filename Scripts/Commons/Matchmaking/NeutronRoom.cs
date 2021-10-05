@@ -57,7 +57,6 @@ namespace NeutronNetwork
         public NeutronRoom(int id, string name, int maxPlayers, string properties) : base(name, maxPlayers, properties)
         {
             ID = id;
-            //************************************************
             HasPassword = !string.IsNullOrEmpty(Password);
             IsVisible = !Name.StartsWith(".");
         }
@@ -66,7 +65,6 @@ namespace NeutronNetwork
         {
             ID = info.GetInt32("id");
             Password = info.GetString("password");
-            //************************************************
             HasPassword = !string.IsNullOrEmpty(Password);
             IsVisible = !Name.StartsWith(".");
         }
@@ -74,10 +72,13 @@ namespace NeutronNetwork
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            {
-                info.AddValue("id", ID);
-                info.AddValue("password", !string.IsNullOrEmpty(Password) ? "****" : Password);
-            }
+            info.AddValue("id", ID);
+            info.AddValue("password", !string.IsNullOrEmpty(Password) ? "********" : Password);
+        }
+
+        public override void Apply(NeutronRoom room)
+        {
+            base.Apply(room);
         }
 
         public bool Equals(NeutronRoom room)
@@ -97,16 +98,6 @@ namespace NeutronNetwork
         public int GetHashCode(NeutronRoom room)
         {
             return room.ID.GetHashCode();
-        }
-
-        public override bool Equals(object room)
-        {
-            return ID == ((NeutronRoom)room).ID;
-        }
-
-        public override int GetHashCode()
-        {
-            return ID.GetHashCode();
         }
 
         public override string ToString()

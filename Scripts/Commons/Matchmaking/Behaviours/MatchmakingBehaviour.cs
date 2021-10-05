@@ -72,8 +72,12 @@ namespace NeutronNetwork.Internal
             get => _properties;
             set {
                 _properties = value;
-                //*********************************
-                Get = JObject.Parse(value);
+                try
+                {
+                    if (!string.IsNullOrEmpty(value))
+                        Get = JObject.Parse(value);
+                }
+                catch { LogHelper.Error("Invalid json in properties."); }
             }
         }
 
@@ -135,14 +139,10 @@ namespace NeutronNetwork.Internal
         public MatchmakingBehaviour(SerializationInfo info, StreamingContext context)
         {
             Name = info.GetString("name");
+            _playerCount = info.GetInt32("playerCount");
             MaxPlayers = info.GetInt32("maxPlayers");
             Properties = info.GetString("properties");
-            Owner = new NeutronPlayer()
-            {
-                ID = info.GetInt32("owner")
-            };
-            //*********************************************
-            _playerCount = info.GetInt32("playerCount");
+            Owner = (NeutronPlayer)info.GetValue("owner", typeof(NeutronPlayer));
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -151,7 +151,7 @@ namespace NeutronNetwork.Internal
             info.AddValue("playerCount", PlayerCount);
             info.AddValue("maxPlayers", MaxPlayers);
             info.AddValue("properties", Properties);
-            info.AddValue("owner", Owner.ID);
+            info.AddValue("owner", Owner);
         }
 
         public bool Add(NeutronPlayer player)
@@ -201,6 +201,25 @@ namespace NeutronNetwork.Internal
                 _playerCount--;
             }
             return TryValue;
+        }
+
+        public virtual void Apply(NeutronRoom room)
+        {
+            Apply((INeutronMatchmaking)room);
+        }
+
+        public virtual void Apply(NeutronChannel channel)
+        {
+            Apply((INeutronMatchmaking)channel);
+        }
+
+        public void Apply(INeutronMatchmaking matchmaking)
+        {
+            _name = matchmaking.Name;
+            _playerCount = matchmaking.PlayerCount;
+            _maxPlayers = matchmaking.MaxPlayers;
+            _properties = matchmaking.Properties;
+            Owner = matchmaking.Owner;
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
+using Nito.AsyncEx;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,7 +25,16 @@ namespace NeutronNetwork.Server
             get;
             set;
         }
+
+        /// <summary>
+        ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
+        ///* Multiplique por mil para obter em milisegundos(ms).
+        /// </summary>
+#if UNITY_SERVER || UNITY_EDITOR
         public double Time => This.Instance.NetworkTime.Time;
+#else
+        public double Time => 0;
+#endif
         #endregion
 
         #region Events
@@ -128,13 +138,11 @@ namespace NeutronNetwork.Server
                         using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                         {
                             NeutronStream.IWriter writer = stream.Writer;
-                            //*******************************************
                             writer.WritePacket((byte)Packet.Handshake);
                             writer.Write(Time);
                             writer.Write(clientTime);
                             writer.Write(player.StateObject.UdpLocalEndPoint.Port);
                             writer.WriteIntExactly(player);
-                            //*******************************************
                             player.Write(writer);
                         }
                     }
@@ -143,7 +151,7 @@ namespace NeutronNetwork.Server
                 }
                 catch (Exception ex) // Tasks manual catch exception.
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                 }
             }
             else if (!LogHelper.Error("Auth descrypt failed!"))
@@ -156,13 +164,11 @@ namespace NeutronNetwork.Server
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //*******************************************
                 NeutronPlayer[] players = MatchmakingHelper.Internal.Tunneling(player, TunnelingTo.Auto);
-                //*****************************************************************************************
+                players = players.Where(x => x.ID != player.ID).ToArray();
                 writer.WritePacket((byte)Packet.Synchronize);
                 writer.Write((byte)1);
                 writer.WriteNextBytes(players.Serialize().Compress(CompressionMode.Deflate));
-                //***************************************************************************
                 player.Write(writer, TargetTo.Me, TunnelingTo.Me, protocol);
             }
 
@@ -170,11 +176,9 @@ namespace NeutronNetwork.Server
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //*******************************************
                 writer.WritePacket((byte)Packet.Synchronize);
                 writer.Write((byte)2);
                 writer.WriteNextBytes(player.Serialize().Compress(CompressionMode.Deflate));
-                //***************************************************************************
                 player.Write(writer, TargetTo.Others, TunnelingTo.Auto, protocol);
             }
         }
@@ -187,10 +191,8 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //*******************************************
                     writer.WritePacket((byte)Packet.Nickname);
                     writer.Write(nickname);
-                    //*******************************************************************
                     player.Write(writer, Helper.GetHandlers().OnPlayerNicknameChanged);
                 }
             }
@@ -203,10 +205,8 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //*******************************************
                     writer.WritePacket((byte)Packet.Chat);
                     writer.Write(message);
-                    //*******************************************
                     if (packet == ChatMode.Global)
                         player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
                     else if (packet == ChatMode.Private)
@@ -234,16 +234,13 @@ namespace NeutronNetwork.Server
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         NeutronStream.IWriter writer = stream.Writer;
-                        //*******************************************
                         writer.WritePacket((byte)Packet.iRPC);
                         writer.WritePacket((byte)registerType);
                         writer.Write(viewId);
                         writer.Write(rpcId);
                         writer.Write(instanceId);
                         writer.WriteNextBytes(buffer);
-                        //*******************************************************************************************
                         MatchmakingHelper.Internal.AddCache(rpcId, viewId, writer, owner, cache, CachedPacket.iRPC);
-                        //*******************************************************************************************
                         owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                     }
                     return true;
@@ -269,7 +266,7 @@ namespace NeutronNetwork.Server
                         }
                         catch (Exception ex)
                         {
-                            LogHelper.StackTrace(ex);
+                            LogHelper.Stacktrace(ex);
                         }
                     }
                     else
@@ -299,21 +296,24 @@ namespace NeutronNetwork.Server
         }
 
 #pragma warning disable IDE1006
-        protected async void gRPCHandler(NeutronPlayer owner, NeutronPlayer sender, byte id, byte[] buffer, Protocol protocol)
+        protected void gRPCHandler(NeutronPlayer owner, NeutronPlayer sender, byte id, byte[] buffer, Protocol protocol)
 #pragma warning restore IDE1006
         {
+#if UNITY_EDITOR
+            ThreadManager.WarnSimultaneousAccess();
+#endif
             bool Send(CacheMode cache, TargetTo targetTo, TunnelingTo tunnelingTo)
             {
+#if UNITY_EDITOR
+                ThreadManager.WarnSimultaneousAccess();
+#endif
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //********************************************
                     writer.WritePacket((byte)Packet.gRPC);
                     writer.Write(id);
                     writer.WriteNextBytes(buffer);
-                    //***********************************************************************************
                     MatchmakingHelper.Internal.AddCache(id, 0, writer, owner, cache, CachedPacket.gRPC);
-                    //***********************************************************************************
                     owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
                 }
                 return true;
@@ -324,20 +324,13 @@ namespace NeutronNetwork.Server
                 try
                 {
                     gRPC gRPCAttribute = remoteProceduralCall.gRPC;
-                    if (gRPCAttribute.FirstValidation)
-                    {
-                        if (await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance))
-                            Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo);
-                    }
-                    else
-                    {
-                        if (Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo))
-                            await ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance);
-                    }
+                    bool task = AsyncContext.Run(() => ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance));
+                    if (task)
+                        Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo);
                 }
                 catch (Exception ex)
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                 }
             }
             else
@@ -354,10 +347,8 @@ namespace NeutronNetwork.Server
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         NeutronStream.IWriter writer = stream.Writer;
-                        //********************************************
                         writer.WritePacket((byte)Packet.GetChannels);
                         writer.WriteIntExactly(channels);
-                        //********************************************
                         player.Write(writer);
                     }
                 }
@@ -373,17 +364,14 @@ namespace NeutronNetwork.Server
             if (player.IsInChannel() && !player.IsInRoom())
             {
                 NeutronChannel channel = player.Channel;
-                //********************************************
                 if (channel.RoomCount > 0)
                 {
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         NeutronStream.IWriter writer = stream.Writer;
-                        //*******************************************************
                         NeutronRoom[] rooms = channel.GetRooms(x => x.IsVisible);
                         writer.WritePacket((byte)Packet.GetRooms);
                         writer.WriteIntExactly(rooms);
-                        //****************************
                         player.Write(writer);
                     }
                 }
@@ -406,16 +394,12 @@ namespace NeutronNetwork.Server
                         {
                             player.Channel = channel;
                             player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                            //*****************************************************************
                             OnPlayerJoinedChannel?.Invoke(player);
-                            //*****************************************************************
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {
                                 NeutronStream.IWriter writer = stream.Writer;
-                                //********************************************
                                 writer.WritePacket((byte)Packet.JoinChannel);
                                 writer.WriteIntExactly(channel);
-                                //******************************************************************
                                 player.Write(writer, TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
                             }
                         }
@@ -443,16 +427,12 @@ namespace NeutronNetwork.Server
                     {
                         player.Room = room;
                         player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                        //*****************************************************************
                         OnPlayerJoinedRoom?.Invoke(player);
-                        //*****************************************************************
                         using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                         {
                             NeutronStream.IWriter writer = stream.Writer;
-                            //*******************************************
                             writer.WritePacket((byte)Packet.JoinRoom);
                             writer.WriteIntExactly(room);
-                            //************************************************************
                             player.Write(writer, Helper.GetHandlers().OnPlayerJoinedRoom);
                         }
                     }
@@ -487,13 +467,10 @@ namespace NeutronNetwork.Server
                                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                                 {
                                     NeutronStream.IWriter writer = stream.Writer;
-                                    //********************************************
                                     writer.WritePacket((byte)Packet.CreateRoom);
                                     writer.WriteIntExactly(room);
-                                    //*************************************************************
                                     player.Write(writer, Helper.GetHandlers().OnPlayerCreatedRoom);
                                 }
-                                //******************************************
                                 JoinRoomHandler(player, room.ID, password);
                             }
                             else
@@ -505,7 +482,7 @@ namespace NeutronNetwork.Server
                 }
                 catch (Exception ex) // Tasks manual catch exception.
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                 }
             }
             else
@@ -559,16 +536,13 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //********************************************
                     writer.WritePacket((byte)Packet.Leave);
                     writer.WritePacket((byte)MatchmakingMode.Room);
                     writer.WriteIntExactly(player.Room);
-                    //***********************************************************
                     player.Write(writer, Helper.GetHandlers().OnPlayerLeaveRoom);
                 }
-                //******************************************************
                 OnPlayerLeftRoom?.Invoke(player);
-                //****************************************************
+
                 INeutronMatchmaking matchmaking = player.Matchmaking;
                 if (matchmaking != null)
                 {
@@ -587,16 +561,12 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //********************************************
                     writer.WritePacket((byte)Packet.Leave);
                     writer.WritePacket((byte)MatchmakingMode.Channel);
                     writer.WriteIntExactly(player.Channel);
-                    //*************************************************************
                     player.Write(writer, Helper.GetHandlers().OnPlayerLeaveChannel);
                 }
-                //**************************************
                 OnPlayerLeftChannel?.Invoke(player);
-                //**************************************
                 NeutronChannel channel = player.Channel;
                 channel.Remove(player);
                 player.Channel = null;
@@ -625,10 +595,8 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //********************************************
                     writer.WritePacket((byte)Packet.SetPlayerProperties);
                     writer.Write(properties);
-                    //*******************************************************************
                     player.Write(writer, Helper.GetHandlers().OnPlayerPropertiesChanged);
                 }
             }
@@ -645,10 +613,8 @@ namespace NeutronNetwork.Server
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         NeutronStream.IWriter writer = stream.Writer;
-                        //********************************************
                         writer.WritePacket((byte)Packet.SetRoomProperties);
                         writer.Write(properties);
-                        //****************************************************************
                         player.Write(writer, Helper.GetHandlers().OnRoomPropertiesChanged);
                     }
                 }
@@ -667,11 +633,9 @@ namespace NeutronNetwork.Server
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //********************************************
                 writer.WritePacket((byte)Packet.UdpKeepAlive);
                 writer.Write(Time);
                 writer.Write(time);
-                //*************************************************************
                 player.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Udp);
             }
         }
@@ -683,11 +647,9 @@ namespace NeutronNetwork.Server
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     NeutronStream.IWriter writer = stream.Writer;
-                    //********************************************
                     writer.WritePacket((byte)Packet.CustomPacket);
                     writer.WritePacket(packet);
                     writer.WriteIntExactly(parameters);
-                    //********************************************
                     if (isMine)
                         nPlayer.Write(writer, targetTo, tunnelingTo, protocol);
                     else
@@ -711,9 +673,7 @@ namespace NeutronNetwork.Server
                         using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                         {
                             NeutronStream.IReader reader = stream.Reader;
-                            //********************************************
                             reader.SetBuffer(buffer);
-                            //********************************************
                             if (neutronBehaviour.OnAutoSynchronization(stream, false))
                                 Send();
                         }

@@ -55,9 +55,7 @@ namespace NeutronNetwork
         {
             _fields = ReflectionHelper.GetAttributesWithField<SyncVarAttribute>(this);
             _properties = ReflectionHelper.GetAttributesWithProperty<SyncVarAttribute>(this);
-            //*********************************************************************************
             SetTokens();
-            //*********************************************************************************
             _oldJson = _fieldsAndProperties.ToString();
         }
 
@@ -83,9 +81,7 @@ namespace NeutronNetwork
             if (isMine)
             {
                 SetTokens();
-                //*******************************************************************
                 JObject fieldsAndProperties = new JObject();
-                //*******************************************************************
                 JToken oldToken = JToken.Parse(_oldJson);
                 JToken currentToken = JToken.Parse(_fieldsAndProperties.ToString());
                 if (!JToken.DeepEquals(oldToken, currentToken))
@@ -95,10 +91,8 @@ namespace NeutronNetwork
                     {
                         foreach (var token in tokens)
                             fieldsAndProperties.Add(token);
-                        //********************************************
                         writer.Write(fieldsAndProperties.ToString());
-                        writer.Finish();
-                        //*******************************************
+                        writer.Write();
                         _oldJson = currentToken.ToString();
                     }
                     else
@@ -109,7 +103,6 @@ namespace NeutronNetwork
             }
             else if (DoNotPerformTheOperationOnTheServer)
                 JsonConvert.PopulateObject(reader.ReadString(), this, JsonSerializerSettings);
-            //*********************************************************************************
             return OnValidateAutoSynchronization(isMine);
         }
 

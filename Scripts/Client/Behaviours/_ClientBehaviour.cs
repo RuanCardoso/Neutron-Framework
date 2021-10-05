@@ -40,13 +40,16 @@ namespace NeutronNetwork.Client
         public NeutronSafeDictionary<int, NeutronPlayer> Players {
             get;
         } = new NeutronSafeDictionary<int, NeutronPlayer>();
+
+        protected ThreadManager ThreadManager { get; } = new ThreadManager();
         #endregion
 
         #region Functions
         protected void Initialize()
         {
+            LogHelper.Info("Client initialized!");
             #region Provider
-            if (Players.TryAdd(0, Neutron.Server.Player))
+            if (Players.TryAdd(0, PlayerHelper.MakeTheServerPlayer()))
             {
                 for (int i = 0; i < NeutronModule.Settings.GlobalSettings.MaxPlayers; i++)
                 {
@@ -61,7 +64,6 @@ namespace NeutronNetwork.Client
             #endregion
 
             int port = SocketHelper.GetFreePort(Protocol.Tcp);
-            //*************************************************************
             TcpClient = new TcpClient(new IPEndPoint(IPAddress.Any, port));
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, port));
 
@@ -73,7 +75,6 @@ namespace NeutronNetwork.Client
         protected void Dispose()
         {
             TokenSource.Cancel();
-            //*******************//
             TcpClient.Dispose();
             UdpClient.Dispose();
         }

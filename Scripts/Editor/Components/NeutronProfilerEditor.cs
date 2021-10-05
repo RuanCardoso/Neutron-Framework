@@ -15,6 +15,12 @@ public class NeutronProfilerEditor : EditorWindow
 
     private int m_ClientBytesOutgoingUDP;
     private int m_ClientBytesIncomingUDP;
+
+    private int m_ClientPacketsOutgoingTCP;
+    private int m_ClientPacketsIncomingTCP;
+
+    private int m_ClientPacketsOutgoingUDP;
+    private int m_ClientPacketsIncomingUDP;
     #endregion
 
     #region Server
@@ -23,6 +29,12 @@ public class NeutronProfilerEditor : EditorWindow
 
     private int m_ServerBytesOutgoingUDP;
     private int m_ServerBytesIncomingUDP;
+
+    private int m_ServerPacketsOutgoingTCP;
+    private int m_ServerPacketsIncomingTCP;
+
+    private int m_ServerPacketsOutgoingUDP;
+    private int m_ServerPacketsIncomingUDP;
     #endregion
 
     [MenuItem("Neutron/Settings/Analysis/Profiler &F9")]
@@ -31,22 +43,18 @@ public class NeutronProfilerEditor : EditorWindow
         EditorWindow Window = GetWindow(typeof(NeutronProfilerEditor), true, "Profiler");
         if (Window != null)
         {
-            Window.maxSize = new Vector2(480, 435);
-            Window.minSize = new Vector2(480, 435);
+            Window.maxSize = new Vector2(640, 430);
+            Window.minSize = new Vector2(640, 430);
         }
     }
 
     private void OnEnable()
     {
-        if (NeutronStatistics.OnChangedStatistics == null)
-            NeutronStatistics.OnChangedStatistics += OnChanged;
+        NeutronStatistics.OnChangedStatistics -= OnChanged;
+        NeutronStatistics.OnChangedStatistics += OnChanged;
     }
 
-    private void OnDisable()
-    {
-        if (NeutronStatistics.OnChangedStatistics != null)
-            NeutronStatistics.OnChangedStatistics -= OnChanged;
-    }
+    private void OnDisable() => NeutronStatistics.OnChangedStatistics -= OnChanged;
 
     private void OnGUI()
     {
@@ -64,7 +72,7 @@ public class NeutronProfilerEditor : EditorWindow
 
         #region Windows
         BeginWindows();
-        Rect window = new Rect(5, 5, 230, 200);
+        Rect window = new Rect(5, 5, 310, 200);
         window = GUILayout.Window(1, window, DrawClientStatistics, "Client");
         window.x += (window.x + window.y) + window.width;
         window = GUILayout.Window(2, window, DrawServerStatistics, "Server");
@@ -92,16 +100,16 @@ public class NeutronProfilerEditor : EditorWindow
         EditorGUILayout.LabelField("TCP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ClientBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingTCP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ClientBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"In: {Helper.SizeSuffix(m_ClientBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingTCP, 2, 4)}] - Pkt/s: {m_ClientPacketsIncomingTCP}");
+        EditorGUILayout.LabelField($"Out: {Helper.SizeSuffix(m_ClientBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingTCP, 2, 4)}] - Pkt/s: {m_ClientPacketsOutgoingTCP}");
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
         #region Header
         EditorGUILayout.LabelField("UDP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ClientBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingUDP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ClientBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"In: {Helper.SizeSuffix(m_ClientBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingUDP, 2, 4)}] - Pkt/s: {m_ClientPacketsIncomingUDP}");
+        EditorGUILayout.LabelField($"Out: {Helper.SizeSuffix(m_ClientBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingUDP, 2, 4)}] - Pkt/s: {m_ClientPacketsOutgoingUDP}");
     }
 
     private void DrawServerStatistics(int unusedWindowID)
@@ -114,42 +122,50 @@ public class NeutronProfilerEditor : EditorWindow
         EditorGUILayout.LabelField("TCP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ServerBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingTCP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ServerBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingTCP, 2, 4)}]");
+        EditorGUILayout.LabelField($"In: {Helper.SizeSuffix(m_ServerBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingTCP, 2, 4)}] - Pkt/s: {m_ServerPacketsIncomingTCP}");
+        EditorGUILayout.LabelField($"Out: {Helper.SizeSuffix(m_ServerBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingTCP, 2, 4)}] - Pkt/s: {m_ServerPacketsOutgoingTCP}");
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
         #region Header
         EditorGUILayout.LabelField("UDP", GUI.skin.box);
         #endregion
 
-        EditorGUILayout.LabelField($"Incoming: {Helper.SizeSuffix(m_ServerBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingUDP, 2, 4)}]");
-        EditorGUILayout.LabelField($"Outgoing: {Helper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}]");
+        EditorGUILayout.LabelField($"In: {Helper.SizeSuffix(m_ServerBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingUDP, 2, 4)}] - Pkt/s: {m_ServerPacketsIncomingUDP}");
+        EditorGUILayout.LabelField($"Out: {Helper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}] - Pkt/s: {m_ServerPacketsOutgoingUDP}");
     }
 
     private void OnChanged(InOutData[] nProfilers)
     {
-        nProfilers[0].Get(out int ClientBytesOutgoingTCP, out int ClientBytesIncomingTCP);
+        nProfilers[0].Get(out int ClientBytesOutgoingTCP, out int ClientBytesIncomingTCP, out int ClientPacketsOutgoingTCP, out int ClientPacketsIncomingTCP);
         {
             m_ClientBytesIncomingTCP = ClientBytesIncomingTCP;
             m_ClientBytesOutgoingTCP = ClientBytesOutgoingTCP;
+            m_ClientPacketsIncomingTCP = ClientPacketsIncomingTCP;
+            m_ClientPacketsOutgoingTCP = ClientPacketsOutgoingTCP;
         }
 
-        nProfilers[1].Get(out int ClientBytesOutgoingUDP, out int ClientBytesIncomingUDP);
+        nProfilers[1].Get(out int ClientBytesOutgoingUDP, out int ClientBytesIncomingUDP, out int ClientPacketsOutgoingUDP, out int ClientPacketsIncomingUDP);
         {
             m_ClientBytesIncomingUDP = ClientBytesIncomingUDP;
             m_ClientBytesOutgoingUDP = ClientBytesOutgoingUDP;
+            m_ClientPacketsIncomingUDP = ClientPacketsIncomingUDP;
+            m_ClientPacketsOutgoingUDP = ClientPacketsOutgoingUDP;
         }
 
-        nProfilers[2].Get(out int ServerBytesOutgoingTCP, out int ServerBytesIncomingTCP);
+        nProfilers[2].Get(out int ServerBytesOutgoingTCP, out int ServerBytesIncomingTCP, out int ServerPacketsOutgoingTCP, out int ServerPacketsIncomingTCP);
         {
             m_ServerBytesIncomingTCP = ServerBytesIncomingTCP;
             m_ServerBytesOutgoingTCP = ServerBytesOutgoingTCP;
+            m_ServerPacketsIncomingTCP = ServerPacketsIncomingTCP;
+            m_ServerPacketsOutgoingTCP = ServerPacketsOutgoingTCP;
         }
 
-        nProfilers[3].Get(out int ServerBytesOutgoingUDP, out int ServerBytesIncomingUDP);
+        nProfilers[3].Get(out int ServerBytesOutgoingUDP, out int ServerBytesIncomingUDP, out int ServerPacketsOutgoingUDP, out int ServerPacketsIncomingUDP);
         {
             m_ServerBytesIncomingUDP = ServerBytesIncomingUDP;
             m_ServerBytesOutgoingUDP = ServerBytesOutgoingUDP;
+            m_ServerPacketsIncomingUDP = ServerPacketsIncomingUDP;
+            m_ServerPacketsOutgoingUDP = ServerPacketsOutgoingUDP;
         }
 
         Repaint();

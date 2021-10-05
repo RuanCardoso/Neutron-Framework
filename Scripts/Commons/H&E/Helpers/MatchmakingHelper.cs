@@ -32,7 +32,6 @@ namespace NeutronNetwork.Helpers
                     player.Channel = null;
                 if (matchmakingMode == MatchmakingMode.Room)
                     player.Room = null;
-                //******************************************
                 player.Matchmaking = Matchmaking(player);
             }
 
@@ -66,6 +65,7 @@ namespace NeutronNetwork.Helpers
             [ThreadSafe]
             public static void AddCache(int id, int viewId, NeutronStream.IWriter writer, NeutronPlayer player, CacheMode cache, CachedPacket cachedPacket)
             {
+                //LogHelper.Error(ThreadHelper.GetThreadID());
                 if (cache != CacheMode.None)
                 {
                     INeutronMatchmaking neutronMatchmaking = player.Matchmaking;
@@ -286,7 +286,7 @@ namespace NeutronNetwork.Helpers
                     return player.Channel;
             }
             else
-                return null;
+                return default;
         }
 
         /// <summary>

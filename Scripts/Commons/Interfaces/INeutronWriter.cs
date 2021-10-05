@@ -8,7 +8,7 @@ namespace NeutronNetwork.Internal.Interfaces
     {
         void EndWriteWithFixedCapacity();
         void EndWrite();
-        void Finish();
+        void Write();
         void Write(Byte value);
         void Write(bool value);
         void Write(Byte[] buffer);

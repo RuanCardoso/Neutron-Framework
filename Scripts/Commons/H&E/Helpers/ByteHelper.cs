@@ -129,7 +129,7 @@ namespace NeutronNetwork.Helpers
             }
             catch (Exception ex)
             {
-                LogHelper.StackTrace(ex);
+                LogHelper.Stacktrace(ex);
                 return default;
             }
         }
@@ -157,9 +157,10 @@ namespace NeutronNetwork.Helpers
                         return default;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 LogHelper.Error("Deserialization exception!");
+                LogHelper.Stacktrace(ex);
                 return default;
             }
         }

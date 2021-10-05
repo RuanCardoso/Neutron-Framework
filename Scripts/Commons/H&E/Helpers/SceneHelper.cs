@@ -1,5 +1,6 @@
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Server.Internal;
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -15,14 +16,12 @@ namespace NeutronNetwork.Helpers
                 Scene newScene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
                 //* Cria um gerenciador de física.
                 GameObject parent = new GameObject("Physics Manager");
-                //******************************************************************
                 PhysicsManager manager = parent.AddComponent<PhysicsManager>();
                 manager.Scene = newScene;
                 manager.PhysicsScene = newScene.GetPhysicsScene();
                 manager.PhysicsScene2D = newScene.GetPhysicsScene2D();
                 //* Move o gerenciador de física para a sua cena em questão.
                 MoveToContainer(parent, newScene.name);
-                //***************//
                 return manager;
             }
             else
@@ -41,35 +40,15 @@ namespace NeutronNetwork.Helpers
 
         public static GameObject OnMatchmakingManager(NeutronPlayer player, bool isServer, Neutron neutron)
         {
-            //* Inicializa um RoomManager e o registra na rede.
+            //* Inicializa um Matchmaking Manager e o registra na rede.
             GameObject matchManager = new GameObject("Match Manager");
-            //*****************************************************************
-            NeutronView neutronView = matchManager.AddComponent<NeutronView>();
+            var neutronView = matchManager.AddComponent<NeutronView>();
             neutronView.AutoDestroy = false;
             //* Inicializa o iRpc Actions baseado no tipo.
             NeutronBehaviour[] actions = Neutron.Server._actions;
             if (actions.Length > 0)
             {
-                GameObject actionsObject = GameObject.Instantiate(actions[0].gameObject, matchManager.transform);
-                actionsObject.name = "Actions Object";
-                //**************************************************************************************************
-                var behaviours = actionsObject.GetComponents<NeutronBehaviour>();
-                foreach (var behaviour in behaviours)
-                    behaviour.enabled = true;
-                //**************************************************************************************************
-                foreach (Component component in actionsObject.GetComponents<Component>())
-                {
-                    try
-                    {
-                        if (component.GetType().BaseType != typeof(NeutronBehaviour) && component.GetType() != typeof(Transform))
-                            GameObject.Destroy(component);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-                }
-                //**************************************************************************************************
+                #region Server Player
                 NeutronPlayer owner = player;
                 if (Neutron.Server._serverOwnsTheMatchManager)
                 {
@@ -77,6 +56,16 @@ namespace NeutronNetwork.Helpers
                     owner.Channel = player.Channel;
                     owner.Room = player.Room;
                     owner.Matchmaking = player.Matchmaking;
+                }
+                #endregion
+
+                GameObject actionsObject = GameObject.Instantiate(actions[actions.Length - 1].gameObject, matchManager.transform);
+                actionsObject.name = "Actions Object";
+                foreach (Component component in actionsObject.GetComponents<Component>())
+                {
+                    Type type = component.GetType();
+                    if (type.BaseType != typeof(NeutronBehaviour) && type != typeof(Transform))
+                        GameObject.Destroy(component);
                 }
                 neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Dynamic, neutron, short.MaxValue);
             }

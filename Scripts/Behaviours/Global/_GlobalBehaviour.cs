@@ -16,6 +16,9 @@ using UnityEngine;
 /// </summary>
 namespace NeutronNetwork
 {
+    /// <summary>
+    ///* Fornece suporte a operações gRPC.
+    /// </summary>
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CONNECTION)]
     public class GlobalBehaviour : MonoBehaviour
     {
@@ -26,9 +29,6 @@ namespace NeutronNetwork
 #pragma warning restore IDE1006
             get;
         } = new Dictionary<byte, RPCInvoker>();
-
-        //* Usado apenas para checar duplicatas...
-        private static readonly Dictionary<(int, int), int> _ids = new Dictionary<(int, int), int>();
         #endregion
 
         #region Properties
@@ -86,27 +86,37 @@ namespace NeutronNetwork
         //* Este método usa reflexão(Lento? é, mas só uma vez, foda-se hehehehhe), é chamado apenas uma vez quando o objeto é inicializado.
         private void MakeAttributes()
         {
-            GlobalBehaviour instance = this;
-            if (instance != null)
+            var instances = FindObjectsOfType<GlobalBehaviour>();
+            GlobalBehaviour localInstance = this;
+            if (instances[instances.Length - 1] == localInstance)
             {
-                (gRPC[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<gRPC>(instance);
-                for (int i = 0; i < multiplesMethods.Length; i++)
+                for (int gI = 0; gI < instances.Length; gI++)
                 {
-                    (gRPC[], MethodInfo) methods = multiplesMethods[i];
-                    for (int ii = 0; ii < methods.Item1.Count(); ii++)
+                    GlobalBehaviour instance = instances[gI];
+                    if (instance != null && instance.enabled)
                     {
-                        gRPC method = methods.Item1[ii];
-                        if (!gRPCs.ContainsKey(method.ID)) //* Verifica se não existe um metódo duplicado, ou seja, um gRPC com mesmo ID.
-                            gRPCs.Add(method.ID, new RPCInvoker(instance, methods.Item2, method));
-                        //* Encontra duplicatas por instância.
-                        (int, int) idsKey = (instance.GetInstanceID(), method.ID);
-                        if (!_ids.ContainsKey(idsKey))
-                            _ids.Add(idsKey, 0);
-                        else
-                            throw new Exception($"gRPC: Duplicate Id not allowed in \"{instance.GetType().Name}\" Id -> [{method.ID}]");
+                        Type type = instance.GetType();
+                        (gRPC[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<gRPC>(instance);
+                        if ((type.BaseType == typeof(PlayerGlobalController) || type.BaseType == typeof(NeutronBehaviour)) && multiplesMethods.Length > 0)
+                            throw new NeutronException($"The class \"{type.Name}\", they cannot declare \"[gRPC]\" methods, but they can invoke it, to solve this problem you must declare the method in a globally unique script, for example, \"ClientController\" or \"ServerController\"");
+                        for (int i = 0; i < multiplesMethods.Length; i++)
+                        {
+                            (gRPC[], MethodInfo) methods = multiplesMethods[i];
+                            for (int ii = 0; ii < methods.Item1.Count(); ii++)
+                            {
+                                gRPC method = methods.Item1[ii];
+                                if (!gRPCs.ContainsKey(method.ID)) //* Verifica se não existe um metódo duplicado, ou seja, um gRPC com mesmo ID.
+                                    gRPCs.Add(method.ID, new RPCInvoker(instance, methods.Item2, method));
+                                else
+                                    throw new NeutronException($"gRPC: Duplicate Id not allowed in \"{type.Name}\" Id -> [{method.ID}]");
+                            }
+                        }
                     }
+                    else
+                        continue;
                 }
             }
+            else { /*continue;*/ }
         }
         #endregion
     }

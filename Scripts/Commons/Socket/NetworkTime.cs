@@ -41,11 +41,12 @@ namespace NeutronNetwork.Client.Internal
         ///* Multiplique por mil para obter em milisegundos(ms).
         /// </summary>
         /// <value></value>
-        public double RoundTripTime => Math.Round(_rttExAvg.Avg, NeutronConstantsSettings.TIME_DECIMAL_PLACES);
+        public double RoundTripTime => _rttExAvg.Avg;
 
         /// <summary>
         ///* Obtenha o tempo atual em segundos(sec) desde do início da conexão.<br/>
-        ///* Multiplique por mil para obter em milisegundos(ms).
+        ///* Multiplique por mil para obter em milisegundos(ms).<br/>
+        ///* Não afetado pela rede.
         /// </summary>
         public double LocalTime => Stopwatch.Elapsed.TotalSeconds;
 
@@ -53,7 +54,7 @@ namespace NeutronNetwork.Client.Internal
         ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
         ///* Multiplique por mil para obter em milisegundos(ms).
         /// </summary>
-        public double Time => Math.Round(LocalTime + (Offset * -1), NeutronConstantsSettings.TIME_DECIMAL_PLACES);
+        public double Time => LocalTime + (Offset * -1);
 
         /// <summary>
         ///* A variação do tempo de ida e volta(rtt), quanto maior menos preciso é.

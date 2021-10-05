@@ -268,13 +268,16 @@ namespace NeutronNetwork.Helpers
                                     else
                                     {
                                         int lastPos = (sizeof(float) * 3) + (sizeof(float) * 4); //* Obtém a posição do Id do Objeto, pulando a posição(vec3) e a rotação(quat) no buffer.
+                                        if (buffer.Length < lastPos + 1)
+                                            throw new NeutronException("Did you forget to set the \"Player\" tag? or are you using \"BeginPlayer\" instead of \"BeginObject\"?");
                                         byte[] bufferId = new byte[sizeof(short)] //* cria uma matriz para armazenar o Id que é um short.
                                         {
                                            buffer[lastPos], //* Obtém o primeiro byte a partir da posição.
                                            buffer[lastPos + 1] //* Obtém o segundo byte a partir da posição atual + 1.
                                         };
-                                        short objectId = BitConverter.ToInt16(bufferId, 0); //* Converte a matriz para o valor do tipo short(Int16).
-                                                                                            //* Registra o objeto(NeutronView) na rede.
+                                        //* Converte a matriz para o valor do tipo short(Int16).
+                                        short objectId = BitConverter.ToInt16(bufferId, 0);
+                                        //* Registra o objeto(NeutronView) na rede.
                                         return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Dynamic, instance, objectId);
                                     }
                                 });

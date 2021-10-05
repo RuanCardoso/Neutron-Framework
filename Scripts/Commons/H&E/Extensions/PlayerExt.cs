@@ -16,12 +16,10 @@ namespace NeutronNetwork.Extensions
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //*********************************************
                 writer.WritePacket((byte)Packet.Error);
                 writer.WritePacket((byte)packet);
                 writer.Write(message);
                 writer.Write(errorCode);
-                //*********************************************
                 player.Write(writer);
             }
         }

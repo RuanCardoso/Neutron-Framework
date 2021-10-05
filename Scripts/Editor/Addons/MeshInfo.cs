@@ -65,13 +65,13 @@ public class MeshInfo : EditorWindow
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
             GUILayout.BeginVertical();
             EditorGUILayout.LabelField($"Vertices: {m_VertexCount} | Only:  {m_VertexCount / 3}", GUI.skin.textField);
-            EditorGUILayout.Space(3);
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField($"Triangles: {m_TriangleCount}", GUI.skin.textField);
-            EditorGUILayout.Space(3);
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField($"Edges: {m_EdgeCount} | Only:  {(m_TriangleCount * 3) / 3}", GUI.skin.textField);
-            EditorGUILayout.Space(3);
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField($"Faces(Tris): {m_FaceCount} | Quads: {m_FaceCount / 2}", GUI.skin.textField);
-            EditorGUILayout.Space(3);
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField($"SubMeshes: {m_SubmeshCount}", GUI.skin.textField);
             GUILayout.EndVertical();
             #endregion

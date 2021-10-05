@@ -49,7 +49,7 @@ public class NeutronEditor : EditorWindow
             l_Controllers = new GameObject("Controllers");
             GameObject l_Client = new GameObject("Client");
             GameObject l_Server = new GameObject("Server");
-            GameObject l_Custom = new GameObject("Custom");
+            GameObject l_Custom = new GameObject("Defines");
             l_Client.transform.SetParent(l_Controllers.transform);
             l_Server.transform.SetParent(l_Controllers.transform);
             l_Custom.transform.SetParent(l_Controllers.transform);
@@ -68,10 +68,9 @@ public class NeutronEditor : EditorWindow
         if (_clumsy != null && !_clumsy.HasExited)
         {
             _clumsy.Kill();
-            //------------------------------------------
             LogHelper.Info("Lag simulation restarted!");
         }
-        //***********************************************************************************
+
         var reference = Resources.Load<Settings>("Neutron Settings");
         string clumsyPath = AssetDatabase.GetAssetPath(reference);
         clumsyPath = clumsyPath.Replace($"{reference.name}.asset", string.Empty);
@@ -79,7 +78,7 @@ public class NeutronEditor : EditorWindow
         clumsyPath = string.Concat(Application.dataPath, clumsyPath);
         clumsyPath = string.Concat(clumsyPath, "Clumsy/clumsy.exe");
         clumsyPath = Path.GetFullPath(clumsyPath);
-        //***********************************************************************************
+
         int protocolId = EditorUtility.DisplayDialogComplex("Neutron", "Which protocol do you want to simulate lag?", "Tcp", "Udp", "Both");
         if (protocolId == 0)
             clumsyFilters = NeutronServer.filter_tcp_client_server.ToString();
@@ -112,17 +111,17 @@ public class NeutronEditor : EditorWindow
                     clumsyFilters = NeutronServer.filter_udp_client_server.ToString();
             }
         }
-        //***********************************************************************************
         clumsyFilters = clumsyFilters.Replace(System.Environment.NewLine, string.Empty);
         if (clumsyFilters == string.Empty)
             clumsyFilters = "Neutron (:";
+
         ProcessStartInfo info = new ProcessStartInfo(clumsyPath)
         {
             UseShellExecute = true,
             Verb = "runas",
             Arguments = $"--filter \"{clumsyFilters}\" --lag on --lag-inbound off --lag-time 20"
         };
-        //***********************************************************************************
+
         if (File.Exists(clumsyPath))
             _clumsy = Process.Start(info);
         else

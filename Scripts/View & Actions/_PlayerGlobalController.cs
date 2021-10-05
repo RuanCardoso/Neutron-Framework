@@ -8,8 +8,14 @@ using UnityEngine;
 /// </summary>
 namespace NeutronNetwork
 {
-    public class PlayerActions : MonoBehaviour
+    /// <summary>
+    ///* Fornece um controlador para cada jogador individual do servidor.<br/>
+    ///* Disponível somente ao lado do servidor.<br/>
+    ///* Note o uso de pré-processadores #if UNITY_SERVER || UNITY_EDITOR<br/>
+    /// </summary>
+    public abstract class PlayerGlobalController : GlobalBehaviour
     {
+        #region Properties
         /// <summary>
         ///* O Jogador a qual este View pertence.
         /// </summary>
@@ -22,20 +28,25 @@ namespace NeutronNetwork
         ///* Define se está pronto para o uso.
         /// </summary>
         protected bool IsReady => Player != null;
+        #endregion
 
+        #region Mono Behaviour
         protected virtual void OnEnable()
         {
-            NeutronModule.OnUpdate += OnNeutronUpdate;
+#if UNITY_SERVER || UNITY_EDITOR
+            if (enabled)
+                NeutronModule.OnUpdate += OnNeutronUpdate;
+#endif
         }
 
         protected virtual void OnDestroy()
         {
+#if UNITY_SERVER || UNITY_EDITOR
             NeutronModule.OnUpdate -= OnNeutronUpdate;
+#endif
         }
 
-        protected virtual void OnNeutronUpdate()
-        {
-
-        }
+        protected virtual void OnNeutronUpdate() { }
+        #endregion
     }
 }

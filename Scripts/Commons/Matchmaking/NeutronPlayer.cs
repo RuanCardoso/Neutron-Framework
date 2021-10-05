@@ -71,7 +71,15 @@ namespace NeutronNetwork
         /// </summary>
         public string Properties {
             get => _properties;
-            set => _properties = value;
+            set {
+                _properties = value;
+                try
+                {
+                    if (!string.IsNullOrEmpty(value))
+                        Get = JObject.Parse(value);
+                }
+                catch { LogHelper.Error("Invalid json in properties."); }
+            }
         }
 
         /// <summary>
@@ -117,6 +125,7 @@ namespace NeutronNetwork
         /// </summary>
         public JObject Get {
             get;
+            private set;
         } = new JObject();
 
         /// <summary>
@@ -127,7 +136,7 @@ namespace NeutronNetwork
         } = new Dictionary<string, object>();
 
         /// <summary>
-        ///* Seu atual Matchmaking, Sala, Grupo ou Channel.<br/>
+        ///* Seu atual Matchmaking, Sala ou Channel.<br/>
         ///* Retorna o ultimo tipo de Matchmaking ingressado.
         /// </summary>
         public INeutronMatchmaking Matchmaking {
@@ -152,7 +161,6 @@ namespace NeutronNetwork
         public StateObject StateObject {
             get;
         } = new StateObject();
-        //***********************************************************
         public NeutronEventNoReturn OnDestroy {
             get;
             set;
@@ -165,16 +173,13 @@ namespace NeutronNetwork
         {
             ID = id;
             Nickname = $"Player#{id}";
-            //**************************************************************************************************
             TcpClient = tcpClient;
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
             UdpClient.Client.ReceiveBufferSize = Helper.GetConstants().Udp.UdpReceiveBufferSize;
             UdpClient.Client.SendBufferSize = Helper.GetConstants().Udp.UdpSendBufferSize;
-            //**************************************************************************************************
             NetworkStream = SocketHelper.GetStream(tcpClient);
             StateObject.UdpLocalEndPoint = (IPEndPoint)UdpClient.Client.LocalEndPoint;
             StateObject.TcpRemoteEndPoint = (IPEndPoint)TcpClient.Client.RemoteEndPoint;
-            //**************************************************************************************************
             TokenSource = cancellationTokenSource;
         }
 
@@ -183,8 +188,6 @@ namespace NeutronNetwork
             ID = info.GetInt32("id");
             Nickname = info.GetString("nickname");
             Properties = info.GetString("properties");
-            //*********************************************
-            Get = JObject.Parse(Properties);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -192,6 +195,12 @@ namespace NeutronNetwork
             info.AddValue("id", ID);
             info.AddValue("nickname", Nickname);
             info.AddValue("properties", Properties);
+        }
+
+        public void Apply(NeutronPlayer player)
+        {
+            _nickname = player.Nickname;
+            Properties = player.Properties;
         }
 
         public bool Equals(NeutronPlayer player)
@@ -241,16 +250,6 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             Title = _nickname;
 #endif
-        }
-
-        public override bool Equals(object player)
-        {
-            return ID == ((NeutronPlayer)player).ID;
-        }
-
-        public override int GetHashCode()
-        {
-            return ID.GetHashCode();
         }
 
         public override string ToString()

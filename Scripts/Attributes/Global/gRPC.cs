@@ -27,14 +27,6 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* Se verdadeiro, o servidor executa o metódo antes de redirecionar em rede, se falso, o redirecionamento é feito antes da execução do metódo no servidor.
-        /// </summary>
-        public bool FirstValidation {
-            get;
-            set;
-        }
-
-        /// <summary>
         ///* Defina como o metódo será "cachado" no servidor.
         /// </summary>
         public CacheMode Cache {

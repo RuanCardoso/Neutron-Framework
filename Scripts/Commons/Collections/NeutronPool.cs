@@ -34,9 +34,7 @@ namespace NeutronNetwork
         public NeutronPool(Func<T> generator, int capacity, bool resizable, string name)
         {
             _generator = generator;
-            //***************************************************
             _queue = new NeutronSafeQueueNonAlloc<T>(capacity);
-            //***************************************************
             Resizable = resizable;
             Name = name;
         }

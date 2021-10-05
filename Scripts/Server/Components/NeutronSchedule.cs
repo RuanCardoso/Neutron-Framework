@@ -174,7 +174,7 @@ namespace NeutronNetwork
             }
             catch (Exception ex)
             {
-                LogHelper.StackTrace(ex);
+                LogHelper.Stacktrace(ex);
             }
         }
     }

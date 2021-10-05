@@ -117,7 +117,7 @@ namespace NeutronNetwork.Server
             Initialized = true;
 
             #region Logger
-            LogHelper.Info("The Server is ready, all protocols(TCP, UDP, RUDP) have been initialized.\r\n");
+            LogHelper.Info("The server is ready, all protocols(TCP, UDP, RUDP) have been initialized.\r\n");
             #endregion
 
             ///* 3 threads geral para o servidor, não é criado um thread novo por conexão, por uma questão de desempenho, em vez disso, eu utilizo o ThreadPool.
@@ -172,7 +172,7 @@ namespace NeutronNetwork.Server
                 catch (OperationCanceledException) { continue; }
                 catch (Exception ex)
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                     continue;
                 }
             }
@@ -206,16 +206,24 @@ namespace NeutronNetwork.Server
                                 #region View
                                 NeutronSchedule.ScheduleTask(() =>
                                 {
-                                    GameObject parent = new GameObject($"Player Actions[{player.ID}]");
-                                    PlayerActions actions;
-                                    if (_playerActions != null)
-                                        actions = (PlayerActions)parent.AddComponent(_playerActions.GetType());
-                                    else
-                                        actions = parent.AddComponent<PlayerActions>();
-                                    //* Inicializa o jogador da instância.
-                                    actions.Player = player;
+                                    GameObject playerGlobalController = GameObject.Instantiate(_playerGlobalController.gameObject);
+                                    playerGlobalController.name = $"Player Global Controller[{player.ID}]";
+                                    foreach (Component component in playerGlobalController.GetComponents<Component>())
+                                    {
+                                        Type type = component.GetType();
+                                        if (type.BaseType != typeof(PlayerGlobalController) && type != typeof(Transform))
+                                            GameObject.Destroy(component);
+                                        else
+                                        {
+                                            if (type.BaseType == typeof(PlayerGlobalController))
+                                            {
+                                                var controller = (PlayerGlobalController)component;
+                                                controller.Player = player;
+                                            }
+                                        }
+                                    }
                                     //* Move o Player Actions para o container do servidor.
-                                    SceneHelper.MoveToContainer(parent, "[Container] -> Server");
+                                    SceneHelper.MoveToContainer(playerGlobalController, "[Container] -> Server");
                                 });
                                 #endregion
 
@@ -287,7 +295,7 @@ namespace NeutronNetwork.Server
                 catch (ArgumentNullException) { continue; }
                 catch (Exception ex)
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                     continue;
                 }
             }
@@ -296,9 +304,6 @@ namespace NeutronNetwork.Server
         //* Inicia o processamento dos pacotes.
         private void PacketProcessingStack()
         {
-#if NEUTRON_DEBUG || UNITY_EDITOR
-            PacketProcessingStack_ManagedThreadId = ThreadHelper.GetThreadID();
-#endif
             CancellationToken token = TokenSource.Token;
             while (!token.IsCancellationRequested)
             {
@@ -325,7 +330,7 @@ namespace NeutronNetwork.Server
                 catch (ArgumentNullException) { continue; }
                 catch (Exception ex)
                 {
-                    LogHelper.StackTrace(ex);
+                    LogHelper.Stacktrace(ex);
                     continue;
                 }
             }
@@ -364,10 +369,8 @@ namespace NeutronNetwork.Server
                                             SocketHelper.SendTcpAsync(networkStream, hBuffer, player.TokenSource.Token);
                                         break;
                                 }
-#if UNITY_EDITOR
                                 //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
                                 NeutronStatistics.ServerTCP.AddOutgoing(hBuffer.Length);
-#endif
                             }
                             break;
                         case Protocol.Udp:
@@ -401,10 +404,8 @@ namespace NeutronNetwork.Server
                                                 break;
                                             }
                                     }
-#if UNITY_EDITOR
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
                                     NeutronStatistics.ServerUDP.AddOutgoing(hBuffer.Length);
-#endif
                                 }
                                 else
                                     LogHelper.Error($"{player.ID} Udp Endpoint is null!");
@@ -427,9 +428,7 @@ namespace NeutronNetwork.Server
             {
                 if (Encapsulate.Sender != null)
                     packet.Sender = Encapsulate.Sender;
-                //***********************************************************
                 packet.IsServerSide = true;
-                //***********************************************************
                 _dataForProcessing.Add(packet);
             }
         }
@@ -439,14 +438,10 @@ namespace NeutronNetwork.Server
             byte[] datagram = player.StateObject.ReceivedDatagram;
             //* descomprime a porra do pacote.
             byte[] pBuffer = datagram.Decompress();
-            //*****************************************************************************************
-            NeutronPacket neutronPacket = Helper.CreatePacket(pBuffer, player, player, Protocol.Udp);
-            //*****************************************************************************************
+            NeutronPacket neutronPacket = Helper.PollPacket(pBuffer, player, player, Protocol.Udp);
             _dataForProcessing.Add(neutronPacket, player.TokenSource.Token); //* Adiciona os dados na fila para processamento.
-#if UNITY_EDITOR
             //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
             NeutronStatistics.ServerUDP.AddIncoming(datagram.Length);
-#endif
         }
 
         private void UdpApmReceive(NeutronPlayer player)
@@ -466,9 +461,7 @@ namespace NeutronNetwork.Server
                 if (bytesRead > 0)
                 {
                     player.StateObject.ReceivedDatagram = new byte[bytesRead];
-                    //********************************************************************************************
                     Buffer.BlockCopy(player.StateObject.Buffer, 0, player.StateObject.ReceivedDatagram, 0, bytesRead);
-                    //********************************************************************************************
                     CreateUdpPacket(player);
                 }
                 UdpApmReceive(player);
@@ -503,13 +496,11 @@ namespace NeutronNetwork.Server
                                         if (await SocketHelper.ReadAsyncBytes(networkStream, packetBuffer, 0, size, token)) //* ler a mensagem e armazena no buffer de mensagem.
                                         {
                                             packetBuffer = packetBuffer.Decompress();
-                                            NeutronPacket neutronPacket = Helper.CreatePacket(packetBuffer, player, player, Protocol.Tcp);
+                                            NeutronPacket neutronPacket = Helper.PollPacket(packetBuffer, player, player, Protocol.Tcp);
                                             //* Adiciona os dados na fila para processamento.
                                             _dataForProcessing.Add(neutronPacket, token);
-#if UNITY_EDITOR
                                             //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
                                             NeutronStatistics.ServerTCP.AddIncoming(size);
-#endif
                                         }
                                         else
                                             DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
@@ -543,7 +534,7 @@ namespace NeutronNetwork.Server
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                LogHelper.StackTrace(ex);
+                LogHelper.Stacktrace(ex);
                 if (!token.IsCancellationRequested)
                     DisconnectHandler(player);
             }
@@ -569,9 +560,7 @@ namespace NeutronNetwork.Server
             {
                 NeutronStream.IReader reader = stream.Reader;
                 reader.SetBuffer(pBuffer);
-                //************************************************
                 Packet outPacket = (Packet)reader.ReadPacket();
-                //************************************************
                 if (OnReceivePacket(outPacket) || isServer)
                 {
                     switch (outPacket) //* Ler o pacote recebido
@@ -583,7 +572,6 @@ namespace NeutronNetwork.Server
                                 {
                                     NeutronStream.IWriter writer = tcpStream.Writer;
                                     writer.WritePacket((byte)Packet.TcpKeepAlive);
-                                    //---------------------------------------------
                                     owner.Write(writer);
                                 }
                             }
@@ -868,13 +856,10 @@ namespace NeutronNetwork.Server
                 {
                     Initialized = false; //* Marca o servidor como off.
                     TokenSource.Cancel(); //* Cancela todos os threads.
-                    //*****************************************************
                     foreach (NeutronPlayer player in PlayersById.Values)
                         player.Dispose(); //* Libera todos os recursos não gerenciados.
-                    //*****************************************************
                     _acceptedClients.Dispose();
                     _dataForProcessing.Dispose();
-                    //*****************************************************
                     TcpListener.Stop();
                 }
             }

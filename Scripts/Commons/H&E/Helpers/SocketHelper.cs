@@ -33,14 +33,11 @@ namespace NeutronNetwork.Helpers
             if (tryRemove)
             {
                 Neutron.Server._pooledIds.Enqueue(player.ID);
-                //*****************************************************************************
                 string addr = player.StateObject.TcpRemoteEndPoint.Address.ToString();
                 if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
                     Neutron.Server.RegisteredConnectionsByIp[addr] = --value;
-                //*****************************************************************************
                 MatchmakingHelper.Destroy(player);
                 PlayerHelper.Disconnect(player, "Exited");
-                //****************************************************************************
                 if (player.IsInRoom())
                 {
                     INeutronMatchmaking matchmaking = player.Matchmaking;
@@ -74,7 +71,6 @@ namespace NeutronNetwork.Helpers
             }
             else
                 LogHelper.Error("Failed to remove player from server!");
-            //***************//
             return tryRemove;
         }
         #endregion
@@ -118,14 +114,12 @@ namespace NeutronNetwork.Helpers
         public static IAsyncResult BeginReadBytes(UdpClient udpClient, StateObject stateObject, AsyncCallback callback)
         {
             Socket udpSocket = udpClient.Client;
-            //*********************************************************************************************************************************************
             return udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, null);
         }
 
         public static int EndReadBytes(UdpClient udpClient, ref EndPoint remoteEp, IAsyncResult ar)
         {
             Socket udpSocket = udpClient.Client;
-            //*************************************************
             return udpSocket.EndReceiveFrom(ar, ref remoteEp);
         }
 
@@ -133,7 +127,6 @@ namespace NeutronNetwork.Helpers
         public static Task<bool> ReadAsyncBytes(UdpClient udpClient, StateObject stateObject)
         {
             Socket udpSocket = udpClient.Client;
-            //***********************************
             var task = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, obj), (ar) =>
             {
                 try
@@ -148,7 +141,6 @@ namespace NeutronNetwork.Helpers
                     if (bytesRead > 0)
                     {
                         stateObject.ReceivedDatagram = new byte[bytesRead];
-                        //************************************************************************************
                         Buffer.BlockCopy(stateObject.Buffer, 0, stateObject.ReceivedDatagram, 0, bytesRead);
                     }
                     return bytesRead > 0;
@@ -164,7 +156,6 @@ namespace NeutronNetwork.Helpers
         public static Task<int> SendAsyncBytes(UdpClient udpClient, StateObject stateObject, IPEndPoint remoteEp)
         {
             Socket udpSocket = udpClient.Client;
-            //***********************************
             var task = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginSendTo(stateObject.SendDatagram, 0, stateObject.SendDatagram.Length, SocketFlags.None, remoteEp, callback, obj), (ar) =>
             {
                 return udpSocket.EndSendTo(ar);
@@ -175,21 +166,18 @@ namespace NeutronNetwork.Helpers
         public static void BeginSendBytes(UdpClient udpClient, byte[] datagram, IPEndPoint remoteEp, AsyncCallback callback)
         {
             Socket udpSocket = udpClient.Client;
-            //**********************************************************************************************
             udpSocket.BeginSendTo(datagram, 0, datagram.Length, SocketFlags.None, remoteEp, callback, null);
         }
 
         public static int EndSendBytes(UdpClient udpClient, IAsyncResult ar)
         {
             Socket udpSocket = udpClient.Client;
-            //**********************************
             return udpSocket.EndSendTo(ar);
         }
 
         public static int SendBytes(UdpClient udpClient, byte[] datagram, IPEndPoint remoteEp)
         {
             Socket udpSocket = udpClient.Client;
-            //***********************************************************************************
             return udpSocket.SendTo(datagram, 0, datagram.Length, SocketFlags.None, remoteEp);
         }
 

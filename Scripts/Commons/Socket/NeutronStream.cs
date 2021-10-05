@@ -38,7 +38,6 @@ namespace NeutronNetwork
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
             HeaderWriter = new IWriter(capacity);
-            //************************************
             IsFixedSize = capacity > 0;
         }
 
@@ -47,7 +46,6 @@ namespace NeutronNetwork
             Writer = new IWriter();
             Reader = new IReader();
             HeaderWriter = new IWriter();
-            //*****************************
             IsRecyclable = isRecyclable;
         }
 
@@ -56,7 +54,6 @@ namespace NeutronNetwork
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
             HeaderWriter = new IWriter(capacity);
-            //************************************
             IsRecyclable = isRecyclable;
             IsFixedSize = capacity > 0;
         }
@@ -76,7 +73,6 @@ namespace NeutronNetwork
                         Writer.Close();
                         Reader.Close();
                         HeaderWriter.Close();
-                        //********************
                         _disposing = true;
                     }
                     else
@@ -84,7 +80,6 @@ namespace NeutronNetwork
                         Writer.Clear();
                         Reader.Clear();
                         HeaderWriter.Clear();
-                        //****************************************
                         Neutron.PooledNetworkStreams.Push(this);
                     }
                 }
@@ -213,7 +208,7 @@ namespace NeutronNetwork
             {
                 int length = buffer.Length;
                 if (length > int.MaxValue)
-                    LogHelper.Error($"Header size overflow, size is greater than \"int\" length: {length}");
+                    throw new Exception($"Header size overflow, size is greater than \"int\" length: {length}");
                 Write(length);
                 Write(buffer);
             }
@@ -222,7 +217,7 @@ namespace NeutronNetwork
             {
                 int length = buffer.Length;
                 if (length > short.MaxValue)
-                    LogHelper.Error($"Header size overflow, size is greater than \"short\" length: {length}");
+                    throw new Exception($"Header size overflow, size is greater than \"short\" length: {length}");
                 Write((short)length);
                 Write(buffer);
             }
@@ -231,7 +226,7 @@ namespace NeutronNetwork
             {
                 int length = buffer.Length;
                 if (length > byte.MaxValue)
-                    LogHelper.Error($"Header size overflow, size is greater than \"byte\" length: {length}");
+                    throw new Exception($"Header size overflow, size is greater than \"byte\" length: {length}");
                 Write((byte)length);
                 Write(buffer);
             }
@@ -336,7 +331,7 @@ namespace NeutronNetwork
                 SetPosition(0);
             }
 
-            public void Finish()
+            public void Write()
             {
                 if (!IsFixedSize())
                     EndWrite();

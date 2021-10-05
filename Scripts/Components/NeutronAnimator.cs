@@ -66,7 +66,7 @@ namespace NeutronNetwork.Components
                         case AnimatorControllerParameterType.Trigger:
                             break;
                     }
-                    writer.Finish();
+                    writer.Write();
                 }
             }
             return OnValidateAutoSynchronization(isMine);

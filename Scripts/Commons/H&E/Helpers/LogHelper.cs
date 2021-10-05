@@ -120,11 +120,6 @@ namespace NeutronNetwork
             return false;
         }
 
-        public static void StackTrace(Exception ex)
-        {
-            Debug.LogException(ex);
-            Error($"Stacktrace: {ex.StackTrace}");
-            Error($"Error: {ex.Message}");
-        }
+        public static void Stacktrace(Exception ex) => Debug.LogException(ex);
     }
 }

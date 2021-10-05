@@ -116,8 +116,8 @@ namespace NeutronNetwork.Internal
         private void Start()
         {
             Transform = transform;
-            //*****************************************
-            NeutronModule.OnUpdate += OnNeutronUpdate;
+            if (enabled)
+                NeutronModule.OnUpdate += OnNeutronUpdate;
         }
 
         private void OnDestroy()
@@ -145,10 +145,7 @@ namespace NeutronNetwork.Internal
 #endif
         }
 
-        private void OnNeutronUpdate()
-        {
-
-        }
+        private void OnNeutronUpdate() { }
 
         private void Reset()
         {
@@ -215,7 +212,7 @@ namespace NeutronNetwork.Internal
                         LogHelper.Error($"Duplicate \"NeutronBehaviour\" ID not allowed in \"{child.GetType().Name}\". {child.ID}");
                     #endregion
 
-                    if (child != null)
+                    if (child != null && child.enabled)
                     {
                         (iRPC[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPC>(child);
                         for (int i = 0; i < multiplesMethods.Length; i++)

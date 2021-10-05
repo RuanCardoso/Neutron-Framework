@@ -1,4 +1,5 @@
-﻿using NeutronNetwork.Internal.Wrappers;
+﻿using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
 using System;
 using System.Net;
@@ -26,12 +27,12 @@ namespace NeutronNetwork.Server
 
         #region Fields
         [HorizontalLine] public LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
-        public PlayerActions _playerActions;
-        public EventsBehaviour _eventsBehaviour;
+        [ReadOnly] public PlayerGlobalController _playerGlobalController;
+        [ReadOnly] public ServerSide _serverSideController;
         public bool _enableActionsOnChannel;
-        public bool _serverOwnsTheMatchManager = true;
-        public bool _serverOwnsTheSceneObjects = true;
-        public NeutronBehaviour[] _actions;
+        public bool _serverOwnsTheMatchManager;
+        public bool _serverOwnsTheSceneObjects;
+        [ReadOnly] public NeutronBehaviour[] _actions;
         [ReadOnly] [HorizontalLine] public int _playerCount;
         #endregion
 
@@ -40,24 +41,30 @@ namespace NeutronNetwork.Server
             get;
             set;
         }
-        public int PacketProcessingStack_ManagedThreadId {
-            get;
-            set;
-        }
+        protected ThreadManager ThreadManager { get; } = new ThreadManager();
         #endregion
+
+        private void Controllers()
+        {
+            _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
+            if (_serverSideController == null)
+            {
+                _serverSideController = transform.root.GetComponentInChildren<ServerSide>();
+                if (_serverSideController == null)
+                    throw new NeutronException("Server Side Controller not defined!");
+            }
+            if (_playerGlobalController == null)
+            {
+                _playerGlobalController = transform.root.GetComponentInChildren<PlayerGlobalController>();
+                if (_playerGlobalController == null)
+                    throw new NeutronException("Player Global Controller not defined!");
+            }
+        }
 
         protected virtual void Awake()
         {
 #if UNITY_2018_4_OR_NEWER
-            if (_eventsBehaviour == null)
-            {
-                if (ServerBase.OnAwake == null)
-                    _eventsBehaviour = gameObject.AddComponent<EventsBehaviour>();
-                else if (!LogHelper.Error("Events Behaviour not defined!"))
-                    return;
-                else
-                    return;
-            }
+            Controllers();
 #if UNITY_SERVER && !UNITY_EDITOR
         Console.Clear();
 #endif
@@ -74,7 +81,7 @@ namespace NeutronNetwork.Server
                 catch (SocketException ex)
                 {
                     if (ex.ErrorCode == 10048)
-                        LogHelper.Info("This Server instance has been disabled, because another instance is in use.");
+                        LogHelper.Info("This server instance has been disabled, because another instance is in use.");
                     else
                         throw new Exception(ex.Message);
                 }

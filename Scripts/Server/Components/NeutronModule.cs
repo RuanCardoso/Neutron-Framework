@@ -13,6 +13,8 @@ namespace NeutronNetwork
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CONFIG)]
     public class NeutronModule : MonoBehaviour
     {
+        public NeutronModule() { }
+
         #region Properties
         public static Settings Settings {
             get;
@@ -65,12 +67,17 @@ namespace NeutronNetwork
             InitializePools();
         }
 
+        [Obsolete]
         private void Start()
         {
             SetFramerate();
             //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
             Physics.autoSimulation = false;
+#if UNITY_2020_1_OR_NEWER
             Physics2D.simulationMode = SimulationMode2D.Script;
+#else
+            Physics2D.autoSimulation = false;
+#endif
         }
 
         private void Update()
@@ -109,15 +116,11 @@ namespace NeutronNetwork
 
         private void InitializePools()
         {
-            int maxCapacity = Settings.GlobalSettings.StreamPoolCapacity;
-            int maxCapacityPackets = Settings.GlobalSettings.PacketPoolCapacity;
-            //*********************************************************************************************************************************
-            Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true), maxCapacity, false, "Neutron Streams");
-            Neutron.PooledNetworkPackets = new NeutronPool<NeutronPacket>(() => new NeutronPacket(), maxCapacityPackets, false, "Neutron Packets");
-            //*********************************************************************************************************************************
-            for (int i = 0; i < maxCapacity; i++)
+            Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true), Settings.GlobalSettings.StreamPoolCapacity, false, "Neutron Streams");
+            Neutron.PooledNetworkPackets = new NeutronPool<NeutronPacket>(() => new NeutronPacket(), Settings.GlobalSettings.PacketPoolCapacity, false, "Neutron Packets");
+            for (int i = 0; i < Settings.GlobalSettings.StreamPoolCapacity; i++)
                 Neutron.PooledNetworkStreams.Push(new NeutronStream(true));
-            for (int i = 0; i < maxCapacityPackets; i++)
+            for (int i = 0; i < Settings.GlobalSettings.PacketPoolCapacity; i++)
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
         }
 
@@ -134,7 +137,6 @@ namespace NeutronNetwork
                 else
                 {
                     OnLoadSettings?.Invoke(Settings);
-                    //****************************************
                     switch (Settings.NetworkSettings.Encoding)
                     {
                         case EncodingType.ASCII:
@@ -172,7 +174,6 @@ namespace NeutronNetwork
                             HeaderSize = sizeof(int);
                             break;
                     }
-                    //*************************************************************
                     StateObject.Size = Helper.GetConstants().Udp.MaxUdpPacketSize;
                 }
             }

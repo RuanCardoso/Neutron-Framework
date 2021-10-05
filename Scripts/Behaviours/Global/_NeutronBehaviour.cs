@@ -20,7 +20,9 @@ using UnityEngine.SceneManagement;
 /// </summary>
 namespace NeutronNetwork
 {
-    //* Classe base de todos os objetos.
+    /// <summary>
+    ///* Base de todos os objetos de rede, seja ao lado do servidor ou ao lado do cliente.
+    /// </summary>
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_BEHAVIOUR)]
     public class NeutronBehaviour : GlobalBehaviour
     {
@@ -29,15 +31,15 @@ namespace NeutronNetwork
         #region Fields -> Inspector
         [Header("[Identity]")]
         [SerializeField] [ReadOnly] private byte _id;
+        [SerializeField] [ShowIf("_authority", AuthorityMode.Handled)] private NeutronBehaviour _authorityHandledBy;
         [SerializeField] [HorizontalLineDown] private AuthorityMode _authority = AuthorityMode.Mine;
         [HideInInspector]
         [SerializeField] private bool _hasOnAutoSynchronization, _hasIRPC;
         #endregion
 
         #region Fields
-        //* Temporizador do "OnAutoSynchronization".
         private float _autoSyncDelta;
-        [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions OnAutoSynchronizationOptions = new AutoSyncOptions();
+        [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
         #endregion
 
         #region Properties
@@ -103,13 +105,17 @@ namespace NeutronNetwork
                         {
                             return IsMasterClient;
                         }
-                    case AuthorityMode.Mine | AuthorityMode.Server:
+                    case AuthorityMode.MineAndServer:
                         {
                             return IsMine || IsServer;
                         }
-                    case AuthorityMode.Mine | AuthorityMode.Master:
+                    case AuthorityMode.MineAndMaster:
                         {
                             return IsMine || IsMasterClient;
+                        }
+                    case AuthorityMode.ServerAndMaster:
+                        {
+                            return IsServer || IsMasterClient;
                         }
                     case AuthorityMode.All:
                         {
@@ -118,6 +124,10 @@ namespace NeutronNetwork
                     case AuthorityMode.Custom:
                         {
                             return IsCustom;
+                        }
+                    case AuthorityMode.Handled:
+                        {
+                            return _authorityHandledBy != null && _authorityHandledBy.HasAuthority;
                         }
                     default:
                         return LogHelper.Error("Authority not implemented!");
@@ -164,6 +174,24 @@ namespace NeutronNetwork
         ///* Obtém a cena de física 2D usada pela cena.
         /// </summary>
         protected PhysicsScene2D Physics2D => Scene.GetPhysicsScene2D();
+
+        /// <summary>
+        ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
+        ///* Multiplique por mil para obter em milisegundos(ms).
+        /// </summary>
+        protected double NetworkTime => This.NetworkTime.Time;
+
+        /// <summary>
+        ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
+        ///* Multiplique por mil para obter em milisegundos(ms).<br/>
+        ///* Não afetado pela rede.
+        /// </summary>
+        protected double LocalTime => This.NetworkTime.LocalTime;
+
+        /// <summary>
+        ///* Obtém as opções do AutoSync definidas no inspetor.
+        /// </summary>
+        public AutoSyncOptions AutoSyncOptions => _onAutoSynchronizationOptions;
         #endregion
 
         #region Collections
@@ -180,9 +208,9 @@ namespace NeutronNetwork
             if (_hasOnAutoSynchronization)
             {
                 NeutronStream packetStream = GetPacketStream();
-                if (packetStream == null && OnAutoSynchronizationOptions.HighPerformance)
+                if (packetStream == null && _onAutoSynchronizationOptions.HighPerformance)
                     throw new Exception("AutoSync: Packet stream not implemented!");
-                if (packetStream != null && !packetStream.IsFixedSize && OnAutoSynchronizationOptions.HighPerformance)
+                if (packetStream != null && !packetStream.IsFixedSize && _onAutoSynchronizationOptions.HighPerformance)
                     LogHelper.Warn("AutoSync: The stream has no fixed size! performance is lower if you send with very frequency.");
             }
 
@@ -194,14 +222,18 @@ namespace NeutronNetwork
                 else
                     NeutronView.NeutronBehaviours[option.Instance.ID].RuntimeIRpcOptions.Add(option.RpcId, option);
             }
-            //********************************************************************************************************
-            NeutronModule.OnUpdate += OnNeutronUpdate;
-            NeutronModule.OnFixedUpdate += OnNeutronFixedUpdate;
-            NeutronModule.OnLateUpdate += OnNeutronLateUpdate;
+
+            if (enabled)
+            {
+                NeutronModule.OnUpdate += OnNeutronUpdate;
+                NeutronModule.OnFixedUpdate += OnNeutronFixedUpdate;
+                NeutronModule.OnLateUpdate += OnNeutronLateUpdate;
+            }
         }
 
         /// <summary>
-        ///* É Seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
+        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
+        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
         /// </summary>
         protected virtual void OnNeutronUpdate()
         {
@@ -213,34 +245,36 @@ namespace NeutronNetwork
                     NeutronStream packetStream = GetPacketStream();
                     if (_hasOnAutoSynchronization && HasAuthority)
                     {
-                        if (!OnAutoSynchronizationOptions.HighPerformance)
+                        if (!_onAutoSynchronizationOptions.HighPerformance)
                         {
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {
                                 stream.Writer.SetPosition(PacketSize.AutoSync);
                                 if (OnAutoSynchronization(stream, true))
-                                    This.OnAutoSynchronization(stream, NeutronView, ID, OnAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                    This.OnAutoSynchronization(stream, NeutronView, ID, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
                             }
                         }
                         else
                         {
                             packetStream.Writer.SetPosition(PacketSize.AutoSync);
                             if (OnAutoSynchronization(packetStream, true))
-                                This.OnAutoSynchronization(packetStream, NeutronView, ID, OnAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                This.OnAutoSynchronization(packetStream, NeutronView, ID, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
                         }
                     }
-                    _autoSyncDelta = NeutronConstantsSettings.ONE_PER_SECOND / OnAutoSynchronizationOptions.SendRate;
+                    _autoSyncDelta = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.SendRate;
                 }
             }
         }
 
         /// <summary>
-        ///* É Seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
+        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
+        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
         /// </summary>
         protected virtual void OnNeutronFixedUpdate() { }
 
         /// <summary>
-        ///* É Seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
+        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
+        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
         /// </summary>
         protected virtual void OnNeutronLateUpdate() { }
         #endregion
@@ -259,7 +293,7 @@ namespace NeutronNetwork
             _id = 0;
             OnValidate();
 #endif
-            OnCustom();
+            //OnDefines();
         }
 
         protected virtual void OnValidate()
@@ -267,18 +301,18 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             LoadOptions();
 #endif
-            OnCustom();
+            //OnDefines();
         }
 
         protected virtual void OnEnable()
         {
-            OnCustom();
+            //OnDefines();
         }
 
-        private void OnCustom()
+        private void OnDefines()
         {
             if (gameObject.transform.root.name == "Controllers")
-                enabled = name != "Custom";
+                enabled = name != "Defines";
         }
 
         //* Não entendo porra nenhuma que tá aqui, sim foi eu que fiz..... só sei que é pra attribuir o Id do view e os metódos rpc no dict.

@@ -14,10 +14,10 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     /// <summary>
-    /// You can implement your code here, or create a new script and inherit from this class, if you inherit from this script don't forget to remove this script and add yours and call "base".
+    ///* Eventos ao lado do servidor ou cliente, em sua maioria, eventos do servidor.
     /// </summary>
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_EVENTS)]
-    public class EventsBehaviour : MonoBehaviour
+    public abstract class ServerSide : GlobalBehaviour
     {
         #region Properties
         protected virtual bool SimulateOnFixedUpdate {
@@ -275,12 +275,9 @@ namespace NeutronNetwork
             {
                 //* Não pode aproveitar o Neutron.Server.Player? não, não podemos compartilhar a mesma instãncia pra vários matchmaking, um jogador só pode está em um Matchmaking ao mesmo tempo.
                 NeutronPlayer player = PlayerHelper.MakeTheServerPlayer();
-                //************************************************************************
                 player.Channel = channel;
                 player.Room = room;
-                //************************************************************************
                 player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                //************************************************************************
                 matchmaking.Owner = player; //! reforço: um jogador só pode está em um Matchmaking ao mesmo tempo.
             }
         }
@@ -297,11 +294,9 @@ namespace NeutronNetwork
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //**********************************************
                 writer.WritePacket((byte)Packet.AuthStatus);
                 writer.Write(properties);
                 writer.Write(status);
-                //**********************************************
                 user.Write(writer);
             }
             return status;

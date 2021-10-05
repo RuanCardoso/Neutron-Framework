@@ -19,8 +19,8 @@ MonoBehaviour:
     AppId: 84964730-ecb4-46f5-b471-22571dcfc91c
     FPS: 60
     MaxPlayers: 300
-    StreamPoolCapacity: 1200
-    PacketPoolCapacity: 1200
+    StreamPoolCapacity: 30000
+    PacketPoolCapacity: 30000
     Serialization: 1
     Compression: 0
     NoDelay: 1
@@ -51,5 +51,5 @@ MonoBehaviour:
       BufferedStreamSize: 8192
     Udp:
       MaxUdpPacketSize: 512
-      UdpReceiveBufferSize: 8192
-      UdpSendBufferSize: 8192
+      UdpReceiveBufferSize: 65535
+      UdpSendBufferSize: 65535

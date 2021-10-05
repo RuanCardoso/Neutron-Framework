@@ -11,11 +11,9 @@ namespace NeutronNetwork.Helpers
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                //*******************************************
                 writer.WritePacket((byte)Packet.Disconnection);
                 writer.Write(player.ID);
                 writer.Write(reason);
-                //**************************************************************
                 player.Write(writer, Helper.GetHandlers().OnPlayerDisconnected);
             }
         }
@@ -34,7 +32,6 @@ namespace NeutronNetwork.Helpers
             }
             else
                 id = 0;
-            //******************************************************
             return id > NeutronConstantsSettings.GENERATE_PLAYER_ID;
         }
 

@@ -13,7 +13,7 @@ namespace NeutronNetwork.Constants
         public string[] Addresses = { "localhost" };
         public int Port = 1418;
         [ReadOnly] [AllowNesting] public string AppId;
-        [Range(1, 256)] public int FPS = 60;
+        [Range(1, 128)] public int FPS = 60;
         [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
         [Range(1, 65535)] public int StreamPoolCapacity = 1200;
         [Range(1, 65535)] public int PacketPoolCapacity = 1200;

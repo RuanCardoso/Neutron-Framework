@@ -276,29 +276,44 @@ namespace NeutronNetwork.Internal.Packets
     /// <summary>
     ///* Define quem tem a autoridade sobre o objeto. 
     /// </summary>
-    [Flags]
     public enum AuthorityMode : int
     {
         /// <summary>
+        ///* Autoridade baseada na autoridade de outro objeto.
+        /// </summary>
+        Handled,
+        /// <summary>
         ///* Define autoridade personalizada sobre o objeto.
         /// </summary>
-        Custom = 0,
+        Custom,
         /// <summary>
         ///* Somente o servidor tem a autoridade sobre o objeto.
         /// </summary>
-        Server = 1,
+        Server,
         /// <summary>
         ///* Somente o dono do objeto tem a autoridade sobre o objeto.
         /// </summary>
-        Mine = 2,
+        Mine,
         /// <summary>
         ///* Somente o dono da sala tem a autoridade sobre o objeto.
         /// </summary>
-        Master = 8,
+        Master,
         /// <summary>
-        ///* Todos os objetos tem a autoridade sobre o objeto.
+        ///* Somente o servidor e o dono do objeto tem a autoridade sobre o objeto.
         /// </summary>
-        All = ~0
+        MineAndServer,
+        /// <summary>
+        ///* Somente o dono da sala e o dono do objeto tem a autoridade sobre o objeto.
+        /// </summary>
+        MineAndMaster,
+        /// <summary>
+        ///* Somente o dono da sala e o servidor tem a autoridade sobre o objeto.
+        /// </summary>
+        ServerAndMaster,
+        /// <summary>
+        ///* Todos os jogadores tem a autoridade sobre o objeto.
+        /// </summary>
+        All,
     }
 
     public enum SmoothMode : int
