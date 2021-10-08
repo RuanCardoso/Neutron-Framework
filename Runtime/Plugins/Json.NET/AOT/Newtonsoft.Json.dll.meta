@@ -6,8 +6,7 @@ PluginImporter:
   iconMap: {}
   executionOrder: {}
   defineConstraints:
-  - UNITY_2018
-  - UNITY_2019
+  - UNITY_2018 || UNITY_2019
   isPreloaded: 0
   isOverridable: 1
   isExplicitlyReferenced: 0
