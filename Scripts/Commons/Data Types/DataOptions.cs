@@ -55,7 +55,7 @@ namespace NeutronNetwork.Internal
         [SerializeField] private NeutronBehaviour _instance;
         [SerializeField] [HideInInspector] private NeutronBehaviour _originalInstance;
         [SerializeField] private TargetTo _targetTo;
-        [SerializeField] private CacheMode _cache;
+        [SerializeField] private CacheMode _cacheMode;
         [SerializeField] private Protocol _protocol;
         #endregion
 
@@ -85,9 +85,9 @@ namespace NeutronNetwork.Internal
             set => _targetTo = value;
         }
 
-        public CacheMode Cache {
-            get => _cache;
-            set => _cache = value;
+        public CacheMode CacheMode {
+            get => _cacheMode;
+            set => _cacheMode = value;
         }
 
         public Protocol Protocol {
@@ -97,7 +97,7 @@ namespace NeutronNetwork.Internal
 
         public Boolean Equals(iRpcOptions other)
         {
-            return other.RpcId == RpcId && other.OriginalInstance.ID == OriginalInstance.ID;
+            return other.RpcId == RpcId && other.OriginalInstance.Id == OriginalInstance.Id;
         }
 
         public void OnAfterDeserialize()
@@ -121,19 +121,21 @@ namespace NeutronNetwork.Internal
     {
         [SerializeField] private bool _fixedSize;
         [SerializeField] private Protocol _protocol;
-        [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _sendRate = 1; //* Quantidade de sincronizações por segundo.
+        [SerializeField]
+        [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)]
+        private int _packetsPerSecond = 1; //* Quantidade de sincronizações por segundo.
 
         public Protocol Protocol {
             get => _protocol;
             set => _protocol = value;
         }
 
-        public int SendRate {
-            get => _sendRate;
-            set => _sendRate = value;
+        public int PacketsPerSecond {
+            get => _packetsPerSecond;
+            set => _packetsPerSecond = value;
         }
 
-        public bool HighPerformance {
+        public bool FixedSize {
             get => _fixedSize;
             set => _fixedSize = value;
         }

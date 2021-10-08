@@ -30,7 +30,7 @@ namespace NeutronNetwork
 
         #region Fields -> Inspector
         [Header("[Identity]")]
-        [SerializeField] [ReadOnly] private byte _id;
+        [SerializeField] private byte _id;
         [SerializeField] [ShowIf("_authority", AuthorityMode.Handled)] private NeutronBehaviour _authorityHandledBy;
         [SerializeField] [HorizontalLineDown] private AuthorityMode _authority = AuthorityMode.Mine;
         [HideInInspector]
@@ -38,16 +38,16 @@ namespace NeutronNetwork
         #endregion
 
         #region Fields
-        private float _autoSyncDelta;
+        private float _autoSyncTimeDelay;
         [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
         #endregion
 
         #region Properties
         /// <summary>
-        ///* ID que será usado para identificar a instância que deve invocar os iRPC's.
+        ///* Id que será usado para identificar a instância que deve invocar os iRPC's.
         /// </summary>
         /// <value></value>
-        public byte ID => _id;
+        public byte Id => _id;
 
         /// <summary>
         ///* Retorna o nível de autoridade usado.
@@ -55,34 +55,47 @@ namespace NeutronNetwork
         protected AuthorityMode Authority => _authority;
 
         /// <summary>
+        ///* Define o nível de autoridade para o OnAutoSynchronization.
+        /// </summary>
+        protected virtual bool AutoSyncAuthority => HasAuthority;
+
+        /// <summary>
+        ///* Retorna se o objeto está registrado na rede.
+        /// </summary>
+        public bool IsRegistered {
+            get;
+            private set;
+        }
+
+        /// <summary>
         ///* Retorna se o objeto é seu, HasAuthority é uma alternativa.
         /// </summary>
         /// <returns></returns>
-        protected bool IsMine => This.IsMine(Owner);
+        protected bool IsMine => IsRegistered && This.IsMine(Owner);
 
         /// <summary>
         ///* Retorna se você é o dono(master) da sala.<br/>
         /// </summary>
         /// <returns></returns>
-        protected bool IsMasterClient => Owner.IsMaster;
+        protected bool IsMasterClient => IsRegistered && Owner.IsMaster;
 
         /// <summary>
         ///* Retorna se o objeto é o objeto do lado do servidor, HasAuthority é uma alternativa.
         /// </summary>
         /// <returns></returns>
-        protected bool IsServer => NeutronView.IsServer;
+        protected bool IsServer => IsRegistered && NeutronView.IsServer;
 
         /// <summary>
         ///* Retorna se o objeto é o objeto do lado do cliente, HasAuthority é uma alternativa.
         /// </summary>
         /// <returns></returns>
-        protected bool IsClient => !IsServer;
+        protected bool IsClient => IsRegistered && !IsServer;
 
         /// <summary>
         ///* Retorna se o objeto é seu, HasAuthority é uma alternativa.
         /// </summary>
         /// <returns></returns>
-        protected bool IsCustom => OnCustomAuthority();
+        protected bool IsCustom => IsRegistered && OnCustomAuthority();
 
         /// <summary>
         ///* Retorna se você tem autoridade para controlar este objeto, uma versão simplificada de IsMine|IsServer|IsClient|IsMasterClient.<br/>
@@ -182,7 +195,7 @@ namespace NeutronNetwork
         protected double NetworkTime => This.NetworkTime.Time;
 
         /// <summary>
-        ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
+        ///* Obtenha o tempo atual em segundos(sec) desde do início da conexão.<br/>
         ///* Multiplique por mil para obter em milisegundos(ms).<br/>
         ///* Não afetado pela rede.
         /// </summary>
@@ -195,8 +208,8 @@ namespace NeutronNetwork
         #endregion
 
         #region Collections
-        [SerializeField] [ShowIf("_hasIRPC")] [Label("iRpcOptions")] private List<iRpcOptions> _iRpcOptions = new List<iRpcOptions>();
-        [NonSerialized] private readonly Dictionary<byte, iRpcOptions> RuntimeIRpcOptions = new Dictionary<byte, iRpcOptions>();
+        [SerializeField] [ShowIf("_hasIRPC")] [Label("iRpcOptions")] protected List<iRpcOptions> _iRpcOptions = new List<iRpcOptions>();
+        [NonSerialized] protected readonly Dictionary<byte, iRpcOptions> RuntimeIRpcOptions = new Dictionary<byte, iRpcOptions>();
         #endregion
 
         #region Custom Mono Behaviour Methods
@@ -208,27 +221,22 @@ namespace NeutronNetwork
             if (_hasOnAutoSynchronization)
             {
                 NeutronStream packetStream = GetPacketStream();
-                if (packetStream == null && _onAutoSynchronizationOptions.HighPerformance)
+                if (packetStream == null && _onAutoSynchronizationOptions.FixedSize)
                     throw new Exception("AutoSync: Packet stream not implemented!");
-                if (packetStream != null && !packetStream.IsFixedSize && _onAutoSynchronizationOptions.HighPerformance)
+                if (packetStream != null && !packetStream.IsFixedSize && _onAutoSynchronizationOptions.FixedSize)
                     LogHelper.Warn("AutoSync: The stream has no fixed size! performance is lower if you send with very frequency.");
             }
 
             //* Inicializa os iRpcs.
             foreach (iRpcOptions option in _iRpcOptions)
             {
-                if (option.Instance.ID == ID)
+                if (option.Instance.Id == Id)
                     RuntimeIRpcOptions.Add(option.RpcId, option);
                 else
-                    NeutronView.NeutronBehaviours[option.Instance.ID].RuntimeIRpcOptions.Add(option.RpcId, option);
+                    NeutronView.NeutronBehaviours[option.Instance.Id].RuntimeIRpcOptions.Add(option.RpcId, option);
             }
-
-            if (enabled)
-            {
-                NeutronModule.OnUpdate += OnNeutronUpdate;
-                NeutronModule.OnFixedUpdate += OnNeutronFixedUpdate;
-                NeutronModule.OnLateUpdate += OnNeutronLateUpdate;
-            }
+            //* Define que o metódo foi registrado.
+            IsRegistered = true;
         }
 
         /// <summary>
@@ -239,29 +247,29 @@ namespace NeutronNetwork
         {
             if (_hasOnAutoSynchronization)
             {
-                _autoSyncDelta -= Time.deltaTime;
-                if (_autoSyncDelta <= 0)
+                _autoSyncTimeDelay -= Time.deltaTime;
+                if (_autoSyncTimeDelay <= 0)
                 {
                     NeutronStream packetStream = GetPacketStream();
-                    if (_hasOnAutoSynchronization && HasAuthority)
+                    if (_hasOnAutoSynchronization && AutoSyncAuthority)
                     {
-                        if (!_onAutoSynchronizationOptions.HighPerformance)
+                        if (!_onAutoSynchronizationOptions.FixedSize)
                         {
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {
                                 stream.Writer.SetPosition(PacketSize.AutoSync);
                                 if (OnAutoSynchronization(stream, true))
-                                    This.OnAutoSynchronization(stream, NeutronView, ID, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                    This.OnAutoSynchronization(stream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
                             }
                         }
                         else
                         {
                             packetStream.Writer.SetPosition(PacketSize.AutoSync);
                             if (OnAutoSynchronization(packetStream, true))
-                                This.OnAutoSynchronization(packetStream, NeutronView, ID, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                This.OnAutoSynchronization(packetStream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
                         }
                     }
-                    _autoSyncDelta = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.SendRate;
+                    _autoSyncTimeDelay = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond;
                 }
             }
         }
@@ -280,11 +288,22 @@ namespace NeutronNetwork
         #endregion
 
         #region Mono Behaviour
-        protected virtual void OnDestroy()
+        protected virtual void Update()
         {
-            NeutronModule.OnUpdate -= OnNeutronUpdate;
-            NeutronModule.OnFixedUpdate -= OnNeutronFixedUpdate;
-            NeutronModule.OnLateUpdate -= OnNeutronLateUpdate;
+            if (IsRegistered)
+                OnNeutronUpdate();
+        }
+
+        protected virtual void FixedUpdate()
+        {
+            if (IsRegistered)
+                OnNeutronFixedUpdate();
+        }
+
+        protected virtual void LateUpdate()
+        {
+            if (IsRegistered)
+                OnNeutronLateUpdate();
         }
 
         protected virtual void Reset()
@@ -293,7 +312,6 @@ namespace NeutronNetwork
             _id = 0;
             OnValidate();
 #endif
-            //OnDefines();
         }
 
         protected virtual void OnValidate()
@@ -301,18 +319,6 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             LoadOptions();
 #endif
-            //OnDefines();
-        }
-
-        protected virtual void OnEnable()
-        {
-            //OnDefines();
-        }
-
-        private void OnDefines()
-        {
-            if (gameObject.transform.root.name == "Controllers")
-                enabled = name != "Defines";
         }
 
         //* Não entendo porra nenhuma que tá aqui, sim foi eu que fiz..... só sei que é pra attribuir o Id do view e os metódos rpc no dict.
@@ -322,14 +328,21 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                var neutronBehaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
-                if (neutronBehaviours.Length <= byte.MaxValue)
+                var behaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
+                if (behaviours.Length <= byte.MaxValue)
                 {
-                    if (ID == 0)
+                    if (Id == 0)
+                        _id = (byte)Helper.GetAvailableId(behaviours, x => x.Id, byte.MaxValue);
+                    else
                     {
-                        _id = (byte)UnityEngine.Random.Range(1, byte.MaxValue);
-                        if (neutronBehaviours.Count(x => x._id == _id) > 1)
-                            Reset();
+                        if (!(Id >= byte.MaxValue))
+                        {
+                            int count = behaviours.Count(x => x.Id == Id);
+                            if (count > 1)
+                                Reset();
+                        }
+                        else
+                            LogHelper.Error("Max Neutron Behaviours reached in this Neutron View!");
                     }
                 }
                 else
@@ -431,7 +444,7 @@ namespace NeutronNetwork
         protected void End_iRPC(byte id, NeutronStream parameters, NeutronView view)
         {
             if (RuntimeIRpcOptions.TryGetValue(id, out iRpcOptions option)) //* como é a perfomance disso?
-                This.End_iRPC(parameters, view, option.RpcId, option.OriginalInstance.ID, option.Cache, option.TargetTo, option.Protocol, IsServer);
+                This.End_iRPC(parameters, view, option.RpcId, option.OriginalInstance.Id, option.CacheMode, option.TargetTo, option.Protocol, IsServer);
             else
                 LogHelper.Error($"Rpc [{id}] not found!");
         }

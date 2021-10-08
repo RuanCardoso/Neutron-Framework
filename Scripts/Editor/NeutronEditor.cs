@@ -10,7 +10,7 @@ public class NeutronEditor : EditorWindow
 {
     private static Process _clumsy;
 
-    [MenuItem("Neutron/Play(Performance Mode)", priority = -50)]
+    //[MenuItem("Neutron/Play(Performance Mode)", priority = -50)]
     private static void Play()
     {
         NeutronModule.EditorLoadSettings().GlobalSettings.PerfomanceMode = true;

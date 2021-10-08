@@ -206,7 +206,8 @@ namespace NeutronNetwork.Server
                                 #region View
                                 NeutronSchedule.ScheduleTask(() =>
                                 {
-                                    GameObject playerGlobalController = GameObject.Instantiate(_playerGlobalController.gameObject);
+                                    GameObject playerGlobalController = GameObject.Instantiate(PlayerGlobalController.gameObject);
+                                    PlayerGlobalController.hideFlags = HideFlags.HideInHierarchy;
                                     playerGlobalController.name = $"Player Global Controller[{player.ID}]";
                                     foreach (Component component in playerGlobalController.GetComponents<Component>())
                                     {
@@ -337,25 +338,24 @@ namespace NeutronNetwork.Server
         }
 
         //* Aqui os dados são enviados aos seus clientes.
-        public void OnSendingData(NeutronPlayer player, NeutronPacket data)
+        public void OnSendingData(NeutronPlayer player, NeutronPacket neutronPacket)
         {
             try
             {
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
-                    NeutronStream.IWriter header = stream.Writer;
-                    byte[] pBuffer = data.Buffer.Compress();
-                    //* Cabeçalho da mensagem/dados.
-                    #region Header
-                    short playerId = (short)data.Sender.ID;
-                    header.WriteSize(pBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho e a mensagem.
-                    header.Write(playerId); //* Pre-fixa o id do jogador no cabeçalho, um short(2 bytes).
-                    #endregion
-                    byte[] hBuffer = header.ToArray();
-                    switch (data.Protocol)
+                    var playerId = (short)neutronPacket.Sender.ID;
+                    byte[] pBuffer = neutronPacket.Buffer.Compress();
+                    switch (neutronPacket.Protocol)
                     {
                         case Protocol.Tcp:
                             {
+                                NeutronStream.IWriter wHeader = stream.Writer;
+                                wHeader.WriteByteArrayWithAutoSize(pBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho e a mensagem.
+                                wHeader.Write(playerId); //* Pre-fixa o id do jogador no cabeçalho, um short(2 bytes).
+                                byte[] hBuffer = wHeader.ToArray();
+                                wHeader.Write();
+
                                 NetworkStream networkStream = player.TcpClient.GetStream();
                                 switch (Helper.GetConstants().SendModel)
                                 {
@@ -375,6 +375,12 @@ namespace NeutronNetwork.Server
                             break;
                         case Protocol.Udp:
                             {
+                                NeutronStream.IWriter wHeader = stream.Writer;
+                                wHeader.Write(playerId); //* Pre-fixa o id do jogador no cabeçalho, um short(2 bytes).
+                                wHeader.WriteNext(pBuffer);
+                                byte[] hBuffer = wHeader.ToArray();
+                                wHeader.Write();
+
                                 player.StateObject.SendDatagram = hBuffer;
                                 if (player.StateObject.UdpIsReady()) //* Verifica se o IP de destino não é nulo, se sim, o servidor não enviará os dados.
                                 {
@@ -500,7 +506,7 @@ namespace NeutronNetwork.Server
                                             //* Adiciona os dados na fila para processamento.
                                             _dataForProcessing.Add(neutronPacket, token);
                                             //* Adiciona no profiler a quantidade de dados de entrada(Incoming).
-                                            NeutronStatistics.ServerTCP.AddIncoming(size);
+                                            NeutronStatistics.ServerTCP.AddIncoming(size + hBuffer.Length);
                                         }
                                         else
                                             DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
@@ -581,7 +587,7 @@ namespace NeutronNetwork.Server
                                 #region Reader
                                 string appId = reader.ReadString();
                                 double time = reader.ReadDouble();
-                                Authentication authentication = reader.ReadIntExactly<Authentication>();
+                                Authentication authentication = reader.ReadWithInteger<Authentication>();
                                 #endregion
 
                                 #region Logic
@@ -643,7 +649,7 @@ namespace NeutronNetwork.Server
                                 short viewId = reader.ReadShort();
                                 byte rpcId = reader.ReadByte();
                                 byte instanceId = reader.ReadByte();
-                                byte[] buffer = reader.ReadNextBytes(pBuffer.Length);
+                                byte[] buffer = reader.ReadNext();
                                 #endregion
 
                                 #region Logic
@@ -655,7 +661,7 @@ namespace NeutronNetwork.Server
                             {
                                 #region Reader
                                 byte id = reader.ReadByte();
-                                byte[] buffer = reader.ReadNextBytes(pBuffer.Length);
+                                byte[] buffer = reader.ReadNext();
                                 #endregion
 
                                 #region Logic
@@ -698,7 +704,7 @@ namespace NeutronNetwork.Server
                             {
                                 #region Reader
                                 string password = reader.ReadString();
-                                NeutronRoom room = reader.ReadIntExactly<NeutronRoom>();
+                                NeutronRoom room = reader.ReadWithInteger<NeutronRoom>();
                                 #endregion
 
                                 #region Logic
@@ -795,7 +801,7 @@ namespace NeutronNetwork.Server
                                     targetTo = (TargetTo)reader.ReadPacket();
                                     tunnelingTo = (TunnelingTo)reader.ReadPacket();
                                 }
-                                byte[] buffer = reader.ReadIntExactly();
+                                byte[] buffer = reader.ReadWithInteger();
                                 #endregion
 
                                 #region Logic
@@ -809,7 +815,7 @@ namespace NeutronNetwork.Server
                                 RegisterMode registerType = (RegisterMode)reader.ReadPacket();
                                 short viewId = reader.ReadShort();
                                 byte instanceId = reader.ReadByte();
-                                byte[] parameters = reader.ReadNextBytes(pBuffer.Length);
+                                byte[] parameters = reader.ReadNext();
                                 #endregion
 
                                 #region Logic

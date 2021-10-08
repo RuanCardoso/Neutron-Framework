@@ -1,5 +1,3 @@
-using UnityEngine;
-
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
 ///* Os br também são pica.
@@ -31,19 +29,10 @@ namespace NeutronNetwork
         #endregion
 
         #region Mono Behaviour
-        protected virtual void OnEnable()
+        protected virtual void Update()
         {
-#if UNITY_SERVER || UNITY_EDITOR
-            if (enabled)
-                NeutronModule.OnUpdate += OnNeutronUpdate;
-#endif
-        }
-
-        protected virtual void OnDestroy()
-        {
-#if UNITY_SERVER || UNITY_EDITOR
-            NeutronModule.OnUpdate -= OnNeutronUpdate;
-#endif
+            if (IsReady)
+                OnNeutronUpdate();
         }
 
         protected virtual void OnNeutronUpdate() { }

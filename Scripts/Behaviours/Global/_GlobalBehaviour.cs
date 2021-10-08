@@ -88,6 +88,10 @@ namespace NeutronNetwork
         {
             var instances = FindObjectsOfType<GlobalBehaviour>();
             GlobalBehaviour localInstance = this;
+            Type localType = localInstance.GetType();
+            (gRPC[], MethodInfo)[] ___ = ReflectionHelper.GetMultipleAttributesWithMethod<gRPC>(localInstance);
+            if ((localType.BaseType == typeof(PlayerGlobalController) || localType.BaseType == typeof(NeutronBehaviour)) && ___.Length > 0)
+                throw new NeutronException($"The class \"{localType.Name}\", they cannot declare \"[gRPC]\" methods, but they can invoke it, to solve this problem you must declare the method in a globally unique script, for example, \"ClientController\" or \"ServerController\"");
             if (instances[instances.Length - 1] == localInstance)
             {
                 for (int gI = 0; gI < instances.Length; gI++)
@@ -97,8 +101,6 @@ namespace NeutronNetwork
                     {
                         Type type = instance.GetType();
                         (gRPC[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<gRPC>(instance);
-                        if ((type.BaseType == typeof(PlayerGlobalController) || type.BaseType == typeof(NeutronBehaviour)) && multiplesMethods.Length > 0)
-                            throw new NeutronException($"The class \"{type.Name}\", they cannot declare \"[gRPC]\" methods, but they can invoke it, to solve this problem you must declare the method in a globally unique script, for example, \"ClientController\" or \"ServerController\"");
                         for (int i = 0; i < multiplesMethods.Length; i++)
                         {
                             (gRPC[], MethodInfo) methods = multiplesMethods[i];

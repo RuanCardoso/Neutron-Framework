@@ -35,18 +35,6 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties -> Events
-        public static NeutronEventNoReturn OnUpdate {
-            get;
-            set;
-        }
-        public static NeutronEventNoReturn OnFixedUpdate {
-            get;
-            set;
-        }
-        public static NeutronEventNoReturn OnLateUpdate {
-            get;
-            set;
-        }
         public static NeutronEventNoReturn<Settings> OnLoadSettings {
             get;
             set;
@@ -86,17 +74,6 @@ namespace NeutronNetwork
             if (Settings.GlobalSettings.PerfomanceMode)
                 UnityEditor.Selection.activeGameObject = null;
 #endif
-            OnUpdate?.Invoke();
-        }
-
-        private void FixedUpdate()
-        {
-            OnFixedUpdate?.Invoke();
-        }
-
-        private void LateUpdate()
-        {
-            OnLateUpdate?.Invoke();
         }
 
         private void OnEnable()

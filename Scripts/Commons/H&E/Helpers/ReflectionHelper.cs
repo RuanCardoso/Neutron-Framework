@@ -211,7 +211,7 @@ namespace NeutronNetwork.Helpers
         }
 
 #pragma warning disable IDE1006
-        public static async Task<bool> iRPC(byte[] buffer, RPCInvoker remoteProceduralCall, NeutronPlayer player)
+        public static void iRPC(byte[] buffer, RPCInvoker remoteProceduralCall, NeutronPlayer player)
 #pragma warning restore IDE1006
         {
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
@@ -220,33 +220,19 @@ namespace NeutronNetwork.Helpers
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {
-                    case MethodType.Async | MethodType.Bool:
-                        {
-                            return await remoteProceduralCall.iRPCBoolAsync(reader, player);
-                        }
-                    case MethodType.Bool:
-                        {
-                            return remoteProceduralCall.iRPCBool(reader, player);
-                        }
-                    case MethodType.Async | MethodType.Task:
-                        {
-                            await remoteProceduralCall.iRPCTaskAsync(reader, player);
-                            return true;
-                        }
                     case MethodType.Async | MethodType.Void:
                     case MethodType.Void:
-                        {
-                            remoteProceduralCall.iRPCVoid(reader, player);
-                            return true;
-                        }
+                        remoteProceduralCall.iRPCVoid(reader, player);
+                        break;
                     default:
-                        return LogHelper.Error($"iRPC: Type not implemented!");
+                        LogHelper.Error($"iRPC: Type not implemented!");
+                        break;
                 }
             }
         }
 
 #pragma warning disable IDE1006
-        public static async Task<bool> gRPC(NeutronPlayer player, byte[] buffer, RPCInvoker remoteProceduralCall, bool isServer, bool isMine, Neutron instance)
+        public static void gRPC(NeutronPlayer player, byte[] buffer, RPCInvoker remoteProceduralCall, bool isServer, bool isMine, Neutron instance)
 #pragma warning restore IDE1006
         {
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
@@ -255,72 +241,13 @@ namespace NeutronNetwork.Helpers
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {
-                    case MethodType.Async | MethodType.View:
-                    case MethodType.View:
-                        {
-                            NeutronView neutronView = await remoteProceduralCall.gRPCViewAsync(reader, isServer, isMine, player, instance);
-                            if (neutronView != null)
-                            {
-                                bool result = await NeutronSchedule.ScheduleTaskAsync(() =>
-                                {
-                                    if (neutronView.CompareTag("Player"))
-                                        return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Player, instance);
-                                    else
-                                    {
-                                        int lastPos = (sizeof(float) * 3) + (sizeof(float) * 4); //* Obtém a posição do Id do Objeto, pulando a posição(vec3) e a rotação(quat) no buffer.
-                                        if (buffer.Length < lastPos + 1)
-                                            throw new NeutronException("Did you forget to set the \"Player\" tag? or are you using \"BeginPlayer\" instead of \"BeginObject\"?");
-                                        byte[] bufferId = new byte[sizeof(short)] //* cria uma matriz para armazenar o Id que é um short.
-                                        {
-                                           buffer[lastPos], //* Obtém o primeiro byte a partir da posição.
-                                           buffer[lastPos + 1] //* Obtém o segundo byte a partir da posição atual + 1.
-                                        };
-                                        //* Converte a matriz para o valor do tipo short(Int16).
-                                        short objectId = BitConverter.ToInt16(bufferId, 0);
-                                        //* Registra o objeto(NeutronView) na rede.
-                                        return neutronView.OnNeutronRegister(player, isServer, RegisterMode.Dynamic, instance, objectId);
-                                    }
-                                });
-
-                                return await NeutronSchedule.ScheduleTaskAsync(() =>
-                                {
-                                    if (!result)
-                                        MonoBehaviour.Destroy(neutronView.gameObject);
-                                    return result;
-                                });
-                            }
-                            else
-                                return true;
-                        }
-                    case MethodType.Async | MethodType.Bool:
-                        {
-                            return await remoteProceduralCall.gRPCBoolAsync(reader, isServer, isMine, player, instance);
-                        }
-                    case MethodType.Bool:
-                        {
-                            return remoteProceduralCall.gRPCBool(reader, isServer, isMine, player, instance);
-                        }
-                    case MethodType.Async | MethodType.Int:
-                        {
-                            return Convert.ToBoolean(await remoteProceduralCall.gRPCIntAsync(reader, isServer, isMine, player, instance));
-                        }
-                    case MethodType.Int:
-                        {
-                            return Convert.ToBoolean(remoteProceduralCall.gRPCInt(reader, isServer, isMine, player, instance));
-                        }
-                    case MethodType.Async | MethodType.Task:
-                        {
-                            await remoteProceduralCall.gRPCTaskAsync(reader, isServer, isMine, player, instance);
-                            return true;
-                        }
                     case MethodType.Async | MethodType.Void:
                     case MethodType.Void:
-                        {
-                            remoteProceduralCall.gRPCVoid(reader, isServer, isMine, player, instance);
-                            return true;
-                        }
+                        remoteProceduralCall.gRPCVoid(reader, isServer, isMine, player, instance);
+                        break;
                     default:
-                        return LogHelper.Error($"gRPC: Type not implemented!");
+                        LogHelper.Error($"gRPC: Type not implemented!");
+                        break;
                 }
             }
         }

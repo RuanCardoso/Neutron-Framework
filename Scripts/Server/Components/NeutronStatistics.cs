@@ -153,5 +153,12 @@ namespace NeutronNetwork.Internal.Components
                 OnUpdate();
             }
         }
+
+        private void OnApplicationQuit()
+        {
+            foreach (var l_Profiler in m_Profilers)
+                l_Profiler.Reset();
+            OnChangedStatistics?.Invoke(m_Profilers);
+        }
     }
 }

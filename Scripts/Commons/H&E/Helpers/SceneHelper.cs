@@ -16,6 +16,7 @@ namespace NeutronNetwork.Helpers
                 Scene newScene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
                 //* Cria um gerenciador de física.
                 GameObject parent = new GameObject("Physics Manager");
+                parent.hideFlags = HideFlags.HideInHierarchy;
                 PhysicsManager manager = parent.AddComponent<PhysicsManager>();
                 manager.Scene = newScene;
                 manager.PhysicsScene = newScene.GetPhysicsScene();
@@ -42,15 +43,16 @@ namespace NeutronNetwork.Helpers
         {
             //* Inicializa um Matchmaking Manager e o registra na rede.
             GameObject matchManager = new GameObject("Match Manager");
+            matchManager.hideFlags = HideFlags.HideInHierarchy;
             var neutronView = matchManager.AddComponent<NeutronView>();
             neutronView.AutoDestroy = false;
             //* Inicializa o iRpc Actions baseado no tipo.
-            NeutronBehaviour[] actions = Neutron.Server._actions;
+            NeutronBehaviour[] actions = Neutron.Server.Actions;
             if (actions.Length > 0)
             {
                 #region Server Player
                 NeutronPlayer owner = player;
-                if (Neutron.Server._serverOwnsTheMatchManager)
+                if (Neutron.Server.ServerOwnsTheMatchManager)
                 {
                     owner = PlayerHelper.MakeTheServerPlayer();
                     owner.Channel = player.Channel;

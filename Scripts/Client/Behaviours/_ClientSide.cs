@@ -12,6 +12,14 @@ public abstract class ClientSide : GlobalBehaviour
     ///* Define se a conexão do cliente principal deve ser iniciada automaticamente.
     /// </summary>
     protected virtual bool AutoStartConnection { get; } = true;
+    /// <summary>
+    ///* Retorna se é o servidor, sempre falso no Editor.
+    /// </summary>
+#if UNITY_SERVER && !UNITY_EDITOR
+    protected bool IsServer { get; } = true;
+#else
+    protected bool IsServer { get; } = false;
+#endif
 
     /// <summary>
     ///* Inicia a conexão, chamado automaticamente se "AutoStartConnection" é true;

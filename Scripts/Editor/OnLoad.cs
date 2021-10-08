@@ -3,15 +3,15 @@ using UnityEditor;
 
 // ensure class initializer is called whenever scripts recompile
 [InitializeOnLoad]
-public static class PlayModeStateChangedExample
+public static class PlayModeStateChangedLoad
 {
     // register an event handler when the class is initialized
-    static PlayModeStateChangedExample()
+    static PlayModeStateChangedLoad()
     {
-        EditorApplication.playModeStateChanged += LogPlayModeState;
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
     }
 
-    private static void LogPlayModeState(PlayModeStateChange state)
+    private static void OnPlayModeStateChanged(PlayModeStateChange state)
     {
         if (state == PlayModeStateChange.ExitingPlayMode)
             NeutronModule.EditorLoadSettings().GlobalSettings.PerfomanceMode = false;

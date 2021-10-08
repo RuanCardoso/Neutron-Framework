@@ -13,9 +13,8 @@ GameObject:
   - component: {fileID: 2429120491080737644}
   - component: {fileID: 7448210916881228550}
   - component: {fileID: 3595507575870884494}
-  - component: {fileID: 2416885251444200934}
   - component: {fileID: 9034618681651009060}
-  - component: {fileID: -7533191814091900774}
+  - component: {fileID: 7946454766653600882}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -123,29 +122,6 @@ MonoBehaviour:
     _properties: '{"Neutron":"Neutron"}'
     _databaseId: 0
   Components: []
---- !u!114 &2416885251444200934
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 73164611633997280}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a7247db4746bd74181235993cb8348a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 47
-  _authorityHandledBy: {fileID: 0}
-  _authority: 3
-  _hasOnAutoSynchronization: 1
-  _hasIRPC: 0
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 1
-    _sendRate: 20
-  _iRpcOptions: []
-  _jitterTime: 0
 --- !u!114 &9034618681651009060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -159,32 +135,54 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _id: 235
-  _authorityHandledBy: {fileID: 2416885251444200934}
+  _authorityHandledBy: {fileID: 7946454766653600882}
   _authority: 0
   _hasOnAutoSynchronization: 0
   _hasIRPC: 0
   _onAutoSynchronizationOptions:
     _fixedSize: 0
     _protocol: 0
-    _sendRate: 1
+    _packetsPerSecond: 1
   _iRpcOptions: []
---- !u!95 &-7533191814091900774
-Animator:
-  serializedVersion: 4
+--- !u!114 &7946454766653600882
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 73164611633997280}
   m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a7247db4746bd74181235993cb8348a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _id: 46
+  _authorityHandledBy: {fileID: 0}
+  _authority: 3
+  _hasOnAutoSynchronization: 0
+  _hasIRPC: 1
+  _onAutoSynchronizationOptions:
+    _fixedSize: 0
+    _protocol: 0
+    _packetsPerSecond: 1
+  _iRpcOptions:
+  - Title: SyncSnapshot
+    _rpcId: 1
+    _name: SyncSnapshot
+    _instance: {fileID: 7946454766653600882}
+    _originalInstance: {fileID: 7946454766653600882}
+    _targetTo: 2
+    _cacheMode: 0
+    _protocol: 1
+  _compressQuaternion: 1
+  _floatMultiplicationPrecision: 10000
+  _syncPosition: 1
+  _syncRotation: 1
+  _syncScale: 0
+  _teleportMaxDistance: 15
+  _packetsPerSecond: 60
+  _interpolationTime: 0
+  _bufferMaxCount: 6
+  _bufferTime: 0
+  _catchupThreshold: 4
+  _catchupMultiplier: 0.1

@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork.Client.Internal;
+using NeutronNetwork.Components;
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
@@ -25,6 +26,7 @@ namespace NeutronNetwork.Client
     public class ClientBase : ClientBehaviour
     {
         #region Fields
+        protected readonly Queue<TaskCompletionSource<NeutronPlayer[]>> tcss = new Queue<TaskCompletionSource<NeutronPlayer[]>>();
         private GameObject _matchManager;
         public string _sceneName;
         #endregion
@@ -116,7 +118,6 @@ namespace NeutronNetwork.Client
         {
             This = (Neutron)this;
             ClientMode = clientMode;
-            _sceneName = Helper.GetSettings().ClientSettings.SceneName + $" - {UnityEngine.Random.Range(1, int.MaxValue)}";
             Internal_OnNeutronConnected += OnNeutronConnected;
             Internal_OnNeutronAuthenticated += OnNeutronAuthenticated;
             Internal_OnPlayerConnected += OnPlayerConnected;
@@ -134,6 +135,7 @@ namespace NeutronNetwork.Client
             Internal_OnPlayerLeftChannel += OnPlayerLeftChannel;
             Internal_OnPlayerLeftRoom += OnPlayerLeftRoom;
             Internal_OnError += OnError;
+            _sceneName = Helper.GetSettings().ClientSettings.SceneName + $" - {UnityEngine.Random.Range(1, int.MaxValue)}";
         }
 
         //* Client->Server
@@ -175,7 +177,7 @@ namespace NeutronNetwork.Client
 #if !UNITY_SERVER || UNITY_EDITOR
                 if (This.IsConnected)
                 {
-                    NeutronStream.IWriter wHeader = stream.HeaderWriter;
+                    NeutronStream.IWriter wHeader = stream.hWriter;
                     NeutronStream.IWriter wPacket = stream.Writer;
                     byte[] pBuffer = wPacket.ToArray().Compress(); //! Otimizado para evitar alocações, bom isso depende de como você usa o Neutron :p
                     switch (protocol)
@@ -185,25 +187,25 @@ namespace NeutronNetwork.Client
                             {
                                 if (wHeader.GetPosition() == 0)
                                 {
-                                    wHeader.WriteSize(pBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro/short/byte(4/2/1 bytes), e a mensagem.
-                                    byte[] headerBuffer = wHeader.ToArray();
+                                    wHeader.WriteByteArrayWithAutoSize(pBuffer); //* Pre-fixa o tamanho da mensagem no cabeçalho, um inteiro/short/byte(4/2/1 bytes), e a mensagem.
+                                    byte[] hBuffer = wHeader.ToArray();
                                     wHeader.Write();
 
                                     NetworkStream networkStream = TcpClient.GetStream();
                                     switch (Helper.GetConstants().SendModel)
                                     {
                                         case SendType.Synchronous:
-                                            networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo síncrono, esta opção é melhor, não aloca e tem performance de CPU.
+                                            networkStream.Write(hBuffer, 0, hBuffer.Length); //* Envia os dados pro servidor de modo síncrono, esta opção é melhor, não aloca e tem performance de CPU.
                                             break;
                                         default:
                                             if (Helper.GetConstants().SendAsyncPattern == AsynchronousType.APM)
-                                                networkStream.Write(headerBuffer, 0, headerBuffer.Length); //* Envia os dados pro servidor de modo assíncrono, mentira, envia da mesma forma de "SendType.Synchronous", preguiça mesmo. :p, porque BeginReceive e Endreceive é chato de fazer pro TCP :D
+                                                networkStream.Write(hBuffer, 0, hBuffer.Length); //* Envia os dados pro servidor de modo assíncrono, mentira, envia da mesma forma de "SendType.Synchronous", preguiça mesmo. :p, porque BeginReceive e Endreceive é chato de fazer pro TCP :D
                                             else
-                                                SocketHelper.SendTcpAsync(networkStream, headerBuffer, TokenSource.Token); //* Envia os dados pro servidor de forma assíncrona., faz alocações pra caralho, no tcp não tanto, mas no UDP..... é foda. e usa muita cpu, evite, se souber como resolver, sinta-se a vontade para contribuir.
+                                                SocketHelper.SendTcpAsync(networkStream, hBuffer, TokenSource.Token); //* Envia os dados pro servidor de forma assíncrona., faz alocações pra caralho, no tcp não tanto, mas no UDP..... é foda. e usa muita cpu, evite, se souber como resolver, sinta-se a vontade para contribuir.
                                             break;
                                     }
                                     //* Adiciona no profiler a quantidade de dados de saída(Outgoing).
-                                    NeutronStatistics.ClientTCP.AddOutgoing(headerBuffer.Length);
+                                    NeutronStatistics.ClientTCP.AddOutgoing(hBuffer.Length);
                                 }
                                 else
                                     throw new Exception($"Send(Tcp): Invalid position, is not zero! Pos -> {wHeader.GetPosition()} Capacity -> {wHeader.GetCapacity()}. You called Finish() ?");
@@ -264,10 +266,10 @@ namespace NeutronNetwork.Client
 
         //* Executa o iRPC na instância específicada.
 #pragma warning disable IDE1006
-        protected async void iRPCHandler(byte rpcId, short viewId, byte instanceId, byte[] parameters, NeutronPlayer player, RegisterMode registerMode)
+        protected void iRPCHandler(byte rpcId, short viewId, byte instanceId, byte[] parameters, NeutronPlayer player, RegisterMode registerMode)
 #pragma warning restore IDE1006
         {
-            async Task Run((int, int, RegisterMode) key) //* a key do objeto, o primeiro parâmetro é o ID do jogador ou do Objeto de Rede ou 0(se for objeto de cena), e o segundo é o ID do objeto, e o terceiro é o tipo de objeto.
+            void Run((int, int, RegisterMode) key) //* a key do objeto, o primeiro parâmetro é o ID do jogador ou do Objeto de Rede ou 0(se for objeto de cena), e o segundo é o ID do objeto, e o terceiro é o tipo de objeto.
             {
                 if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
                 {
@@ -276,7 +278,7 @@ namespace NeutronNetwork.Client
                         try
                         {
                             //* Executa o RPC, observe que isto não usa reflexão, reflexão é lento irmão, eu uso delegados, e a reflexão para criar os delegados em runtime no Awake do objeto, bem rápido, e funciona no IL2CPP.
-                            await ReflectionHelper.iRPC(parameters, remoteProceduralCall, player);
+                            ReflectionHelper.iRPC(parameters, remoteProceduralCall, player);
                         }
                         catch (Exception ex)
                         {
@@ -293,20 +295,20 @@ namespace NeutronNetwork.Client
             switch (registerMode)
             {
                 case RegisterMode.Scene:
-                    await Run((0, viewId, registerMode));
+                    Run((0, viewId, registerMode));
                     break;
                 case RegisterMode.Player:
-                    await Run((viewId, viewId, registerMode));
+                    Run((viewId, viewId, registerMode));
                     break;
                 case RegisterMode.Dynamic:
-                    await Run((player.ID, viewId, registerMode));
+                    Run((player.ID, viewId, registerMode));
                     break;
             }
         }
 
         //* Executa o gRPC, chamada global, não é por instâncias.
 #pragma warning disable IDE1006
-        protected async void gRPCHandler(int id, NeutronPlayer player, byte[] parameters, bool isServer, bool isMine)
+        protected void gRPCHandler(int id, NeutronPlayer player, byte[] parameters, bool isServer, bool isMine)
 #pragma warning restore IDE1006
         {
             if (GlobalBehaviour.gRPCs.TryGetValue((byte)id, out RPCInvoker remoteProceduralCall)) //* Obtém o gRPC com o ID especificado.
@@ -314,7 +316,7 @@ namespace NeutronNetwork.Client
                 try
                 {
                     //* Invoca os gRPC, não usa reflexão para invocar, utilizo delegados, reflexão usado para criar os delegados no awake, isto melhora a performance em 1000%, do que invocar usando a reflexão.
-                    await ReflectionHelper.gRPC(player, parameters, remoteProceduralCall, isServer, isMine, This);
+                    ReflectionHelper.gRPC(player, parameters, remoteProceduralCall, isServer, isMine, This);
                 }
                 catch (Exception ex)
                 {
@@ -362,7 +364,6 @@ namespace NeutronNetwork.Client
             }
         }
 
-        protected readonly Queue<TaskCompletionSource<NeutronPlayer[]>> tcss = new Queue<TaskCompletionSource<NeutronPlayer[]>>();
         protected void SynchronizeHandler(NeutronPlayer[] players, Action<NeutronPlayer> onEvent)
         {
             //* Atualiza os outros players para você.
@@ -588,71 +589,90 @@ namespace NeutronNetwork.Client
 
         private async void OnPlayerJoinedChannel(NeutronChannel channel, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
         {
-            if (!player.IsInChannel() && !player.IsInRoom())
+            try
             {
-                if (isMine)
+                if (!player.IsInChannel() && !player.IsInRoom())
                 {
-                    //* Finaliza o gerenciador de física.
-                    SetMatchmakingPhysics(channel);
-                    await OnCreateMatchmakingManager(() =>
+                    if (isMine)
                     {
-                        player.Channel = channel;
+                        //* Finaliza o gerenciador de física.
+                        SetMatchmakingPhysics(channel);
+                        await OnCreateMatchmakingManager(() =>
+                        {
+                            player.Channel = channel;
+                            player.Channel.Add(player);
+                            SetMatchmakingOwner(player, channel);
+                            //* Registra todos os objetos de cena.
+                            SceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
+                        }, player, neutron);
+                        //* Obtém os jogadores do matchmaking atual.
+                        //await This.Synchronize();  
+                    }
+                    else
+                    {
+                        var currentChannel = neutron.Player.Channel;
+                        //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
+                        channel.Owner = Players[channel.Owner.ID];
+                        //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.
+                        currentChannel.Apply(channel);
+                        player.Channel = currentChannel;
                         player.Channel.Add(player);
-                        SetMatchmakingOwner(player, channel);
-                    }, player, neutron);
-                    //* Obtém os jogadores do matchmaking atual.
-                    //await This.Synchronize();  
+                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                    }
                 }
                 else
-                {
-                    var currentChannel = neutron.Player.Channel;
-                    //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
-                    channel.Owner = Players[channel.Owner.ID];
-                    //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.
-                    currentChannel.Apply(channel);
-                    player.Channel = currentChannel;
-                    player.Channel.Add(player);
-                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                }
+                    LogHelper.Error("You are already in a channel, call \"Leave\".");
+                //* Invoca os eventos registrados do cliente, após os eventos internos.
+                onEvent.Invoke();
             }
-            else
-                LogHelper.Error("You are already in a channel, call \"Leave\".");
-            //* Invoca os eventos registrados do cliente, após os eventos internos.
-            onEvent.Invoke();
+            catch (Exception ex) //* Handling tasks exceptions.
+            {
+                LogHelper.Stacktrace(ex);
+            }
         }
 
         private async void OnPlayerJoinedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
         {
-            if (player.IsInChannel() && !player.IsInRoom())
+            try
             {
-                if (isMine)
+                if (player.IsInChannel() && !player.IsInRoom())
                 {
-                    SetMatchmakingPhysics(room);
-                    await OnCreateMatchmakingManager(() =>
+                    if (isMine)
                     {
-                        player.Room = room;
+                        //* Finaliza o gerenciador de física.
+                        SetMatchmakingPhysics(room);
+                        await OnCreateMatchmakingManager(() =>
+                        {
+                            player.Room = room;
+                            player.Room.Add(player);
+                            SetMatchmakingOwner(player, room);
+                            //* Registra todos os objetos de cena.
+                            SceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
+                        }, player, neutron);
+                        //* Obtém os jogadores do matchmaking atual.
+                        //await This.Synchronize();
+                    }
+                    else
+                    {
+                        var currentRoom = neutron.Player.Room;
+                        //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
+                        room.Owner = Players[room.Owner.ID];
+                        //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.
+                        currentRoom.Apply(room);
+                        player.Room = currentRoom;
                         player.Room.Add(player);
-                        SetMatchmakingOwner(player, room);
-                    }, player, neutron);
-                    //* Obtém os jogadores do matchmaking atual.
-                    //await This.Synchronize();
+                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                    }
                 }
                 else
-                {
-                    var currentRoom = neutron.Player.Room;
-                    //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
-                    room.Owner = Players[room.Owner.ID];
-                    //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.
-                    currentRoom.Apply(room);
-                    player.Room = currentRoom;
-                    player.Room.Add(player);
-                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                }
+                    LogHelper.Error("You are already in a room, call \"Leave\".");
+                //* Invoca os eventos registrados do cliente, após os eventos internos.
+                onEvent.Invoke();
             }
-            else
-                LogHelper.Error("You are already in a room, call \"Leave\".");
-            //* Invoca os eventos registrados do cliente, após os eventos internos.
-            onEvent.Invoke();
+            catch (Exception ex) //* Handling tasks exceptions.
+            {
+                LogHelper.Stacktrace(ex);
+            }
         }
 
         private async void OnPlayerCreatedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)

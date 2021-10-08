@@ -1,5 +1,6 @@
 using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 
 namespace NeutronNetwork.Helpers
@@ -41,6 +42,18 @@ namespace NeutronNetwork.Helpers
             {
                 Nickname = "Server",
                 ID = 0,
+            };
+        }
+
+        public static NeutronPlayer MakeTheServerPlayer(NeutronChannel channel, NeutronRoom room, INeutronMatchmaking matchmaking)
+        {
+            return new NeutronPlayer()
+            {
+                Nickname = "Server",
+                ID = 0,
+                Channel = channel,
+                Room = room,
+                Matchmaking = matchmaking,
             };
         }
     }

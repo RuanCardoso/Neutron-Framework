@@ -13,6 +13,7 @@ namespace NeutronNetwork.Internal.Wrappers
         {
             base.Clear();
             for (int i = 0; i < m_Values.Length; i++)
+            {
                 if (!base.ContainsKey(m_Values[i].ID))
                     base.TryAdd(m_Values[i].ID, m_Values[i]);
                 else
@@ -20,6 +21,7 @@ namespace NeutronNetwork.Internal.Wrappers
                     m_Values[i].ID = i;
                     base.TryAdd(m_Values[i].ID, m_Values[i]);
                 }
+            }
         }
 
         public void OnBeforeSerialize() => m_Values = base.Values.ToArray();

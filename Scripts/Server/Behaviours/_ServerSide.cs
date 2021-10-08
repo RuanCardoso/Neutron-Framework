@@ -1,4 +1,5 @@
-﻿using NeutronNetwork.Constants;
+﻿using NeutronNetwork.Components;
+using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
@@ -20,9 +21,23 @@ namespace NeutronNetwork
     public abstract class ServerSide : GlobalBehaviour
     {
         #region Properties
+        /// <summary>
+        ///* Define se a simulação de física deve ser no FixedUpdate.
+        /// </summary>
         protected virtual bool SimulateOnFixedUpdate {
             get;
         }
+        /// <summary>
+        ///* Retorna se é o servidor, sempre falso no Editor.
+        /// </summary>
+#if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
+        protected bool IsServer { get; } = true;
+#else
+        protected bool IsServer { get; } = false;
+#endif
+        /// <summary>
+        ///* Retorna a instância do servidor.
+        /// </summary>
         protected Neutron Instance {
             get;
             private set;
@@ -36,6 +51,7 @@ namespace NeutronNetwork
         #region MonoBehaviour
         protected virtual void OnEnable()
         {
+            NeutronServer.OnStart += OnStart;
             ServerBase.OnAwake += OnServerAwake;
             ServerBase.OnCustomTunneling += OnCustomBroadcast;
             ServerBase.OnCustomTarget += OnCustomTarget;
@@ -52,15 +68,13 @@ namespace NeutronNetwork
             ServerBase.OnRoomPropertiesChanged += OnRoomPropertiesChanged;
             ServerBase.OnAuthentication += OnAuthentication;
             ServerBase.OnReceivePacket += OnReceivePacket;
-            //-----------------------------------------------------------------
-            NeutronServer.OnStart += OnStart;
-            //-----------------------------------------------------------------
             PhysicsManager.OnPhysics += OnPhysics;
             PhysicsManager.OnPhysics2D += OnPhysics2D;
         }
 
         protected virtual void OnDisable()
         {
+            NeutronServer.OnStart -= OnStart;
             ServerBase.OnAwake -= OnServerAwake;
             ServerBase.OnCustomTunneling -= OnCustomBroadcast;
             ServerBase.OnCustomTarget -= OnCustomTarget;
@@ -77,9 +91,6 @@ namespace NeutronNetwork
             ServerBase.OnRoomPropertiesChanged -= OnRoomPropertiesChanged;
             ServerBase.OnAuthentication -= OnAuthentication;
             ServerBase.OnReceivePacket -= OnReceivePacket;
-            //-----------------------------------------------------------------
-            NeutronServer.OnStart -= OnStart;
-            //-----------------------------------------------------------------
             PhysicsManager.OnPhysics -= OnPhysics;
             PhysicsManager.OnPhysics2D -= OnPhysics2D;
         }
@@ -92,7 +103,6 @@ namespace NeutronNetwork
         protected virtual void OnStart()
         {
             Instance = Neutron.Server.Instance;
-            //----------------------------------
             MakeServerContainer();
             MakeContainerOnChannels();
         }
@@ -112,7 +122,6 @@ namespace NeutronNetwork
             while (_physicsTimer >= Time.fixedDeltaTime)
             {
                 _physicsTimer -= Time.fixedDeltaTime;
-                //------------------------------------------
                 physicsScene.Simulate(Time.fixedDeltaTime);
             }
 
@@ -132,7 +141,6 @@ namespace NeutronNetwork
             while (_physicsTimer >= Time.fixedDeltaTime)
             {
                 _physicsTimer -= Time.fixedDeltaTime;
-                //------------------------------------------
                 physicsScene.Simulate(Time.fixedDeltaTime);
             }
 
@@ -166,7 +174,6 @@ namespace NeutronNetwork
             return await NeutronSchedule.ScheduleTaskAsync(() =>
             {
                 MakeRoomContainer(room);
-                //-----------------------//
                 return true;
             });
         }
@@ -236,9 +243,11 @@ namespace NeutronNetwork
         private void MakeRoomContainer(NeutronRoom room)
         {
             //* Cria um container para a nova sala.
-            room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server._localPhysicsMode);
-            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, true, Neutron.Server.Instance);
+            room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server.LocalPhysicsMode);
+            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, IsServer, Instance);
             SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.ID}]");
+            //* Registra os objetos de cena.
+            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room ,Instance);
         }
 
         private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
@@ -248,11 +257,13 @@ namespace NeutronNetwork
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
                 MakeVirtualOwner(channel, channel, null);
-                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server._localPhysicsMode);
-                if (Neutron.Server._enableActionsOnChannel)
+                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server.LocalPhysicsMode);
+                if (Neutron.Server.EnableActionsOnChannel)
                 {
-                    GameObject roomManager = SceneHelper.OnMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
-                    SceneHelper.MoveToContainer(roomManager, $"[Container] -> Channel[{channel.ID}]");
+                    GameObject matchManager = SceneHelper.OnMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
+                    SceneHelper.MoveToContainer(matchManager, $"[Container] -> Channel[{channel.ID}]");
+                    //* Registra os objetos de cena.
+                    SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Instance);
                 }
                 MakeContainerOnRooms(channel);
             }

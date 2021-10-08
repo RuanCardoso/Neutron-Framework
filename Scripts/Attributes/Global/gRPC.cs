@@ -10,7 +10,7 @@ using System;
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* É Usado para a comunicação geral, ex: Eventos, Chat, Criação de objetos.....etc.<br/>
+    ///* É usado para a comunicação geral, ex: Eventos, Chat, Criação de objetos.....etc.<br/>
     ///* É usado por instâncias globais, isto é, funciona mas como um metódo estático/global.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]

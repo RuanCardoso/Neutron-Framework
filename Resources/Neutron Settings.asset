@@ -16,18 +16,18 @@ MonoBehaviour:
     Addresses:
     - localhost
     Port: 1418
-    AppId: 84964730-ecb4-46f5-b471-22571dcfc91c
-    FPS: 60
+    AppId: 2bc6011d-5aaa-49e1-a795-6360c3e47ddf
+    FPS: 128
     MaxPlayers: 300
-    StreamPoolCapacity: 30000
-    PacketPoolCapacity: 30000
+    StreamPoolCapacity: 1200
+    PacketPoolCapacity: 1200
     Serialization: 1
     Compression: 0
     NoDelay: 1
     PerfomanceMode: 0
   ClientSettings:
-    UdpKeepAlive: 2
-    TcpKeepAlive: 5
+    UdpKeepAlive: 5
+    TcpKeepAlive: 15
     SceneName: '[Container] -> Player[Main]'
   ServerSettings:
     BackLog: 10
@@ -51,5 +51,5 @@ MonoBehaviour:
       BufferedStreamSize: 8192
     Udp:
       MaxUdpPacketSize: 512
-      UdpReceiveBufferSize: 65535
-      UdpSendBufferSize: 65535
+      UdpReceiveBufferSize: 8192
+      UdpSendBufferSize: 8192

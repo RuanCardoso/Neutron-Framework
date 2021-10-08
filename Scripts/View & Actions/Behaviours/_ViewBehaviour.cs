@@ -1,5 +1,5 @@
 ﻿using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Extensions;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Naughty.Attributes;
 using System;
@@ -26,8 +26,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Este ID é usado para identificar a instância que irá invocar os iRPC'S.
         /// </summary>
-        [SerializeField]
-        [ReadOnly] private int _id;
+        [SerializeField] private int _id;
         /// <summary>
         ///* Define o ambiente que o objeto deve ser criado, Client, Server ou ambos.
         /// </summary>
@@ -52,29 +51,33 @@ namespace NeutronNetwork.Internal
         /// </summary>
         public int Id {
             get => _id;
-            set => _id = value;
+            protected set => _id = value;
         }
+
         /// <summary>
         ///* A instância de Neutron a qual este objeto pertence.
         /// </summary>
         public Neutron This {
             get;
-            set;
+            protected set;
         }
+
         /// <summary>
         ///* Retorna o dono deste objeto.
         /// </summary>
         public NeutronPlayer Owner {
             get => _owner;
-            set => _owner = value;
+            protected set => _owner = value;
         }
+
         /// <summary>
         ///* Retorna se o objeto é o objeto do lado do servidor.
         /// </summary>
         public bool IsServer {
             get;
-            set;
+            protected set;
         }
+
         /// <summary>
         ///* Retorna se o objeto será destruído quando seu dono for desconectado ou sair do matchmaking.
         /// </summary>
@@ -82,14 +85,17 @@ namespace NeutronNetwork.Internal
             get => _autoDestroy;
             set => _autoDestroy = value;
         }
+
         /// <summary>
         ///* Retorna o lado que o objeto de rede será instanciado.
         /// </summary>
         public Side Side => _side;
+
         /// <summary>
         ///* Retorna se o objeto é um objeto de cena.
         /// </summary>
         public bool IsSceneObject => RegisterMode == RegisterMode.Scene;
+
         /// <summary>
         ///* O tipo de registro usado para o objeto.
         /// </summary>
@@ -97,6 +103,7 @@ namespace NeutronNetwork.Internal
             get;
             set;
         }
+
         /// <summary>
         ///* O Transform anexado a este GameObject. 
         /// </summary>
@@ -113,17 +120,7 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Mono Behaviour
-        private void Start()
-        {
-            Transform = transform;
-            if (enabled)
-                NeutronModule.OnUpdate += OnNeutronUpdate;
-        }
-
-        private void OnDestroy()
-        {
-            NeutronModule.OnUpdate -= OnNeutronUpdate;
-        }
+        private void Start() => Transform = transform;
 
         //* Impede que objetos filhos tenham objeto de rede, caso o pai já tenha um.
         private void OnEnable()
@@ -145,8 +142,6 @@ namespace NeutronNetwork.Internal
 #endif
         }
 
-        private void OnNeutronUpdate() { }
-
         private void Reset()
         {
 #if UNITY_EDITOR
@@ -162,13 +157,19 @@ namespace NeutronNetwork.Internal
             {
                 if (SceneHelper.IsInScene(gameObject))
                 {
+                    var views = FindObjectsOfType<NeutronView>();
                     if (Id == 0)
-                        Id = UnityEngine.Random.Range(1, short.MaxValue);
+                        Id = Helper.GetAvailableId(views, x => x.Id, short.MaxValue);
                     else
                     {
-                        int duplicated = FindObjectsOfType<NeutronView>().Count(x => x.Id == Id);
-                        if (duplicated > 1)
-                            Reset();
+                        if (!(Id >= short.MaxValue))
+                        {
+                            int count = views.Count(x => x.Id == Id);
+                            if (count > 1)
+                                Reset();
+                        }
+                        else
+                            LogHelper.Error("Max Neutron Views reached!");
                     }
                 }
                 else
@@ -206,10 +207,10 @@ namespace NeutronNetwork.Internal
                     NeutronBehaviour child = childs[c];
 
                     #region Add Instances
-                    if (!NeutronBehaviours.ContainsKey(child.ID))
-                        NeutronBehaviours.Add(child.ID, child); //* Adiciona a instância no dict, para manter rápido acesso a qualquer instância.
+                    if (!NeutronBehaviours.ContainsKey(child.Id))
+                        NeutronBehaviours.Add(child.Id, child); //* Adiciona a instância no dict, para manter rápido acesso a qualquer instância.
                     else
-                        LogHelper.Error($"Duplicate \"NeutronBehaviour\" ID not allowed in \"{child.GetType().Name}\". {child.ID}");
+                        LogHelper.Error($"Duplicate \"NeutronBehaviour\" ID not allowed in \"{child.GetType().Name}\". {child.Id}");
                     #endregion
 
                     if (child != null && child.enabled)
@@ -221,7 +222,7 @@ namespace NeutronNetwork.Internal
                             for (int ii = 0; ii < methods.Item1.Count(); ii++)
                             {
                                 iRPC method = methods.Item1[ii];
-                                (byte, byte) key = (method.ID, child.ID);
+                                (byte, byte) key = (method.ID, child.Id);
                                 if (!iRPCs.ContainsKey(key)) //* Verifica se não existe um metódo duplicado, ou seja, um iRPC com o mesmo ID.
                                     iRPCs.Add(key, new RPCInvoker(child, methods.Item2, method)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
                                 else

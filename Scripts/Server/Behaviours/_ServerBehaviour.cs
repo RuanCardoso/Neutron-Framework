@@ -26,45 +26,112 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Fields
-        [HorizontalLine] public LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
-        [ReadOnly] public PlayerGlobalController _playerGlobalController;
-        [ReadOnly] public ServerSide _serverSideController;
-        public bool _enableActionsOnChannel;
-        public bool _serverOwnsTheMatchManager;
-        public bool _serverOwnsTheSceneObjects;
-        [ReadOnly] public NeutronBehaviour[] _actions;
+        [SerializeField] [HorizontalLine] private LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
+        [SerializeField] [ReadOnly] private PlayerGlobalController _playerGlobalController;
+        [SerializeField] [ReadOnly] private ServerSide _serverSideController;
+        [SerializeField] private bool _enableActionsOnChannel;
+        [SerializeField] private bool _serverOwnsTheMatchManager = true;
+        [SerializeField] private bool _serverOwnsTheSceneObjects = true;
+        [SerializeField] [ReadOnly] private NeutronBehaviour[] _actions;
+        [SerializeField] private string[] _scenes;
         [ReadOnly] [HorizontalLine] public int _playerCount;
         #endregion
 
         #region Properties
         public bool IsReady {
             get;
-            set;
+            private set;
         }
-        protected ThreadManager ThreadManager { get; } = new ThreadManager();
+
+        protected ThreadManager ThreadManager {
+            get;
+        } = new ThreadManager();
+
+        public LocalPhysicsMode LocalPhysicsMode {
+            get => _localPhysicsMode;
+        }
+
+        public PlayerGlobalController PlayerGlobalController {
+            get => _playerGlobalController;
+        }
+
+        public ServerSide ServerSideController {
+            get => _serverSideController;
+        }
+
+        public bool EnableActionsOnChannel {
+            get => _enableActionsOnChannel;
+        }
+
+        public bool ServerOwnsTheMatchManager {
+            get => _serverOwnsTheMatchManager;
+        }
+
+        public bool ServerOwnsTheSceneObjects {
+            get => _serverOwnsTheSceneObjects;
+        }
+
+        public NeutronBehaviour[] Actions {
+            get => _actions;
+        }
         #endregion
 
         private void Controllers()
         {
             _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
-            if (_serverSideController == null)
+            if (ServerSideController == null)
             {
                 _serverSideController = transform.root.GetComponentInChildren<ServerSide>();
-                if (_serverSideController == null)
+                if (ServerSideController == null)
                     throw new NeutronException("Server Side Controller not defined!");
             }
-            if (_playerGlobalController == null)
+            if (PlayerGlobalController == null)
             {
                 _playerGlobalController = transform.root.GetComponentInChildren<PlayerGlobalController>();
-                if (_playerGlobalController == null)
+                if (PlayerGlobalController == null)
                     throw new NeutronException("Player Global Controller not defined!");
             }
+        }
+
+        private void LoadScenes()
+        {
+            SceneManager.sceneLoaded += OnLoadScene;
+            foreach (string sceneName in _scenes)
+            {
+                Scene scene = SceneManager.GetSceneByName(sceneName);
+                if (!scene.isLoaded)
+                    SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
+            }
+        }
+
+        private void OnLoadScene(Scene scene, LoadSceneMode mode)
+        {
+            var rootGameObjects = scene.GetRootGameObjects();
+            foreach (var gameObject in rootGameObjects)
+            {
+                if (mode == LoadSceneMode.Additive)
+                {
+                    if (!(gameObject.GetComponent<NeutronView>() != null))
+                        Destroy(gameObject);
+                }
+            }
+
+            if (_scenes.Length > 0)
+            {
+                if (scene.name == _scenes[_scenes.Length - 1])
+                    SceneManager.sceneLoaded -= OnLoadScene;
+            }
+            else
+                SceneManager.sceneLoaded -= OnLoadScene;
         }
 
         protected virtual void Awake()
         {
 #if UNITY_2018_4_OR_NEWER
+#if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
             Controllers();
+            LoadScenes();
+#endif
 #if UNITY_SERVER && !UNITY_EDITOR
         Console.Clear();
 #endif

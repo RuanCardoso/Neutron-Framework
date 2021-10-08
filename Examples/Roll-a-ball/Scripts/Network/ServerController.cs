@@ -13,6 +13,7 @@ public class ServerController : ServerSide
             using (NeutronStream stream = new NeutronStream())
             {
                 var writer = Instance.BeginPlayer(stream, Vector3.zero, Quaternion.identity);
+                writer.Write((ushort)54634);
                 writer.Write();
                 Instance.EndPlayer(stream, 9, player);
             }
@@ -20,19 +21,19 @@ public class ServerController : ServerSide
     }
 
     [gRPC(ID = 9, TargetTo = TargetTo.All, TunnelingTo = TunnelingTo.Channel, Cache = CacheMode.Overwrite)]
-    public async Task<NeutronView> InstantiatePlayer(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
+    public async void InstantiatePlayer(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
     {
         if (neutron.EndPlayer(reader, out Vector3 pos, out Quaternion rot))
         {
-            return await NeutronSchedule.ScheduleTaskAsync(() =>
+            await NeutronSchedule.ScheduleTaskAsync(() =>
             {
-                return Neutron.Spawn(isServer, playerPrefab, pos, rot);
+                var nV = Neutron.NetworkSpawn(reader, isServer, player, playerPrefab, pos, rot, neutron);
+                if (isServer)
+                    nV.transform.localScale = new Vector3(1.05f, 1.05f, 1.05f);
+                return nV;
             });
         }
         else
-        {
             LogHelper.Error("Failed to instantiate player");
-            return null;
-        }
     }
 }

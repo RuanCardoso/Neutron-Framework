@@ -3,6 +3,7 @@ using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace NeutronNetwork
@@ -10,18 +11,37 @@ namespace NeutronNetwork
     public class NeutronStream : IDisposable
     {
         public static NeutronStream Empty = new NeutronStream();
+        /// <summary>
+        ///* Escritor utilizado para escrever o pacote.
+        /// </summary>
         public IWriter Writer {
             get;
         }
-        public IWriter HeaderWriter {
+
+        //* Escritor utilizado para escrever o cabeçalho.
+#pragma warning disable IDE1006
+        public IWriter hWriter {
+#pragma warning restore IDE1006
             get;
         }
+
+        /// <summary>
+        ///* Leitor utilizado para ler o pacote.
+        /// </summary>
         public IReader Reader {
             get;
         }
+
+        /// <summary>
+        ///* Retorna se o stream é reciclável.
+        /// </summary>
         public bool IsRecyclable {
             get;
         }
+
+        /// <summary>
+        ///* Retorna se o stream possui um tamanho fixo.
+        /// </summary>
         public bool IsFixedSize {
             get;
         }
@@ -30,30 +50,34 @@ namespace NeutronNetwork
         {
             Writer = new IWriter();
             Reader = new IReader();
-            HeaderWriter = new IWriter();
+            hWriter = new IWriter();
         }
 
+        /// <param name="capacity">* Define a capacidade do stream.</param>
         public NeutronStream(int capacity)
         {
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
-            HeaderWriter = new IWriter(capacity);
+            hWriter = new IWriter(capacity);
             IsFixedSize = capacity > 0;
         }
 
+        /// <param name="capacity">* Define se o stream é reciclável.</param>
         public NeutronStream(bool isRecyclable)
         {
             Writer = new IWriter();
             Reader = new IReader();
-            HeaderWriter = new IWriter();
+            hWriter = new IWriter();
             IsRecyclable = isRecyclable;
         }
 
+        /// <param name="capacity">* Define se o stream é reciclável.</param>
+        /// <param name="capacity">* Define a capacidade do stream.</param>
         public NeutronStream(bool isRecyclable, int capacity)
         {
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
-            HeaderWriter = new IWriter(capacity);
+            hWriter = new IWriter(capacity);
             IsRecyclable = isRecyclable;
             IsFixedSize = capacity > 0;
         }
@@ -72,14 +96,14 @@ namespace NeutronNetwork
                     {
                         Writer.Close();
                         Reader.Close();
-                        HeaderWriter.Close();
+                        hWriter.Close();
                         _disposing = true;
                     }
                     else
                     {
                         Writer.Clear();
                         Reader.Clear();
-                        HeaderWriter.Clear();
+                        hWriter.Clear();
                         Neutron.PooledNetworkStreams.Push(this);
                     }
                 }
@@ -90,7 +114,7 @@ namespace NeutronNetwork
 
         public class IWriter : INeutronWriter
         {
-            private byte[] _buffer = new byte[8];
+            private byte[] _buffer = new byte[8]; //* Suporta até double(8 bytes).
             private readonly MemoryStream _stream;
             private readonly bool _isFixedSize;
             private readonly int _fixedCapacity;
@@ -107,6 +131,9 @@ namespace NeutronNetwork
                 _isFixedSize = _fixedCapacity > 0;
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Color"/> com tamanho fixo de 16 Bytes(float4).
+            /// </summary>
             public void Write(Color color)
             {
                 Write(color.r);
@@ -115,12 +142,18 @@ namespace NeutronNetwork
                 Write(color.a);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Vector2"/> com tamanho fixo de 8 Bytes(float2).
+            /// </summary>
             public void Write(Vector2 vector)
             {
                 Write(vector.x);
                 Write(vector.y);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Vector3"/> com tamanho fixo de 12 Bytes(float3).
+            /// </summary>
             public void Write(Vector3 vector)
             {
                 Write(vector.x);
@@ -128,6 +161,9 @@ namespace NeutronNetwork
                 Write(vector.z);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Quaternion"/> com tamanho fixo de 16 Bytes(float4).
+            /// </summary>
             public void Write(Quaternion quaternion)
             {
                 Write(quaternion.x);
@@ -136,50 +172,153 @@ namespace NeutronNetwork
                 Write(quaternion.w);
             }
 
-            public void Write<T>(T[] array, int sizeOf)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Quaternion"/> compactado de 16 bytes a 7 Bytes.
+            /// </summary>
+            public void WriteCompressed(Quaternion quaternion, float FLOAT_PRECISION_MULT) // Copyright (c) 2016 StagPoint Software
             {
-                byte[] buffer = new byte[array.Length * sizeOf];
-                Buffer.BlockCopy(array, 0, buffer, 0, buffer.Length);
-                WriteNextBytes(buffer);
+                short a, b, c;
+
+                var maxIndex = (byte)0;
+                var maxValue = float.MinValue;
+                var sign = 1f;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    var element = quaternion[i];
+                    var abs = Mathf.Abs(quaternion[i]);
+                    if (abs > maxValue)
+                    {
+                        sign = (element < 0) ? -1 : 1;
+
+                        maxIndex = (byte)i;
+                        maxValue = abs;
+                    }
+                }
+
+                if (Mathf.Approximately(maxValue, 1f))
+                {
+                    Write((byte)(maxIndex + 4));
+                    return;
+                }
+
+                switch (maxIndex)
+                {
+                    case 0:
+                        a = (short)(quaternion.y * sign * FLOAT_PRECISION_MULT);
+                        b = (short)(quaternion.z * sign * FLOAT_PRECISION_MULT);
+                        c = (short)(quaternion.w * sign * FLOAT_PRECISION_MULT);
+                        break;
+                    case 1:
+                        a = (short)(quaternion.x * sign * FLOAT_PRECISION_MULT);
+                        b = (short)(quaternion.z * sign * FLOAT_PRECISION_MULT);
+                        c = (short)(quaternion.w * sign * FLOAT_PRECISION_MULT);
+                        break;
+                    case 2:
+                        a = (short)(quaternion.x * sign * FLOAT_PRECISION_MULT);
+                        b = (short)(quaternion.y * sign * FLOAT_PRECISION_MULT);
+                        c = (short)(quaternion.w * sign * FLOAT_PRECISION_MULT);
+                        break;
+                    default:
+                        a = (short)(quaternion.x * sign * FLOAT_PRECISION_MULT);
+                        b = (short)(quaternion.y * sign * FLOAT_PRECISION_MULT);
+                        c = (short)(quaternion.z * sign * FLOAT_PRECISION_MULT);
+                        break;
+                }
+
+                Write(maxIndex);
+                Write(a);
+                Write(b);
+                Write(c);
+            }
+            public void WriteCompressed(Vector3 vector3)
+            {
+                //float x = 123.45;
+                //ushort fixedIntValue = (ushort)(value * 256);
             }
 
-            public void WriteSize(byte[] buffer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Array"/> com tamanho fixo de <see cref="Marshal.SizeOf(typeof(T))]"/>.<br/>
+            ///* Suporta apenas dados que são tipos de valores e primitivos(<see cref="bool"/>, <see cref="byte"/>, <see cref="int"/>, <see cref="float"/>, <see cref="double"/>, <see cref="char"/>, <see cref="short"/>)...etc
+            /// </summary>
+            public void Write<T>(T[] array)
+            {
+                byte[] buffer = new byte[array.Length * Marshal.SizeOf(typeof(T))];
+                Buffer.BlockCopy(array, 0, buffer, 0, buffer.Length);
+                WriteWithShort(buffer);
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="Array"/> com tamanho fixo de <see cref="Marshal.SizeOf(typeof(T))]"/>.<br/>
+            ///* O stream só pode chamar este metódo uma vez por chamada e deve ser escrito na última posição.<br/>
+            ///* Suporta apenas dados que são tipos de valores e primitivos(<see cref="bool"/>, <see cref="byte"/>, <see cref="int"/>, <see cref="float"/>, <see cref="double"/>, <see cref="char"/>, <see cref="short"/>)...etc<br/>
+            ///* Economiza largura de banda em relação ao seu metódo concorrente <see cref="Write{T}(T[])"/> pois não carrega um cabeçalho com o tamanho da matriz.
+            /// </summary>
+            public void WriteNext<T>(T[] array)
+            {
+                byte[] buffer = new byte[array.Length * Marshal.SizeOf(typeof(T))];
+                Buffer.BlockCopy(array, 0, buffer, 0, buffer.Length);
+                WriteNext(buffer);
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[] com tamanho fixo ou não-fixo.<br/>
+            ///* O tamanho da matriz será armazenado no cabeçalho com o tipo definido nas configurações.
+            /// </summary>
+            public void WriteByteArrayWithAutoSize(byte[] buffer)
             {
                 switch (Helper.GetConstants().HeaderSize)
                 {
                     case HeaderSizeType.Byte:
-                        WriteByteExactly(buffer);
+                        WriteWithByte(buffer);
                         break;
                     case HeaderSizeType.Short:
-                        WriteShortExactly(buffer);
+                        WriteWithShort(buffer);
                         break;
                     case HeaderSizeType.Int:
-                        WriteIntExactly(buffer);
+                        WriteWithInteger(buffer);
                         break;
                 }
             }
 
-            public void WriteNextBytes(IWriter writer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="IWriter"/>, deve ser escrito na última posição pois não registra o tamanho no cabeçalho, economizando largura de banda.<br/>
+            ///* O stream só pode chamar este metódo uma vez por chamada.
+            /// </summary>
+            public void WriteNext(IWriter writer)
             {
-                WriteNextBytes(writer.ToArray());
+                WriteNext(writer.ToArray());
             }
 
-            public void WriteIntWriter(IWriter writer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="IWriter"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="int"/> de tamanho fixo de 4 Bytes.
+            /// </summary>
+            public void WriteWithInteger(IWriter writer)
             {
-                WriteIntExactly(writer.ToArray());
+                WriteWithInteger(writer.ToArray());
             }
 
-            public void WriteShortWriter(IWriter writer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="IWriter"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="short"/> de tamanho fixo de 2 Bytes.
+            /// </summary>
+            public void WriteWithShort(IWriter writer)
             {
-                WriteShortExactly(writer.ToArray());
+                WriteWithShort(writer.ToArray());
             }
 
-            public void WriteByteWriter(IWriter writer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="IWriter"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="byte"/> de tamanho fixo de 1 Byte.
+            /// </summary>
+            public void WriteWithByte(IWriter writer)
             {
-                WriteByteExactly(writer.ToArray());
+                WriteWithByte(writer.ToArray());
             }
 
-            public void WriteNextBytes(byte[] buffer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[], deve ser escrito na última posição pois não registra o tamanho no cabeçalho, economizando largura de banda.<br/>
+            ///* O stream só pode chamar este metódo uma vez por chamada.
+            /// </summary>
+            public void WriteNext(byte[] buffer)
             {
                 Write(buffer);
             }
@@ -189,22 +328,37 @@ namespace NeutronNetwork
                 Write(packet);
             }
 
-            public void WriteIntExactly<T>(T obj)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="{T}"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="int"/> de tamanho fixo de 4 Bytes.<br/>
+            ///* Serializa os dados com a serialização definida nas configurações.
+            /// </summary>
+            public void WriteWithInteger<T>(T obj)
             {
-                WriteIntExactly(obj.Serialize());
+                WriteWithInteger(obj.Serialize());
             }
 
-            public void WriteShortExactly<T>(T obj)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="{T}"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="short"/> de tamanho fixo de 2 Bytes.<br/>
+            ///* Serializa os dados com a serialização definida nas configurações.
+            /// </summary>
+            public void WriteWithShort<T>(T obj)
             {
-                WriteShortExactly(obj.Serialize());
+                WriteWithShort(obj.Serialize());
             }
 
-            public void WriteByteExactly<T>(T obj)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="{T}"/>, o tamanho no cabeçalho é registrado com o tipo <see cref="byte"/> de tamanho fixo de 1 Byte.<br/>
+            ///* Serializa os dados com a serialização definida nas configurações.
+            /// </summary>
+            public void WriteWithByte<T>(T obj)
             {
-                WriteByteExactly(obj.Serialize());
+                WriteWithByte(obj.Serialize());
             }
 
-            public void WriteIntExactly(byte[] buffer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[], o tamanho no cabeçalho é registrado com o tipo <see cref="int"/> de tamanho fixo de 4 Bytes.
+            /// </summary>
+            public void WriteWithInteger(byte[] buffer)
             {
                 int length = buffer.Length;
                 if (length > int.MaxValue)
@@ -213,7 +367,10 @@ namespace NeutronNetwork
                 Write(buffer);
             }
 
-            public void WriteShortExactly(byte[] buffer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[], o tamanho no cabeçalho é registrado com o tipo <see cref="short"/> de tamanho fixo de 2 Bytes.
+            /// </summary>
+            public void WriteWithShort(byte[] buffer)
             {
                 int length = buffer.Length;
                 if (length > short.MaxValue)
@@ -222,7 +379,10 @@ namespace NeutronNetwork
                 Write(buffer);
             }
 
-            public void WriteByteExactly(byte[] buffer)
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[], o tamanho no cabeçalho é registrado com o tipo <see cref="byte"/> de tamanho fixo de 1 Byte.
+            /// </summary>
+            public void WriteWithByte(byte[] buffer)
             {
                 int length = buffer.Length;
                 if (length > byte.MaxValue)
@@ -231,21 +391,33 @@ namespace NeutronNetwork
                 Write(buffer);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/> com tamanho fixo de 1 Byte(byte).
+            /// </summary>
             public void Write(byte value)
             {
                 _stream.WriteByte(value);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="bool"/> com tamanho fixo de 1 Byte(byte).
+            /// </summary>
             public void Write(bool value)
             {
                 _stream.WriteByte((byte)(value ? 1 : 0));
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[] com tamanho fixo e não fixo, não registra cabeçalho.
+            /// </summary>
             public void Write(byte[] buffer)
             {
                 Write(buffer, 0, buffer.Length);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="int"/> com tamanho fixo de 4 Bytes(bytes).
+            /// </summary>
             public void Write(int value)
             {
                 _buffer[0] = (byte)value;
@@ -254,6 +426,9 @@ namespace NeutronNetwork
                 Write(_buffer, 0, sizeof(int));
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="short"/> com tamanho fixo de 2 Bytes(bytes).
+            /// </summary>
             public void Write(short value)
             {
                 _buffer[0] = (byte)value;
@@ -262,6 +437,20 @@ namespace NeutronNetwork
                 Write(_buffer, 0, sizeof(short));
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="ushort"/> com tamanho fixo de 2 Bytes(bytes).
+            /// </summary>
+            public void Write(ushort value)
+            {
+                _buffer[0] = (byte)value;
+                for (int i = 1; i < sizeof(ushort); i++)
+                    _buffer[i] = (byte)(value >> (8 * i));
+                Write(_buffer, 0, sizeof(ushort));
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="string"/> com tamanho dinâmico.
+            /// </summary>
             public void Write(string text)
             {
                 byte[] encodedText = NeutronModule.Encoding.GetBytes(text);
@@ -269,6 +458,9 @@ namespace NeutronNetwork
                 Write(encodedText, 0, encodedText.Length);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="float"/> com tamanho fixo de 4 Bytes(bytes).
+            /// </summary>
             public unsafe void Write(float value)
             {
                 uint fUInt = *(uint*)&value;
@@ -278,6 +470,9 @@ namespace NeutronNetwork
                 Write(_buffer, 0, sizeof(float));
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="double"/> com tamanho fixo de 8 Bytes(bytes).
+            /// </summary>
             public unsafe void Write(double value)
             {
                 ulong fUlong = *(ulong*)&value;
@@ -287,6 +482,32 @@ namespace NeutronNetwork
                 Write(_buffer, 0, sizeof(double));
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo de estrutura(struct) do tipo <see cref="{T}"/> com tamanho fixo de <see cref="Marshal.SizeOf(typeof(T))]"/>
+            /// </summary>
+            public unsafe void Marshalling_Write<T>(T structure) where T : struct
+            {
+                byte[] byteArray = new byte[Marshal.SizeOf(structure)];
+                fixed (byte* byteArrayPtr = byteArray)
+                    Marshal.StructureToPtr(structure, (IntPtr)byteArrayPtr, true);
+                WriteWithShort(byteArray);
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo de estrutura(struct) do tipo <see cref="{T}"/> com tamanho fixo de <see cref="Marshal.SizeOf(typeof(T))]"/><br/>
+            ///* O stream só pode chamar este metódo uma vez por chamada e deve ser escrito na última posição pois não registra cabeçalho.
+            /// </summary>
+            public unsafe void Marshalling_WriteNext<T>(T structure) where T : struct
+            {
+                byte[] byteArray = new byte[Marshal.SizeOf(structure)];
+                fixed (byte* byteArrayPtr = byteArray)
+                    Marshal.StructureToPtr(structure, (IntPtr)byteArrayPtr, true);
+                WriteNext(byteArray);
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[] com tamanho fixo e não fixo, não registra cabeçalho.
+            /// </summary>
             public void Write(byte[] buffer, int offset, int size)
             {
                 if (_isFixedSize)
@@ -300,6 +521,9 @@ namespace NeutronNetwork
                     _stream.Write(buffer, offset, size);
             }
 
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="int"/> com tamanho fixo de 7 bits(compactado).
+            /// </summary>
             public void Write7BitEncodedInt(int value)
             {
                 // Write out an int 7 bits at a time.  The high bit of the byte,
@@ -313,6 +537,9 @@ namespace NeutronNetwork
                 Write((byte)v);
             }
 
+            /// <summary>
+            ///* Finaliza a escrita do buffer com tamanho fixo.
+            /// </summary>
             public void EndWriteWithFixedCapacity()
             {
                 if (_isFixedSize)
@@ -326,11 +553,17 @@ namespace NeutronNetwork
                     throw new Exception("This stream has no defined size.");
             }
 
+            /// <summary>
+            ///* Finaliza a escrita do buffer.
+            /// </summary>
             public void EndWrite()
             {
                 SetPosition(0);
             }
 
+            /// <summary>
+            ///* Finaliza a escrita do buffer.
+            /// </summary>
             public void Write()
             {
                 if (!IsFixedSize())
@@ -339,6 +572,10 @@ namespace NeutronNetwork
                     EndWriteWithFixedCapacity();
             }
 
+            /// <summary>
+            ///* Obtém a cópia do buffer.
+            /// </summary>
+            /// <returns></returns>
             public byte[] ToArray()
             {
                 if (!IsFixedSize())
@@ -347,41 +584,71 @@ namespace NeutronNetwork
                     return GetBuffer();
             }
 
+            /// <summary>
+            ///* Obtém o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
             public byte[] GetBuffer()
             {
                 return _stream.GetBuffer();
             }
 
+            /// <summary>
+            ///* Define a posição do fluxo.
+            /// </summary>
+            /// <param name="position"></param>
             public void SetPosition(int position)
             {
                 _stream.Position = position;
             }
 
+            /// <summary>
+            ///* Obtém a posição do fluxo.
+            /// </summary>
+            /// <returns></returns>
             public long GetPosition()
             {
                 return _stream.Position;
             }
 
+            /// <summary>
+            ///* Obtém a capacidade do fluxo.
+            /// </summary>
+            /// <returns></returns>
             public int GetCapacity()
             {
                 return _stream.Capacity;
             }
 
+            /// <summary>
+            ///* Retorna se o tamanho do buffer é fixo.
+            /// </summary>
+            /// <returns></returns>
             public bool IsFixedSize()
             {
                 return _isFixedSize;
             }
 
+            /// <summary>
+            ///* Define a capacidade do fluxo.
+            /// </summary>
+            /// <param name="size"></param>
             public void SetCapacity(int size)
             {
                 _stream.Capacity = size;
             }
 
+            /// <summary>
+            ///* Limpa o stream para reutilização.
+            /// </summary>
             public void Clear()
             {
                 _stream.SetLength(0);
             }
 
+            /// <summary>
+            ///* Libera os recursos não gerenciados.
+            /// </summary>
             public void Close()
             {
                 _buffer = null;
@@ -390,9 +657,11 @@ namespace NeutronNetwork
         }
         public class IReader : INeutronReader
         {
-            private byte[] _buffer = new byte[8];
+            private byte[] _buffer = new byte[8]; //* Suporta até double(8 bytes).
             private readonly MemoryStream _stream;
             private readonly bool _isFixedSize;
+            private int _bufferLength;
+            public byte[] _internalBuffer;
 
             public IReader()
             {
@@ -438,10 +707,45 @@ namespace NeutronNetwork
                 return new Quaternion(x, y, z, w);
             }
 
-            public T[] ReadArray<T>(int sizeOf, int length)
+            public Quaternion ReadCompressedQuaternion(float FLOAT_PRECISION_MULT) // Copyright (c) 2016 StagPoint Software
             {
-                byte[] buffer = ReadNextBytes(length);
-                T[] array = new T[buffer.Length / sizeOf];
+                var maxIndex = ReadByte();
+
+                if (maxIndex >= 4 && maxIndex <= 7)
+                {
+                    var x = (maxIndex == 4) ? 1f : 0f;
+                    var y = (maxIndex == 5) ? 1f : 0f;
+                    var z = (maxIndex == 6) ? 1f : 0f;
+                    var w = (maxIndex == 7) ? 1f : 0f;
+                    return new Quaternion(x, y, z, w);
+                }
+
+                var a = ReadShort() / FLOAT_PRECISION_MULT;
+                var b = ReadShort() / FLOAT_PRECISION_MULT;
+                var c = ReadShort() / FLOAT_PRECISION_MULT;
+                var d = Mathf.Sqrt(1f - (a * a + b * b + c * c));
+
+                if (maxIndex == 0)
+                    return new Quaternion(d, a, b, c);
+                else if (maxIndex == 1)
+                    return new Quaternion(a, d, b, c);
+                else if (maxIndex == 2)
+                    return new Quaternion(a, b, d, c);
+                return new Quaternion(a, b, c, d);
+            }
+
+            public T[] ReadArray<T>()
+            {
+                byte[] buffer = ReadWithShort();
+                T[] array = new T[buffer.Length / Marshal.SizeOf(typeof(T))];
+                Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
+                return array;
+            }
+
+            public T[] ReadArrayNext<T>()
+            {
+                byte[] buffer = ReadNext();
+                T[] array = new T[buffer.Length / Marshal.SizeOf(typeof(T))];
                 Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
                 return array;
             }
@@ -452,26 +756,26 @@ namespace NeutronNetwork
             }
 
             /// Ler o tamanho do pacote do cabeçalho do protocolo, com base no HEADER_TYPE.
-            public byte[] ReadSize(out int size)
+            public byte[] ReadByteArrayWithAutoSize(out int size)
             {
                 size = 0;
                 switch (Helper.GetConstants().HeaderSize)
                 {
                     case HeaderSizeType.Byte:
                         {
-                            byte[] buffer = ReadByteExactly(out byte sizeOf);
+                            byte[] buffer = ReadWithByte(out byte sizeOf);
                             size = sizeOf;
                             return buffer;
                         }
                     case HeaderSizeType.Short:
                         {
-                            byte[] buffer = ReadShortExactly(out short sizeOf);
+                            byte[] buffer = ReadWithShort(out short sizeOf);
                             size = sizeOf;
                             return buffer;
                         }
                     case HeaderSizeType.Int:
                         {
-                            byte[] buffer = ReadIntExactly(out int sizeOf);
+                            byte[] buffer = ReadWithInteger(out int sizeOf);
                             size = sizeOf;
                             return buffer;
                         }
@@ -480,55 +784,55 @@ namespace NeutronNetwork
                 }
             }
 
-            public byte[] ReadNextBytes(int size)
+            public byte[] ReadNext()
             {
-                int bytesRemaining = (int)(size - _stream.Position);
+                int bytesRemaining = (int)(_bufferLength - _stream.Position);
                 return ReadBytes(bytesRemaining);
             }
 
-            public T ReadIntExactly<T>()
+            public T ReadWithInteger<T>()
             {
-                return ReadIntExactly().Deserialize<T>();
+                return ReadWithInteger().Deserialize<T>();
             }
 
-            public T ReadShortExactly<T>()
+            public T ReadWithShort<T>()
             {
-                return ReadShortExactly().Deserialize<T>();
+                return ReadWithShort().Deserialize<T>();
             }
 
-            public T ReadByteExactly<T>()
+            public T ReadWithByte<T>()
             {
-                return ReadByteExactly().Deserialize<T>();
+                return ReadWithByte().Deserialize<T>();
             }
 
-            public byte[] ReadIntExactly()
+            public byte[] ReadWithInteger()
             {
                 return ReadBytes(ReadInt());
             }
 
-            public byte[] ReadShortExactly()
+            public byte[] ReadWithShort()
             {
                 return ReadBytes(ReadShort());
             }
 
-            public byte[] ReadByteExactly()
+            public byte[] ReadWithByte()
             {
                 return ReadBytes(ReadByte());
             }
 
-            public byte[] ReadIntExactly(out int size)
+            public byte[] ReadWithInteger(out int size)
             {
                 size = ReadInt();
                 return ReadBytes(size);
             }
 
-            public byte[] ReadShortExactly(out short size)
+            public byte[] ReadWithShort(out short size)
             {
                 size = ReadShort();
                 return ReadBytes(size);
             }
 
-            public byte[] ReadByteExactly(out byte size)
+            public byte[] ReadWithByte(out byte size)
             {
                 size = ReadByte();
                 return ReadBytes(size);
@@ -563,6 +867,12 @@ namespace NeutronNetwork
                 return (short)(_buffer[0] | _buffer[1] << 8);
             }
 
+            public ushort ReadUShort()
+            {
+                Read(sizeof(ushort));
+                return (ushort)(_buffer[0] | _buffer[1] << 8);
+            }
+
             public string ReadString()
             {
                 int size = Read7BitEncodedInt();
@@ -590,6 +900,20 @@ namespace NeutronNetwork
                 return *((double*)&fUlong);
             }
 
+            public unsafe T Marshalling_ReadStructure<T>() where T : struct
+            {
+                byte[] data = ReadWithShort();
+                fixed (byte* p = &data[0])
+                    return (T)Marshal.PtrToStructure(new IntPtr(p), typeof(T));
+            }
+
+            public unsafe T Marshalling_ReadStructureNext<T>() where T : struct
+            {
+                byte[] data = ReadNext();
+                fixed (byte* p = &data[0])
+                    return (T)Marshal.PtrToStructure(new IntPtr(p), typeof(T));
+            }
+
             public void Read(int size, byte[] buffer = null)
             {
                 if (buffer == null)
@@ -602,7 +926,7 @@ namespace NeutronNetwork
                     if ((bytesRead = _stream.Read(buffer, offset, bytesRemaining)) > 0)
                         offset += bytesRead;
                     else
-                        throw new Exception("The stream is empty or the write and read stream does not match.");
+                        throw new Exception("The stream is empty? or the write and read stream does not match? or the object has been disposed/recycled?");
                 }
             }
 
@@ -630,8 +954,9 @@ namespace NeutronNetwork
 
             public void SetBuffer(byte[] buffer)
             {
-                _stream.Write(buffer, 0, buffer.Length);
-                /////////////////////////////////////////
+                _internalBuffer = buffer;
+                _bufferLength = _internalBuffer.Length;
+                _stream.Write(_internalBuffer, 0, _bufferLength);
                 SetPosition(0);
             }
 

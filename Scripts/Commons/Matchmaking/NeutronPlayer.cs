@@ -19,17 +19,23 @@ namespace NeutronNetwork
     [Serializable]
     public class NeutronPlayer : INeutron, INeutronSerializable, IDisposable, ISerializationCallbackReceiver, IEquatable<NeutronPlayer>, IEqualityComparer<NeutronPlayer>
     {
-#if UNITY_EDITOR
+        [SerializeField]
+        [HideInInspector]
+        private bool _isInitialized;
 #pragma warning disable IDE0052
         [SerializeField] [HideInInspector] private string Title = "Neutron";
 #pragma warning restore IDE0052
-#endif
+
+        #region Default Values
+        private const string DEFAULT_PROPERTIES = "{\"Team\":\"Neutron\"}";
+        #endregion
+
         #region Fields
         [SerializeField] [AllowNesting] [ReadOnly] private int _id;
         [SerializeField] private string _nickname = string.Empty;
         [NonSerialized] private NeutronChannel _channel;
         [NonSerialized] private NeutronRoom _room;
-        [SerializeField] [ResizableTextArea] private string _properties = "{\"Neutron\":\"Neutron\"}";
+        [SerializeField] [ResizableTextArea] private string _properties = DEFAULT_PROPERTIES;
         [SerializeField] [AllowNesting] [ReadOnly] private int _databaseId;
         #endregion
 
@@ -249,6 +255,11 @@ namespace NeutronNetwork
         {
 #if UNITY_EDITOR
             Title = _nickname;
+            if (!_isInitialized)
+            {
+                _properties = DEFAULT_PROPERTIES;
+                _isInitialized = true;
+            }
 #endif
         }
 

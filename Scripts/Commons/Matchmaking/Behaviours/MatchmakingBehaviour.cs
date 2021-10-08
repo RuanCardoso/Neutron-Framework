@@ -18,21 +18,30 @@ namespace NeutronNetwork.Internal
     public class MatchmakingBehaviour : INeutronMatchmaking, INeutronSerializable, ISerializationCallbackReceiver
     {
         private int _cacheId;
+        [SerializeField]
+        [HideInInspector]
+        private bool _isInitialized;
 #pragma warning disable IDE0052
         [SerializeField] [HideInInspector] private string Title = "Neutron";
 #pragma warning restore IDE0052
 
+        #region Default Values
+        private const string DEFAULT_NAME = "Neutron";
+        private const int DEFAULT_MAX_PLAYERS = 15;
+        private const string DEFAULT_PROPERTIES = "{\"Map\":\"Neutron\"}";
+        #endregion
+
         #region Fields
         [ReadOnly]
         [AllowNesting]
-        [SerializeField] protected int _id = 0;
-        [SerializeField] private string _name = "Neutron";
+        [SerializeField] protected int _id;
+        [SerializeField] private string _name = DEFAULT_NAME;
         [ReadOnly]
         [AllowNesting]
-        [SerializeField] private int _playerCount = 0;
-        [SerializeField] private int _maxPlayers = 5;
+        [SerializeField] private int _playerCount;
+        [SerializeField] private int _maxPlayers = DEFAULT_MAX_PLAYERS;
         [ResizableTextArea]
-        [SerializeField] private string _properties = "{\"Neutron\":\"Neutron\"}";
+        [SerializeField] private string _properties = DEFAULT_PROPERTIES;
         [HorizontalLine]
         [SerializeField] private PlayerDictionary _players = new PlayerDictionary();
         #endregion
@@ -77,7 +86,10 @@ namespace NeutronNetwork.Internal
                     if (!string.IsNullOrEmpty(value))
                         Get = JObject.Parse(value);
                 }
-                catch { LogHelper.Error("Invalid json in properties."); }
+                catch
+                {
+                    LogHelper.Error("Invalid json in properties.");
+                }
             }
         }
 
@@ -256,10 +268,18 @@ namespace NeutronNetwork.Internal
             Title = _name;
 #endif
         }
+
         public virtual void OnAfterDeserialize()
         {
 #if UNITY_EDITOR
             Title = _name;
+            if (!_isInitialized)
+            {
+                _name = DEFAULT_NAME;
+                _maxPlayers = DEFAULT_MAX_PLAYERS;
+                _properties = DEFAULT_PROPERTIES;
+                _isInitialized = true;
+            }
 #endif
         }
     }

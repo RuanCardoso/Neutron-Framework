@@ -10,7 +10,7 @@ namespace NeutronNetwork.Internal.Interfaces
         //
         // IMPORTANT: the timestamp does _NOT_ need to be sent over the
         //            network. simply get it from batching.
-        double remoteTimestamp { get; set; }
-        double localTimestamp { get; set; }
+        double RemoteTimestamp { get; set; }
+        double LocalTimestamp { get; set; }
     }
 }

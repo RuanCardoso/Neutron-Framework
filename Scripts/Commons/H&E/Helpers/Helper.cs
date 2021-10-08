@@ -113,23 +113,5 @@ namespace NeutronNetwork.Helpers
         {
             return GetSettings().NetworkSettings;
         }
-
-#if !UNITY_2019_2_OR_NEWER
-        public static bool TryGetComponent<T>(this UnityEngine.GameObject monoBehaviour, out T component)
-        {
-            component = monoBehaviour.GetComponent<T>();
-            if (component != null)
-                return (component.ToString() != null && component.ToString() != "null");
-            else return false;
-        }
-
-        public static bool TryGetComponent<T>(this UnityEngine.Transform monoBehaviour, out T component)
-        {
-            component = monoBehaviour.GetComponent<T>();
-            if (component != null)
-                return (component.ToString() != null && component.ToString() != "null");
-            else return false;
-        }
-#endif
     }
 }

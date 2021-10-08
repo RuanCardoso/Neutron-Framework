@@ -4,6 +4,7 @@ using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -31,6 +32,39 @@ namespace NeutronNetwork
             base.OnNeutronStart();
             {
                 Owner.OnDestroy += OnNeutronUnregister;
+            }
+        }
+
+        /// <summary>
+        ///* Destroí o objeto de rede do Matchmaking.
+        /// </summary>
+        public void Destroy()
+        {
+
+        }
+
+        public void OnNeutronRegister(NeutronPlayer player, bool isServer, byte[] buffer, Neutron neutron)
+        {
+            if (CompareTag("Player"))
+            {
+                if (!OnNeutronRegister(player, isServer, RegisterMode.Player, neutron))
+                    MonoBehaviour.Destroy(gameObject);
+            }
+            else
+            {
+                int lastPos = (sizeof(float) * 3) + (sizeof(float) * 4); //* Obtém a posição do Id do Objeto, pulando a posição(vec3) e a rotação(quat) no buffer.
+                if (buffer.Length < lastPos + 1)
+                    throw new NeutronException("Did you forget to set the \"Player\" tag? or are you using \"BeginPlayer\" instead of \"BeginObject\"?");
+                byte[] bufferId = new byte[sizeof(short)] //* cria uma matriz para armazenar o Id que é um short.
+                {
+                   buffer[lastPos], //* Obtém o primeiro byte a partir da posição.
+                   buffer[lastPos + 1] //* Obtém o segundo byte a partir da posição atual + 1.
+                };
+                //* Converte a matriz para o valor do tipo short(Int16).
+                short objectId = BitConverter.ToInt16(bufferId, 0);
+                //* Registra o objeto(NeutronView) na rede.
+                if (!OnNeutronRegister(player, isServer, RegisterMode.Dynamic, neutron, objectId))
+                    MonoBehaviour.Destroy(gameObject);
             }
         }
 
@@ -128,17 +162,9 @@ namespace NeutronNetwork
             return true;
         }
 
-        /// <summary>
-        ///* Destroí o objeto de rede do Matchmaking.
-        /// </summary>
-        public void Destroy()
-        {
-
-        }
-
         private async void OnNeutronUnregister()
         {
-            //* Desalocar para evitar vazamento de memória.
+            //* Desaloca para evitar vazamento de memória.
             Owner.OnDestroy -= OnNeutronUnregister;
             //* Agora vamos destruir e dar "unregister".
             if (AutoDestroy)
