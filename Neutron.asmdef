@@ -1,0 +1,18 @@
+{
+    "name": "Neutron",
+    "rootNamespace": "",
+    "references": [
+        "GUID:0316801490dc3ae4a8c6f473b81ccfe8"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_2018_4_OR_NEWER"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
