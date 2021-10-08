@@ -23,7 +23,10 @@ public class NeutronEditor : EditorWindow
     {
         Object asset = Resources.Load("Neutron Settings");
         if (asset != null)
-            AssetDatabase.OpenAsset(asset);
+        {
+            if (AssetDatabase.OpenAsset(asset))
+                EditorGUIUtility.PingObject(asset);
+        }
     }
 
     [MenuItem("Neutron/Settings/File/Synchronization &F10")]
@@ -31,7 +34,10 @@ public class NeutronEditor : EditorWindow
     {
         Object asset = Resources.Load("Neutron Synchronization");
         if (asset != null)
-            AssetDatabase.OpenAsset(asset);
+        {
+            if (AssetDatabase.OpenAsset(asset))
+                EditorGUIUtility.PingObject(asset);
+        }
     }
 
     [MenuItem("Neutron/Settings/Setup", priority = 0)]
