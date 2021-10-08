@@ -2,7 +2,7 @@
     "name": "Neutron",
     "rootNamespace": "",
     "references": [
-        "GUID:0316801490dc3ae4a8c6f473b81ccfe8"
+        "Neutron.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
