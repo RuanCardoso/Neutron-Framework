@@ -732,37 +732,37 @@ namespace NeutronNetwork
                                 var mode = reader.ReadByte();
                                 void Synchronize(NeutronPlayer[] players)
                                 {
-                                    SynchronizeHandler(players, (player) =>
+                                    SynchronizeHandler(players, (syncedPlayer) =>
                                     {
                                         //* Inicializa o evento de conexão.
-                                        if (!player.IsConnected)
+                                        if (!syncedPlayer.IsConnected)
                                         {
-                                            Internal_OnPlayerConnected(player, false, () =>
+                                            Internal_OnPlayerConnected(syncedPlayer, false, () =>
                                             {
-                                                OnPlayerConnected?.Invoke(player, false, this);
+                                                OnPlayerConnected?.Invoke(syncedPlayer, false, this);
                                             }, this);
                                         }
                                         //* Inicializa o evento de entrada no canal.
-                                        if (!player.IsInChannel() && !player.IsInRoom())
+                                        if (!syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
                                         {
                                             if (Player.IsInChannel())
                                             {
                                                 var channel = Player.Channel;
-                                                Internal_OnPlayerJoinedChannel(channel, player, false, () =>
+                                                Internal_OnPlayerJoinedChannel(channel, syncedPlayer, false, () =>
                                                 {
-                                                    OnPlayerJoinedChannel?.Invoke(channel, player, false, this);
+                                                    OnPlayerJoinedChannel?.Invoke(channel, syncedPlayer, false, this);
                                                 }, this);
                                             }
                                         }
                                         //* Inicializa o evento de entrada na sala.
-                                        if (player.IsInChannel() && !player.IsInRoom())
+                                        if (syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
                                         {
                                             if (Player.IsInRoom())
                                             {
                                                 var room = Player.Room;
-                                                Internal_OnPlayerJoinedRoom(room, player, false, () =>
+                                                Internal_OnPlayerJoinedRoom(room, syncedPlayer, false, () =>
                                                 {
-                                                    OnPlayerJoinedRoom?.Invoke(room, player, false, this);
+                                                    OnPlayerJoinedRoom?.Invoke(room, syncedPlayer, false, this);
                                                 }, this);
                                             }
                                         }

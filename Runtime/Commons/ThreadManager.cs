@@ -1,6 +1,5 @@
 using NeutronNetwork.Internal;
-using System;
-using System.Collections.Generic;
+using NeutronNetwork.Internal.Wrappers;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -8,8 +7,8 @@ namespace NeutronNetwork
 {
     public class ThreadManager
     {
-        private readonly Dictionary<int, int> _methodIds = new Dictionary<int, int>();
-        private readonly Dictionary<string, int> _methodNames = new Dictionary<string, int>();
+        private readonly NeutronSafeDictionary<int, int> _methodIds = new NeutronSafeDictionary<int, int>();
+        private readonly NeutronSafeDictionary<string, int> _methodNames = new NeutronSafeDictionary<string, int>();
 
         /// <summary>
         ///* Retorna "True" se outro thread usar o recurso.
