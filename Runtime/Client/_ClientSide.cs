@@ -1,7 +1,10 @@
 using NeutronNetwork;
+using NeutronNetwork.Constants;
 using NeutronNetwork.Internal.Packets;
 using Newtonsoft.Json.Linq;
+using UnityEngine;
 
+[DefaultExecutionOrder(ExecutionOrder.NEUTRON_CONNECTION)]
 public abstract class ClientSide : GlobalBehaviour
 {
     /// <summary>
@@ -26,8 +29,9 @@ public abstract class ClientSide : GlobalBehaviour
     /// </summary>
     protected void Connect(int index = 0, int timeout = 3, Authentication authentication = null)
     {
-        Neutron neutron = Neutron.Create();
-        Register(neutron);
+        Neutron neutron = Neutron.Client ?? Neutron.Create();
+        if (!neutron.IsConnected)
+            Register(neutron);
         neutron.Connect(index, timeout, authentication);
     }
 
@@ -53,6 +57,16 @@ public abstract class ClientSide : GlobalBehaviour
         instance.OnRoomsReceived += OnRoomsReceived;
     }
 
+    private void CreateVirtualClients()
+    {
+        for (int i = 0; i < VirtualPlayerCount; i++)
+        {
+            Neutron neutron = Neutron.Create(ClientMode.Virtual);
+            Register(neutron);
+            neutron.Connect();
+        }
+    }
+
     /// <summary>
     ///* Ao substituir, implemente "base.Start();"
     /// </summary>
@@ -60,12 +74,7 @@ public abstract class ClientSide : GlobalBehaviour
     {
         if (AutoStartConnection)
             Connect();
-        for (int i = 0; i < VirtualPlayerCount; i++)
-        {
-            Neutron neutron = Neutron.Create(ClientMode.Virtual);
-            Register(neutron);
-            neutron.Connect();
-        }
+        CreateVirtualClients();
     }
 
     protected virtual void OnRoomsReceived(NeutronRoom[] rooms, Neutron neutron) { }

@@ -109,7 +109,6 @@ namespace NeutronNetwork.Helpers
         #endregion
 
         #region Udp
-
         //* ler dados udp.
         public static IAsyncResult BeginReadBytes(UdpClient udpClient, StateObject stateObject, AsyncCallback callback)
         {

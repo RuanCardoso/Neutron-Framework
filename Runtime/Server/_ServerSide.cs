@@ -247,7 +247,7 @@ namespace NeutronNetwork
             GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, IsServer, Instance);
             SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.ID}]");
             //* Registra os objetos de cena.
-            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room ,Instance);
+            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Instance);
         }
 
         private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
@@ -302,6 +302,7 @@ namespace NeutronNetwork
         /// <returns></returns>
         protected bool OnAuth(NeutronPlayer user, string properties, bool status)
         {
+            properties = string.IsNullOrEmpty(properties) ? "{\"Neutron\":\"Neutron\"}" : properties;
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;

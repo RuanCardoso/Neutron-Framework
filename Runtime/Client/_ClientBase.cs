@@ -583,6 +583,8 @@ namespace NeutronNetwork.Client
 
         private void OnNeutronAuthenticated(bool isSuccess, JObject properties, Action onEvent, Neutron neutron)
         {
+            if (!isSuccess)
+                LogHelper.Error("The connection was rejected because authentication failed.");
             //* Invoca os eventos registrados do cliente, após os eventos internos.
             onEvent.Invoke();
         }

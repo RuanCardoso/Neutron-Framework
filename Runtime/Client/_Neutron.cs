@@ -213,9 +213,6 @@ namespace NeutronNetwork
                 authentication = Authentication.Auth;
             if (!IsConnected)
             {
-#if UNITY_EDITOR || UNITY_NEUTRON_LAN
-                await Task.Delay(15); //* Eu dei prioridade de execução pro servidor, ele inicializa primeiro que geral, mas coloquei esse delay por segurança, vai que o cliente inicia primeiro que o servidor, disponível somente no editor.
-#endif
                 Initialize();
                 TcpClient.NoDelay = Settings.GlobalSettings.NoDelay;
                 TcpClient.ReceiveBufferSize = Constants.Tcp.TcpReceiveBufferSize;
@@ -720,11 +717,11 @@ namespace NeutronNetwork
                             {
                                 var properties = reader.ReadString();
                                 var status = reader.ReadBool();
-                                Internal_OnNeutronAuthenticated(status, JObject.Parse(properties), () =>
+                                var parsedProperties = JObject.Parse(properties);
+                                Internal_OnNeutronAuthenticated(status, parsedProperties, () =>
                                 {
-                                    OnNeutronAuthenticated?.Invoke(status, JObject.Parse(properties), this);
+                                    OnNeutronAuthenticated?.Invoke(status, parsedProperties, this);
                                 }, this);
-                                if (!status && !LogHelper.Error("The connection was rejected because authentication failed.")) { }
                             }
                             break;
                         case Packet.Synchronize:

@@ -164,9 +164,7 @@ namespace NeutronNetwork.Server
                 try
                 {
                     TcpClient client = await TcpListener.AcceptTcpClientAsync(); //* Aceita a nova conexão,
-                    {
-                        _acceptedClients.Add(client, token); //* Nova conexão é enfileirada para processamento.
-                    }
+                    _acceptedClients.Add(client, token); //* Nova conexão é enfileirada para processamento.
                 }
                 catch (ObjectDisposedException) { continue; }
                 catch (OperationCanceledException) { continue; }
@@ -845,7 +843,10 @@ namespace NeutronNetwork.Server
             var targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
             var acl = PlayerSettings.GetApiCompatibilityLevel(targetGroup);
             if (acl == ApiCompatibilityLevel.NET_Standard_2_0)
-                throw new Exception(".NET Standard is not supported, change to .NET 4.x.");
+            {
+                //TcpListener.Stop();
+                //throw new Exception(".NET Standard is not supported, change to .NET 4.x.");
+            }
 #endif
 #if UNITY_SERVER && !UNITY_EDITOR
             Console.Clear();

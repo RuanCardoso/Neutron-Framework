@@ -145,15 +145,13 @@ namespace NeutronNetwork.Server
                             player.Write(writer);
                         }
                     }
-                    else
-                        LogHelper.Error("Auth failed!");
                 }
                 catch (Exception ex) // Tasks manual catch exception.
                 {
                     LogHelper.Stacktrace(ex);
                 }
             }
-            else if (!LogHelper.Error("Auth descrypt failed!"))
+            else if (!LogHelper.Error("Auth decrypt failed!"))
                 DisconnectHandler(player);
         }
 

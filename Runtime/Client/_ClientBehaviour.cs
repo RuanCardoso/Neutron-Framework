@@ -47,7 +47,6 @@ namespace NeutronNetwork.Client
         #region Functions
         protected void Initialize()
         {
-            LogHelper.Info("Client initialized!");
             #region Provider
             if (Players.TryAdd(0, PlayerHelper.MakeTheServerPlayer()))
             {
