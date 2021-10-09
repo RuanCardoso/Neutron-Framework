@@ -14,6 +14,7 @@ using NeutronNetwork.Wrappers;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Internal;
 using System.Text;
+using NeutronNetwork.UI;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -33,6 +34,7 @@ namespace NeutronNetwork.Server
     [RequireComponent(typeof(NeutronSchedule))]
     [RequireComponent(typeof(NeutronFramerate))]
     [RequireComponent(typeof(NeutronStatistics))]
+    [RequireComponent(typeof(NeutronUI))]
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_SERVER)]
     public class NeutronServer : ServerBase
     {
