@@ -41,62 +41,82 @@ namespace NeutronNetwork.Server
             get;
             set;
         }
+
+        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerConnected {
+            get;
+            set;
+        }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDisconnected {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerNicknameChanged {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnMessageReceived {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedRoom {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, NeutronRoom, Task<bool>> OnPlayerCreatedRoom {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftChannel {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftRoom {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerPropertiesChanged {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnRoomPropertiesChanged {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling {
             get;
             set;
         }
+
         public static NeutronEventNoReturn<NeutronPlayer, NeutronPacket, TargetTo, NeutronPlayer[]> OnCustomTarget {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<NeutronPlayer, Authentication, Task<bool>> OnAuthentication {
             get;
             set;
         }
+
         public static NeutronEventWithReturn<Packet, bool> OnReceivePacket {
             get;
             set;
@@ -132,9 +152,9 @@ namespace NeutronNetwork.Server
                 authentication = new Authentication(authentication.User, phrase, false);
                 try
                 {
-                    if (await OnAuthentication.Invoke(player, authentication))
+                    if (await OnAuthentication.Invoke(player, authentication)) //* First packet
                     {
-                        using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                        using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull()) //* Second First packet
                         {
                             NeutronStream.IWriter writer = stream.Writer;
                             writer.WritePacket((byte)Packet.Handshake);
@@ -144,6 +164,7 @@ namespace NeutronNetwork.Server
                             writer.WriteWithInteger(player);
                             player.Write(writer);
                         }
+                        OnPlayerConnected?.Invoke(player); //* Three packet
                     }
                 }
                 catch (Exception ex) // Tasks manual catch exception.
@@ -372,11 +393,11 @@ namespace NeutronNetwork.Server
 
         protected void JoinChannelHandler(NeutronPlayer player, int channelId)
         {
-            if (ChannelsById.Count > 0)
+            if (!player.IsInChannel())
             {
-                if (ChannelsById.TryGetValue(channelId, out NeutronChannel channel))
+                if (ChannelsById.Count > 0)
                 {
-                    if (!player.IsInChannel())
+                    if (ChannelsById.TryGetValue(channelId, out NeutronChannel channel))
                     {
                         if (channel.Add(player))
                         {
@@ -392,16 +413,16 @@ namespace NeutronNetwork.Server
                             }
                         }
                         else
-                            player.Error(Packet.JoinChannel, "Failed to join channel", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
+                            player.Error(Packet.JoinChannel, "Failed to join channel, unknow issue ):", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
                     }
                     else
-                        player.Error(Packet.JoinChannel, "You are already joined to a channel.", ErrorMessage.MATCHMAKING_INDISPONIBLE);
+                        player.Error(Packet.JoinChannel, $"We couldn't find a channel with this Id: {channelId}", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
                 }
                 else
-                    player.Error(Packet.JoinChannel, "We couldn't find a channel with this ID.", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
+                    player.Error(Packet.JoinChannel, "There are no channels created on the server.", ErrorMessage.CHANNELS_NOT_FOUND);
             }
             else
-                player.Error(Packet.JoinChannel, "There are no channels created on the server.", ErrorMessage.CHANNELS_NOT_FOUND);
+                player.Error(Packet.JoinChannel, "You are already joined to a channel.", ErrorMessage.MATCHMAKING_INDISPONIBLE);
         }
 
         protected void JoinRoomHandler(NeutronPlayer player, int roomId, string password)
@@ -409,26 +430,31 @@ namespace NeutronNetwork.Server
             if (player.IsInChannel() && !player.IsInRoom())
             {
                 NeutronRoom room = player.Channel.GetRoom(roomId);
-                if (room.Password == password)
+                if (room != null)
                 {
-                    if (room.Add(player))
+                    if (room.Password == password)
                     {
-                        player.Room = room;
-                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                        OnPlayerJoinedRoom?.Invoke(player);
-                        using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                        if (room.Add(player))
                         {
-                            NeutronStream.IWriter writer = stream.Writer;
-                            writer.WritePacket((byte)Packet.JoinRoom);
-                            writer.WriteWithInteger(room);
-                            player.Write(writer, Helper.GetHandlers().OnPlayerJoinedRoom);
+                            player.Room = room;
+                            player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                            OnPlayerJoinedRoom?.Invoke(player);
+                            using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                            {
+                                NeutronStream.IWriter writer = stream.Writer;
+                                writer.WritePacket((byte)Packet.JoinRoom);
+                                writer.WriteWithInteger(room);
+                                player.Write(writer, Helper.GetHandlers().OnPlayerJoinedRoom);
+                            }
                         }
+                        else
+                            player.Error(Packet.JoinRoom, "Failed to add player.", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
                     }
                     else
-                        player.Error(Packet.JoinRoom, "Failed to add player.", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
+                        player.Error(Packet.JoinRoom, "Failed to join in room, incorrect password", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING_WRONG_PASSWORD);
                 }
                 else
-                    player.Error(Packet.JoinRoom, "Failed to join in room, incorrect password", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING_WRONG_PASSWORD);
+                    player.Error(Packet.JoinChannel, $"We couldn't find a room with this Id: {roomId}", ErrorMessage.FAILED_TO_JOIN_MATCHMAKING);
             }
             else
                 player.Error(Packet.JoinRoom, "You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.", ErrorMessage.MATCHMAKING_INDISPONIBLE);

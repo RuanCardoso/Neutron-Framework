@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork;
+using NeutronNetwork.Editor;
 using NeutronNetwork.Server;
 using System.Diagnostics;
 using System.IO;
@@ -50,6 +51,7 @@ public class NeutronEditor : EditorWindow
             GameObject l_Client = new GameObject("Client");
             GameObject l_Server = new GameObject("Server");
             GameObject l_Custom = new GameObject("Defines");
+            l_Controllers.AddComponent<SubSceneList>();
             l_Client.transform.SetParent(l_Controllers.transform);
             l_Server.transform.SetParent(l_Controllers.transform);
             l_Custom.transform.SetParent(l_Controllers.transform);

@@ -20,15 +20,23 @@ namespace NeutronNetwork
             get;
             private set;
         }
+
         public static Synchronization Synchronization {
             get;
+
             private set;
         }
         public static Encoding Encoding {
             get;
             private set;
         }
+
         public static int HeaderSize {
+            get;
+            private set;
+        }
+
+        public static int UnityThreadId {
             get;
             private set;
         }
@@ -47,6 +55,7 @@ namespace NeutronNetwork
 
         private void Awake()
         {
+            UnityThreadId = ThreadHelper.GetThreadID();
 #if UNITY_EDITOR
             CreateLogDelegate();
 #endif

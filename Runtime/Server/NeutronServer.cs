@@ -1,23 +1,20 @@
+using NeutronNetwork.Constants;
+using NeutronNetwork.Extensions;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Internal.Wrappers;
+using NeutronNetwork.Packets;
+using NeutronNetwork.UI;
+using NeutronNetwork.Wrappers;
 using System;
+using System.IO;
+using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using UnityEngine;
-using NeutronNetwork.Internal.Components;
-using NeutronNetwork.Constants;
-using NeutronNetwork.Helpers;
-using System.Net;
-using NeutronNetwork.Extensions;
-using System.IO;
-using NeutronNetwork.Internal.Packets;
-using NeutronNetwork.Packets;
-using NeutronNetwork.Wrappers;
-using NeutronNetwork.Internal.Wrappers;
-using NeutronNetwork.Internal;
-using System.Text;
-using NeutronNetwork.UI;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -53,12 +50,6 @@ namespace NeutronNetwork.Server
         public static NeutronEventNoReturn OnStart {
             get;
             set;
-        }
-        /// <summary>
-        ///* Este evento é acionado quando um jogador é conectado ao servidor.
-        /// </summary>
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerConnected {
-            get; set;
         }
         #endregion
 
@@ -102,7 +93,7 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Functions
-        private void Initilize()
+        private void StartThreads()
         {
             Player = PlayerHelper.MakeTheServerPlayer();
             //* Faz a porra da instância de neutron, gambiarra, eu errei o design do "Neutron" essa porra tá cheio de confusões e gambiarras, tou entendo mais nada, uma falha de Design ):
@@ -268,7 +259,6 @@ namespace NeutronNetwork.Server
                                         });
                                         break;
                                 }
-                                OnPlayerConnected?.Invoke(player);
                             }
                             else
                             {
@@ -839,22 +829,25 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Mono Behaviour
+        /// <summary>
+        ///* Inicia o servidor.
+        /// </summary>
+        public void StartServer()
+        {
+            StartSocket();
+            if (IsReady)
+            {
+                if (!AutoStart)
+                    StartThreads();
+                else
+                    LogHelper.Error("The server has already been initialized!");
+            }
+        }
+
         private void Start()
         {
-#if UNITY_EDITOR
-            var targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
-            var acl = PlayerSettings.GetApiCompatibilityLevel(targetGroup);
-            if (acl == ApiCompatibilityLevel.NET_Standard_2_0)
-            {
-                //TcpListener.Stop();
-                //throw new Exception(".NET Standard is not supported, change to .NET 4.x.");
-            }
-#endif
-#if UNITY_SERVER && !UNITY_EDITOR
-            Console.Clear();
-#endif
-            if (IsReady)
-                Initilize();
+            if (IsReady && AutoStart)
+                StartThreads();
         }
 
         private void OnApplicationQuit()

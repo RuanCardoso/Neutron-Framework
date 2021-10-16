@@ -1,4 +1,5 @@
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
 using System;
@@ -660,8 +661,9 @@ namespace NeutronNetwork
             private byte[] _buffer = new byte[8]; //* Suporta até double(8 bytes).
             private readonly MemoryStream _stream;
             private readonly bool _isFixedSize;
+            private bool _autoDispose;
             private int _bufferLength;
-            public byte[] _internalBuffer;
+            public byte[] _internalBuffer = new byte[0];
 
             public IReader()
             {
@@ -916,6 +918,14 @@ namespace NeutronNetwork
 
             public void Read(int size, byte[] buffer = null)
             {
+#if UNITY_EDITOR
+                if (_autoDispose)
+                {
+                    var th = ThreadHelper.GetThread();
+                    if (th.ManagedThreadId == NeutronModule.UnityThreadId)
+                        LogHelper.Error("Read calls -> reader.Read...() cannot be executed on the unity thread.");
+                }
+#endif
                 if (buffer == null)
                     buffer = _buffer;
 
@@ -1013,12 +1023,14 @@ namespace NeutronNetwork
 
             public void Clear()
             {
+                _internalBuffer = null;
                 _stream.SetLength(0);
             }
 
             public void Close()
             {
                 _buffer = null;
+                _internalBuffer = null;
                 _stream.Dispose();
             }
         }

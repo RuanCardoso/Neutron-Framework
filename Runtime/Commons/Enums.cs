@@ -41,6 +41,7 @@ namespace NeutronNetwork.Packets
     [Network]
     public enum MatchmakingMode : byte
     {
+        Server,
         Room,
         Channel,
     }
@@ -316,13 +317,6 @@ namespace NeutronNetwork.Internal.Packets
         All,
     }
 
-    public enum SmoothMode : int
-    {
-        Lerp,
-        MoveTowards,
-        SmoothDamp,
-    }
-
     public enum SyncOnOff : int
     {
         Sync,
@@ -401,6 +395,12 @@ namespace NeutronNetwork.Internal.Packets
     {
         TAP,
         APM
+    }
+
+    public enum OwnerMode : int
+    {
+        Server,
+        Master
     }
     #endregion
 }

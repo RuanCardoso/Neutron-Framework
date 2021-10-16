@@ -73,7 +73,7 @@ namespace NeutronNetwork
             base.OnNeutronRegister(player, isServer, registerMode, neutron, dynamicId);
             {
                 //* O jogador dono da instância de neutron.
-                NeutronPlayer instanceOwner = neutron.Player;
+                NeutronPlayer instanceOwner = neutron.LocalPlayer;
                 //* Define o jogador dono deste objeto.
                 Owner = player;
                 //* Define se este objeto é o do servidor.
@@ -169,7 +169,7 @@ namespace NeutronNetwork
             //* Agora vamos destruir e dar "unregister".
             if (AutoDestroy)
             {
-                INeutronMatchmaking matchmaking = IsServer ? Owner.Matchmaking : This.Player.Matchmaking;
+                INeutronMatchmaking matchmaking = IsServer ? Owner.Matchmaking : This.LocalPlayer.Matchmaking;
                 if (matchmaking.Views.TryRemove(_viewId, out NeutronView _))
                 {
                     await NeutronSchedule.ScheduleTaskAsync(() =>

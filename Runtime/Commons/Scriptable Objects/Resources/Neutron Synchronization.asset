@@ -15,7 +15,7 @@ MonoBehaviour:
   DefaultHandlers:
     OnPlayerNicknameChanged:
       _targetTo: 0
-      _tunnelingTo: 4
+      _tunnelingTo: 1
       _protocol: 0
     OnPlayerDisconnected:
       _targetTo: 0

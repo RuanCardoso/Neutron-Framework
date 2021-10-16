@@ -133,10 +133,8 @@ namespace NeutronNetwork.Components
             _interpolationTime = 0;
         }
 
-        [iRPCAttribute(ID = RpcId)]
-#pragma warning disable IDE0051
-        void SyncSnapshot(NeutronStream.IReader reader, NeutronPlayer player)
-#pragma warning restore IDE0051
+        [iRPC(ID = RpcId)]
+        public void SyncSnapshot(NeutronStream.IReader reader, NeutronPlayer player)
         {
             var position = _syncPosition ? reader.ReadVector3() : Vector3.zero;
             var rotation = _syncRotation ? _compressQuaternion ? reader.ReadCompressedQuaternion(_floatMultiplicationPrecision) : reader.ReadQuaternion() : Quaternion.identity;

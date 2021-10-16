@@ -52,13 +52,8 @@ namespace NeutronNetwork.Helpers
             {
                 #region Server Player
                 NeutronPlayer owner = player;
-                if (Neutron.Server.ServerOwnsTheMatchManager)
-                {
-                    owner = PlayerHelper.MakeTheServerPlayer();
-                    owner.Channel = player.Channel;
-                    owner.Room = player.Room;
-                    owner.Matchmaking = player.Matchmaking;
-                }
+                if (Neutron.Server.MatchmakingManagerOwner == OwnerMode.Server)
+                    owner = PlayerHelper.MakeTheServerPlayer(player.Channel, player.Room, player.Matchmaking);
                 #endregion
 
                 GameObject actionsObject = GameObject.Instantiate(actions[actions.Length - 1].gameObject, matchManager.transform);

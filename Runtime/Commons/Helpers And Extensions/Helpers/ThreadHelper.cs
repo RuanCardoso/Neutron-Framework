@@ -7,7 +7,12 @@ namespace NeutronNetwork.Helpers
     {
         public static int GetThreadID()
         {
-            return Thread.CurrentThread.ManagedThreadId;
+            return GetThread().ManagedThreadId;
+        }
+
+        public static Thread GetThread()
+        {
+            return Thread.CurrentThread;
         }
 
         public static void DoNotAllowSimultaneousAccess(int managedThreadId, [CallerMemberName] string callerMemberName = "")

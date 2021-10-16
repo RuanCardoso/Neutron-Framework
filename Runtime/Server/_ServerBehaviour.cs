@@ -1,7 +1,10 @@
-﻿using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Editor;
+using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -29,9 +32,10 @@ namespace NeutronNetwork.Server
         [SerializeField] [HorizontalLine] private LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
         [SerializeField] [ReadOnly] private PlayerGlobalController _playerGlobalController;
         [SerializeField] [ReadOnly] private ServerSide _serverSideController;
-        [SerializeField] private bool _enableActionsOnChannel;
-        [SerializeField] private bool _serverOwnsTheMatchManager = true;
-        [SerializeField] private bool _serverOwnsTheSceneObjects = true;
+        [SerializeField] private bool _autoStart = true;
+        [SerializeField] private bool _actionsOnTheChannel = true;
+        [SerializeField] private OwnerMode _sceneObjectsOwner = OwnerMode.Server;
+        [SerializeField] private OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
         [SerializeField] [ReadOnly] private NeutronBehaviour[] _actions;
         [SerializeField] private string[] _scenes;
         [ReadOnly] [HorizontalLine] public int _playerCount;
@@ -59,21 +63,22 @@ namespace NeutronNetwork.Server
             get => _serverSideController;
         }
 
-        public bool EnableActionsOnChannel {
-            get => _enableActionsOnChannel;
+        public bool ActionsOnTheChannel {
+            get => _actionsOnTheChannel;
         }
 
-        public bool ServerOwnsTheMatchManager {
-            get => _serverOwnsTheMatchManager;
+        public OwnerMode MatchmakingManagerOwner {
+            get => _matchmakingManagerOwner;
         }
 
-        public bool ServerOwnsTheSceneObjects {
-            get => _serverOwnsTheSceneObjects;
+        public OwnerMode SceneObjectsOwner {
+            get => _sceneObjectsOwner;
         }
 
         public NeutronBehaviour[] Actions {
             get => _actions;
         }
+        public bool AutoStart => _autoStart;
         #endregion
 
         private void Controllers()
@@ -125,7 +130,7 @@ namespace NeutronNetwork.Server
                 SceneManager.sceneLoaded -= OnLoadScene;
         }
 
-        protected virtual void Awake()
+        protected void StartSocket()
         {
 #if UNITY_2018_4_OR_NEWER
 #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
@@ -158,6 +163,23 @@ namespace NeutronNetwork.Server
 #endif
 #else
                 LogHelper.Error("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
+#endif
+        }
+
+        protected virtual void Awake()
+        {
+#if !UNITY_SERVER || UNITY_EDITOR
+            if (_autoStart)
+                StartSocket();
+#else
+            Initialize();
+#endif
+        }
+
+        private void OnValidate()
+        {
+#if UNITY_EDITOR
+            enabled = true;
 #endif
         }
     }

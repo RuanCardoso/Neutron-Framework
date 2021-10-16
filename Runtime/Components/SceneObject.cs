@@ -87,7 +87,7 @@ namespace NeutronNetwork.Components
 
             #region Make Owner
             NeutronPlayer owner = player;
-            if (Neutron.Server.ServerOwnsTheSceneObjects)
+            if (Neutron.Server.SceneObjectsOwner == OwnerMode.Server)
                 owner = PlayerHelper.MakeTheServerPlayer(player.Channel, player.Room, player.Matchmaking);
             #endregion
 

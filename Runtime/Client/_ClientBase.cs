@@ -271,7 +271,7 @@ namespace NeutronNetwork.Client
         {
             void Run((int, int, RegisterMode) key) //* a key do objeto, o primeiro parâmetro é o ID do jogador ou do Objeto de Rede ou 0(se for objeto de cena), e o segundo é o ID do objeto, e o terceiro é o tipo de objeto.
             {
-                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
+                if (MatchmakingHelper.Server.GetNetworkObject(key, This.LocalPlayer, out NeutronView neutronView)) //* Obtém a instância que enviou o RPC para a rede.
                 {
                     if (neutronView.iRPCs.TryGetValue((rpcId, instanceId), out RPCInvoker remoteProceduralCall)) //* Obtém o RPC com o ID enviado para a rede.
                     {
@@ -332,7 +332,7 @@ namespace NeutronNetwork.Client
         {
             void Run((int, int, RegisterMode) key)
             {
-                if (MatchmakingHelper.Server.GetNetworkObject(key, This.Player, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID específicado.
+                if (MatchmakingHelper.Server.GetNetworkObject(key, This.LocalPlayer, out NeutronView neutronView)) //* Obtém o objeto de rede com o ID específicado.
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour)) //* obtém a instância que está sincronizando os dados.
                     {
@@ -370,7 +370,7 @@ namespace NeutronNetwork.Client
             foreach (var player in players)
             {
                 //* Atualiza o jogador, mas mantem a refêrencia.
-                if (player.Equals(This.Player))
+                if (player.Equals(This.LocalPlayer))
                     continue;
                 else
                 {
@@ -394,7 +394,6 @@ namespace NeutronNetwork.Client
             var writer = This.Begin_gRPC(parameters);
             writer.Write(position);
             writer.Write(quaternion);
-            //------------------------//
             return writer;
         }
 
@@ -427,14 +426,12 @@ namespace NeutronNetwork.Client
             {
                 position = parameters.ReadVector3();
                 quaternion = parameters.ReadQuaternion();
-                //------------//
                 return true;
             }
             catch
             {
                 position = Vector3.zero;
                 quaternion = Quaternion.identity;
-                //------------//
                 return false;
             }
         }
@@ -451,7 +448,6 @@ namespace NeutronNetwork.Client
             writer.Write(position);
             writer.Write(quaternion);
             writer.Write(spawnId);
-            //---------------------//
             return writer;
         }
 
@@ -501,7 +497,7 @@ namespace NeutronNetwork.Client
         /// </summary>
         /// <param name="otherPlayer">* O Jogador que será comparado.</param>
         /// <returns></returns>
-        public bool IsMine(NeutronPlayer otherPlayer) => otherPlayer.Equals(This.Player);
+        public bool IsMine(NeutronPlayer otherPlayer) => otherPlayer.Equals(This.LocalPlayer);
 
         private void SetMatchmakingOwner(NeutronPlayer player, INeutronMatchmaking matchmaking)
         {
@@ -567,7 +563,7 @@ namespace NeutronNetwork.Client
 
         private void OnRoomPropertiesChanged(NeutronPlayer player, string properties, bool isMine, Action onEvent, Neutron neutron)
         {
-            This.Player.Matchmaking.Properties = properties;
+            This.LocalPlayer.Matchmaking.Properties = properties;
             //* Invoca os eventos registrados do cliente, após os eventos internos.
             onEvent.Invoke();
         }
@@ -612,7 +608,7 @@ namespace NeutronNetwork.Client
                     }
                     else
                     {
-                        var currentChannel = neutron.Player.Channel;
+                        var currentChannel = neutron.LocalPlayer.Channel;
                         //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
                         channel.Owner = Players[channel.Owner.ID];
                         //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.
@@ -656,7 +652,7 @@ namespace NeutronNetwork.Client
                     }
                     else
                     {
-                        var currentRoom = neutron.Player.Room;
+                        var currentRoom = neutron.LocalPlayer.Room;
                         //* Seta o dono do Matchmaking, obtemos da nossa lista de jogadores, para mantermos a refêrencia original.
                         room.Owner = Players[room.Owner.ID];
                         //* Atualiza as propriedades mantendo a referência original, sem substituição direta ex: room = newRoom, isto seria um novo objeto/referência.

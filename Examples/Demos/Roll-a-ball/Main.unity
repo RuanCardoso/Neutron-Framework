@@ -1473,7 +1473,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1154523361
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1701,6 +1701,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1480447147}
+  - component: {fileID: 1480447148}
   m_Layer: 0
   m_Name: Controllers
   m_TagString: Untagged
@@ -1726,6 +1727,22 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1480447148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1480447146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c70c305cbd30db14cb5cf4588df7ab29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _subScenes:
+  - _name: Server
+    matchmakingMode: 1
+    _subScenes: []
 --- !u!1 &1494694842
 GameObject:
   m_ObjectHideFlags: 0
@@ -1917,7 +1934,6 @@ GameObject:
   - component: {fileID: 1561612178}
   - component: {fileID: 1561612177}
   - component: {fileID: 1561612176}
-  - component: {fileID: 1561612175}
   m_Layer: 5
   m_Name: Channels
   m_TagString: Untagged
@@ -1925,20 +1941,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1561612175
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1561612174}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc4e49f982e39074ab6ef659c7f37f14, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _userField: {fileID: 0}
-  _passField: {fileID: 0}
 --- !u!114 &1561612176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1986,7 +1988,7 @@ Canvas:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1561612174}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_RenderMode: 1
   m_Camera: {fileID: 776651387}
@@ -2505,6 +2507,7 @@ GameObject:
   - component: {fileID: 1869394989}
   - component: {fileID: 1869394988}
   - component: {fileID: 1869394987}
+  - component: {fileID: 1869394992}
   - component: {fileID: 1869394986}
   - component: {fileID: 1869394991}
   m_Layer: 0
@@ -2542,13 +2545,63 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ChannelsById:
-    m_Values: []
+    m_Values:
+    - _isInitialized: 1
+      Title: Canal 1
+      _id: 0
+      _name: Canal 1
+      _playerCount: 0
+      _maxPlayers: 15
+      _properties: '{"Map":"Neutron"}'
+      _players:
+        m_Values: []
+      _roomCount: 1
+      _maxRooms: 0
+      _rooms:
+        m_Values:
+        - _isInitialized: 1
+          Title: Sala 1
+          _id: 0
+          _name: Sala 1
+          _playerCount: 0
+          _maxPlayers: 15
+          _properties: '{"Map":"Neutron"}'
+          _players:
+            m_Values: []
+          _password: 
+    - _isInitialized: 1
+      Title: Canal 2
+      _id: 1
+      _name: Canal 2
+      _playerCount: 0
+      _maxPlayers: 15
+      _properties: '{"Map":"Neutron"}'
+      _players:
+        m_Values: []
+      _roomCount: 0
+      _maxRooms: 0
+      _rooms:
+        m_Values: []
+    - _isInitialized: 1
+      Title: Canal 3
+      _id: 2
+      _name: Canal 3
+      _playerCount: 0
+      _maxPlayers: 15
+      _properties: '{"Map":"Neutron"}'
+      _players:
+        m_Values: []
+      _roomCount: 0
+      _maxRooms: 0
+      _rooms:
+        m_Values: []
   _localPhysicsMode: 2
   _playerGlobalController: {fileID: 0}
   _serverSideController: {fileID: 0}
-  _enableActionsOnChannel: 0
-  _serverOwnsTheMatchManager: 1
-  _serverOwnsTheSceneObjects: 1
+  _autoStart: 1
+  _actionsOnTheChannel: 1
+  _sceneObjectsOwner: 0
+  _matchmakingManagerOwner: 0
   _actions: []
   _scenes: []
   _playerCount: 0
@@ -2612,6 +2665,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2709f76f5f73c3b46b49ae87facc30cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1869394992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1869394984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 156b749b29da86c4dbeb5e7a8c252579, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1877100756
@@ -3116,3 +3181,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ace2af95e43f5a94597971a32581287c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _playerPrefab: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}

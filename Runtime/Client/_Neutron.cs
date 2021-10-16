@@ -39,7 +39,7 @@ namespace NeutronNetwork
         public Neutron() { }
         public Neutron(NeutronPlayer player, bool isConnected, Neutron instance)
         {
-            Player = player;
+            LocalPlayer = player;
             IsConnected = isConnected;
 #if UNITY_SERVER && !UNITY_EDITOR
             Client = instance;
@@ -95,10 +95,11 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o objeto que representa seu jogador.
         /// </summary>
-        public NeutronPlayer Player {
+        public NeutronPlayer LocalPlayer {
             get;
             private set;
         }
+
         /// <summary>
         ///* Retorna o status da sua conexão.
         /// </summary>
@@ -106,6 +107,7 @@ namespace NeutronNetwork
             get;
             private set;
         }
+
         /// <summary>
         ///* Obtém o nickname do seu jogador.
         /// </summary>
@@ -213,7 +215,7 @@ namespace NeutronNetwork
                 authentication = Authentication.Auth;
             if (!IsConnected)
             {
-                Initialize();
+                StartSocket();
                 TcpClient.NoDelay = Settings.GlobalSettings.NoDelay;
                 TcpClient.ReceiveBufferSize = Constants.Tcp.TcpReceiveBufferSize;
                 TcpClient.SendBufferSize = Constants.Tcp.TcpSendBufferSize;
@@ -498,303 +500,299 @@ namespace NeutronNetwork
                 NeutronStream.IReader reader = stream.Reader;
                 reader.SetBuffer(buffer);
                 Packet packet = (Packet)reader.ReadPacket();
-                if (!IsReady && (packet != Packet.AuthStatus && packet != Packet.Handshake && packet != Packet.Disconnection && packet != Packet.Error))
-                    LogHelper.Error("Unauthenticated!");
-                else
+                bool isMine = (IsReady && IsMine(player)) || packet == Packet.Handshake;
+                switch (packet)
                 {
-                    bool isMine = (IsReady && IsMine(player)) || packet == Packet.Handshake;
-                    switch (packet)
-                    {
-                        case Packet.UdpKeepAlive:
-                            {
-                                var serverTime = reader.ReadDouble();
-                                var clientTime = reader.ReadDouble();
-                                if (NetworkTime.Rpu < NetworkTime.Spu)
-                                    NetworkTime.Rpu++;
-                                NetworkTime.GetNetworkTime(clientTime, serverTime);
-                            }
-                            break;
-                        case Packet.Handshake:
-                            {
-                                var serverTime = reader.ReadDouble();
-                                var clientTime = reader.ReadDouble();
-                                var udpPort = reader.ReadInt();
-                                var localPlayer = reader.ReadWithInteger<NeutronPlayer>();
+                    case Packet.UdpKeepAlive:
+                        {
+                            var serverTime = reader.ReadDouble();
+                            var clientTime = reader.ReadDouble();
+                            if (NetworkTime.Rpu < NetworkTime.Spu)
+                                NetworkTime.Rpu++;
+                            NetworkTime.GetNetworkTime(clientTime, serverTime);
+                        }
+                        break;
+                    case Packet.Handshake:
+                        {
+                            var serverTime = reader.ReadDouble();
+                            var clientTime = reader.ReadDouble();
+                            var udpPort = reader.ReadInt();
+                            var localPlayer = reader.ReadWithInteger<NeutronPlayer>();
 
-                                #region Udp Poll
-                                UdpEndPoint = new NonAllocEndPoint(IPAddress.Parse(_host), udpPort);
-                                //* Udp, envia um pacote 30 vezes(30 vezes por que pode ocorrer perda de pacotes, e queremos que pelo menos 1 chegue ao servidor), para que seja feito o "Syn/Ack/Handshake"
-                                using (NeutronStream ping = PooledNetworkStreams.Pull())
+                            #region Udp Poll
+                            UdpEndPoint = new NonAllocEndPoint(IPAddress.Parse(_host), udpPort);
+                            //* Udp, envia um pacote 30 vezes(30 vezes por que pode ocorrer perda de pacotes, e queremos que pelo menos 1 chegue ao servidor), para que seja feito o "Syn/Ack/Handshake"
+                            using (NeutronStream ping = PooledNetworkStreams.Pull())
+                            {
+                                NeutronStream.IWriter writer = ping.Writer;
+                                for (int i = 0; i < 15; i++)
                                 {
-                                    NeutronStream.IWriter writer = ping.Writer;
-                                    for (int i = 0; i < 15; i++)
-                                    {
-                                        writer.WritePacket((byte)Packet.UdpKeepAlive);
-                                        writer.Write(NetworkTime.LocalTime);
-                                        Send(ping, Protocol.Udp);
-                                    }
+                                    writer.WritePacket((byte)Packet.UdpKeepAlive);
+                                    writer.Write(NetworkTime.LocalTime);
+                                    Send(ping, Protocol.Udp);
                                 }
-                                #endregion
+                            }
+                            #endregion
 
-                                NetworkTime.GetNetworkTime(clientTime, serverTime);
-                                Player = localPlayer;
-                                Players[Player.ID] = Player;
-                                Internal_OnPlayerConnected(Player, isMine, () =>
-                                {
-                                    OnPlayerConnected?.Invoke(Player, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.Disconnection:
+                            NetworkTime.GetNetworkTime(clientTime, serverTime);
+                            LocalPlayer = Players[localPlayer.ID];
+                            LocalPlayer.Apply(localPlayer);
+                            Internal_OnPlayerConnected(LocalPlayer, isMine, () =>
                             {
-                                var reason = reader.ReadString();
-                                Internal_OnPlayerDisconnected(reason, player, isMine, () =>
-                                {
-                                    OnPlayerDisconnected?.Invoke(reason, player, isMine, this);
-                                }, this);
+                                OnPlayerConnected?.Invoke(LocalPlayer, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.Disconnection:
+                        {
+                            var reason = reader.ReadString();
+                            Internal_OnPlayerDisconnected(reason, player, isMine, () =>
+                            {
+                                OnPlayerDisconnected?.Invoke(reason, player, isMine, this);
+                            }, this);
 
-                                Internal_OnPlayerLeftRoom(Player.Room, player, isMine, () =>
-                                {
-                                    OnPlayerLeftRoom?.Invoke(Player.Room, player, isMine, this);
-                                }, this);
+                            Internal_OnPlayerLeftRoom(LocalPlayer.Room, player, isMine, () =>
+                            {
+                                OnPlayerLeftRoom?.Invoke(LocalPlayer.Room, player, isMine, this);
+                            }, this);
 
-                                Internal_OnPlayerLeftChannel(Player.Channel, player, isMine, () =>
-                                {
-                                    OnPlayerLeftChannel?.Invoke(Player.Channel, player, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.Chat:
+                            Internal_OnPlayerLeftChannel(LocalPlayer.Channel, player, isMine, () =>
                             {
-                                var message = reader.ReadString();
-                                Internal_OnMessageReceived(message, player, isMine, () =>
-                                {
-                                    OnMessageReceived?.Invoke(message, player, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.iRPC:
+                                OnPlayerLeftChannel?.Invoke(LocalPlayer.Channel, player, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.Chat:
+                        {
+                            var message = reader.ReadString();
+                            Internal_OnMessageReceived(message, player, isMine, () =>
                             {
-                                var registerType = (RegisterMode)reader.ReadPacket();
-                                var viewID = reader.ReadShort();
-                                var rpcId = reader.ReadByte();
-                                var instanceId = reader.ReadByte();
-                                var parameters = reader.ReadNext();
-                                iRPCHandler(rpcId, viewID, instanceId, parameters, player, registerType);
-                            }
-                            break;
-                        case Packet.gRPC:
+                                OnMessageReceived?.Invoke(message, player, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.iRPC:
+                        {
+                            var registerType = (RegisterMode)reader.ReadPacket();
+                            var viewID = reader.ReadShort();
+                            var rpcId = reader.ReadByte();
+                            var instanceId = reader.ReadByte();
+                            var parameters = reader.ReadNext();
+                            iRPCHandler(rpcId, viewID, instanceId, parameters, player, registerType);
+                        }
+                        break;
+                    case Packet.gRPC:
+                        {
+                            var rpcId = reader.ReadByte();
+                            var parameters = reader.ReadNext();
+                            gRPCHandler(rpcId, player, parameters, IsServer, isMine);
+                        }
+                        break;
+                    case Packet.GetChannels:
+                        {
+                            LogHelper.Error("channel");
+                            var channels = reader.ReadWithInteger<NeutronChannel[]>();
+                            Internal_OnChannelsReceived(channels, () =>
                             {
-                                var rpcId = reader.ReadByte();
-                                var parameters = reader.ReadNext();
-                                gRPCHandler(rpcId, player, parameters, IsServer, isMine);
-                            }
-                            break;
-                        case Packet.GetChannels:
+                                OnChannelsReceived?.Invoke(channels, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.JoinChannel:
+                        {
+                            var channel = reader.ReadWithInteger<NeutronChannel>();
+                            Internal_OnPlayerJoinedChannel(channel, player, isMine, () =>
                             {
-                                var channels = reader.ReadWithInteger<NeutronChannel[]>();
-                                Internal_OnChannelsReceived(channels, () =>
-                                {
-                                    OnChannelsReceived?.Invoke(channels, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.JoinChannel:
+                                OnPlayerJoinedChannel?.Invoke(channel, player, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.Leave:
+                        {
+                            var mode = (MatchmakingMode)reader.ReadPacket();
+                            if (mode == MatchmakingMode.Channel)
                             {
                                 var channel = reader.ReadWithInteger<NeutronChannel>();
-                                Internal_OnPlayerJoinedChannel(channel, player, isMine, () =>
+                                Internal_OnPlayerLeftChannel(channel, player, isMine, () =>
                                 {
-                                    OnPlayerJoinedChannel?.Invoke(channel, player, isMine, this);
+                                    OnPlayerLeftChannel?.Invoke(channel, player, isMine, this);
                                 }, this);
                             }
-                            break;
-                        case Packet.Leave:
-                            {
-                                var mode = (MatchmakingMode)reader.ReadPacket();
-                                if (mode == MatchmakingMode.Channel)
-                                {
-                                    var channel = reader.ReadWithInteger<NeutronChannel>();
-                                    Internal_OnPlayerLeftChannel(channel, player, isMine, () =>
-                                    {
-                                        OnPlayerLeftChannel?.Invoke(channel, player, isMine, this);
-                                    }, this);
-                                }
-                                else if (mode == MatchmakingMode.Room)
-                                {
-                                    var room = reader.ReadWithInteger<NeutronRoom>();
-                                    Internal_OnPlayerLeftRoom(room, player, isMine, () =>
-                                    {
-                                        OnPlayerLeftRoom?.Invoke(room, player, isMine, this);
-                                    }, this);
-                                }
-                            }
-                            break;
-                        case Packet.CreateRoom:
+                            else if (mode == MatchmakingMode.Room)
                             {
                                 var room = reader.ReadWithInteger<NeutronRoom>();
-                                Internal_OnPlayerCreatedRoom(room, player, isMine, () =>
+                                Internal_OnPlayerLeftRoom(room, player, isMine, () =>
                                 {
-                                    OnPlayerCreatedRoom?.Invoke(room, player, isMine, this);
+                                    OnPlayerLeftRoom?.Invoke(room, player, isMine, this);
                                 }, this);
                             }
-                            break;
-                        case Packet.GetRooms:
+                        }
+                        break;
+                    case Packet.CreateRoom:
+                        {
+                            var room = reader.ReadWithInteger<NeutronRoom>();
+                            Internal_OnPlayerCreatedRoom(room, player, isMine, () =>
                             {
-                                var rooms = reader.ReadWithInteger<NeutronRoom[]>();
-                                Internal_OnRoomsReceived(rooms, () =>
+                                OnPlayerCreatedRoom?.Invoke(room, player, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.GetRooms:
+                        {
+                            var rooms = reader.ReadWithInteger<NeutronRoom[]>();
+                            Internal_OnRoomsReceived(rooms, () =>
+                            {
+                                OnRoomsReceived?.Invoke(rooms, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.JoinRoom:
+                        {
+                            var room = reader.ReadWithInteger<NeutronRoom>();
+                            Internal_OnPlayerJoinedRoom(room, player, isMine, () =>
+                            {
+                                OnPlayerJoinedRoom?.Invoke(room, player, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.Destroy:
+                        {
+                            #region Logic
+                            #endregion
+                        }
+                        break;
+                    case Packet.Nickname:
+                        {
+                            var nickname = reader.ReadString();
+                            Internal_OnPlayerNicknameChanged(player, nickname, isMine, () =>
+                            {
+                                OnPlayerNicknameChanged?.Invoke(player, nickname, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.SetPlayerProperties:
+                        {
+                            var properties = reader.ReadString();
+                            Internal_OnPlayerPropertiesChanged(player, properties, isMine, () =>
+                            {
+                                OnPlayerPropertiesChanged?.Invoke(player, properties, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.SetRoomProperties:
+                        {
+                            var properties = reader.ReadString();
+                            Internal_OnRoomPropertiesChanged(player, properties, isMine, () =>
+                            {
+                                OnRoomPropertiesChanged?.Invoke(player, properties, isMine, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.CustomPacket:
+                        {
+                            var packetId = reader.ReadPacket();
+                            var parameters = reader.ReadWithInteger();
+                            using (NeutronStream cPStream = PooledNetworkStreams.Pull())
+                            {
+                                NeutronStream.IReader pReader = cPStream.Reader;
+                                pReader.SetBuffer(parameters);
+                                Internal_OnPlayerCustomPacketReceived(pReader, player, packetId, () =>
                                 {
-                                    OnRoomsReceived?.Invoke(rooms, this);
+                                    OnPlayerCustomPacketReceived?.Invoke(pReader, player, packetId, this);
                                 }, this);
                             }
-                            break;
-                        case Packet.JoinRoom:
+                        }
+                        break;
+                    case Packet.AutoSync:
+                        {
+                            var registerType = (RegisterMode)reader.ReadPacket();
+                            var viewID = reader.ReadShort();
+                            var instanceId = reader.ReadByte();
+                            var parameters = reader.ReadNext();
+                            AutoSyncHandler(player, viewID, instanceId, parameters, registerType);
+                        }
+                        break;
+                    case Packet.AuthStatus:
+                        {
+                            var properties = reader.ReadString();
+                            var status = reader.ReadBool();
+                            var parsedProperties = JObject.Parse(properties);
+                            Internal_OnNeutronAuthenticated(status, parsedProperties, () =>
                             {
-                                var room = reader.ReadWithInteger<NeutronRoom>();
-                                Internal_OnPlayerJoinedRoom(room, player, isMine, () =>
+                                OnNeutronAuthenticated?.Invoke(status, parsedProperties, this);
+                            }, this);
+                        }
+                        break;
+                    case Packet.Synchronize:
+                        {
+                            var mode = reader.ReadByte();
+                            void Synchronize(NeutronPlayer[] players)
+                            {
+                                SynchronizeHandler(players, (syncedPlayer) =>
                                 {
-                                    OnPlayerJoinedRoom?.Invoke(room, player, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.Destroy:
-                            {
-                                #region Logic
-                                #endregion
-                            }
-                            break;
-                        case Packet.Nickname:
-                            {
-                                var nickname = reader.ReadString();
-                                Internal_OnPlayerNicknameChanged(player, nickname, isMine, () =>
-                                {
-                                    OnPlayerNicknameChanged?.Invoke(player, nickname, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.SetPlayerProperties:
-                            {
-                                var properties = reader.ReadString();
-                                Internal_OnPlayerPropertiesChanged(player, properties, isMine, () =>
-                                {
-                                    OnPlayerPropertiesChanged?.Invoke(player, properties, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.SetRoomProperties:
-                            {
-                                var properties = reader.ReadString();
-                                Internal_OnRoomPropertiesChanged(player, properties, isMine, () =>
-                                {
-                                    OnRoomPropertiesChanged?.Invoke(player, properties, isMine, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.CustomPacket:
-                            {
-                                var packetId = reader.ReadPacket();
-                                var parameters = reader.ReadWithInteger();
-                                using (NeutronStream cPStream = PooledNetworkStreams.Pull())
-                                {
-                                    NeutronStream.IReader pReader = cPStream.Reader;
-                                    pReader.SetBuffer(parameters);
-                                    Internal_OnPlayerCustomPacketReceived(pReader, player, packetId, () =>
-                                    {
-                                        OnPlayerCustomPacketReceived?.Invoke(pReader, player, packetId, this);
-                                    }, this);
-                                }
-                            }
-                            break;
-                        case Packet.AutoSync:
-                            {
-                                var registerType = (RegisterMode)reader.ReadPacket();
-                                var viewID = reader.ReadShort();
-                                var instanceId = reader.ReadByte();
-                                var parameters = reader.ReadNext();
-                                AutoSyncHandler(player, viewID, instanceId, parameters, registerType);
-                            }
-                            break;
-                        case Packet.AuthStatus:
-                            {
-                                var properties = reader.ReadString();
-                                var status = reader.ReadBool();
-                                var parsedProperties = JObject.Parse(properties);
-                                Internal_OnNeutronAuthenticated(status, parsedProperties, () =>
-                                {
-                                    OnNeutronAuthenticated?.Invoke(status, parsedProperties, this);
-                                }, this);
-                            }
-                            break;
-                        case Packet.Synchronize:
-                            {
-                                var mode = reader.ReadByte();
-                                void Synchronize(NeutronPlayer[] players)
-                                {
-                                    SynchronizeHandler(players, (syncedPlayer) =>
-                                    {
                                         //* Inicializa o evento de conexão.
                                         if (!syncedPlayer.IsConnected)
+                                    {
+                                        Internal_OnPlayerConnected(syncedPlayer, false, () =>
                                         {
-                                            Internal_OnPlayerConnected(syncedPlayer, false, () =>
-                                            {
-                                                OnPlayerConnected?.Invoke(syncedPlayer, false, this);
-                                            }, this);
-                                        }
+                                            OnPlayerConnected?.Invoke(syncedPlayer, false, this);
+                                        }, this);
+                                    }
                                         //* Inicializa o evento de entrada no canal.
                                         if (!syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    {
+                                        if (LocalPlayer.IsInChannel())
                                         {
-                                            if (Player.IsInChannel())
+                                            var channel = LocalPlayer.Channel;
+                                            Internal_OnPlayerJoinedChannel(channel, syncedPlayer, false, () =>
                                             {
-                                                var channel = Player.Channel;
-                                                Internal_OnPlayerJoinedChannel(channel, syncedPlayer, false, () =>
-                                                {
-                                                    OnPlayerJoinedChannel?.Invoke(channel, syncedPlayer, false, this);
-                                                }, this);
-                                            }
+                                                OnPlayerJoinedChannel?.Invoke(channel, syncedPlayer, false, this);
+                                            }, this);
                                         }
+                                    }
                                         //* Inicializa o evento de entrada na sala.
                                         if (syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    {
+                                        if (LocalPlayer.IsInRoom())
                                         {
-                                            if (Player.IsInRoom())
+                                            var room = LocalPlayer.Room;
+                                            Internal_OnPlayerJoinedRoom(room, syncedPlayer, false, () =>
                                             {
-                                                var room = Player.Room;
-                                                Internal_OnPlayerJoinedRoom(room, syncedPlayer, false, () =>
-                                                {
-                                                    OnPlayerJoinedRoom?.Invoke(room, syncedPlayer, false, this);
-                                                }, this);
-                                            }
+                                                OnPlayerJoinedRoom?.Invoke(room, syncedPlayer, false, this);
+                                            }, this);
                                         }
-                                    });
-                                }
+                                    }
+                                });
+                            }
 
-                                if (mode == 1)
-                                {
-                                    var aBuffer = reader.ReadNext();
-                                    aBuffer = aBuffer.Decompress(CompressionMode.Deflate);
-                                    var players = aBuffer.Deserialize<NeutronPlayer[]>();
-                                    Synchronize(players);
-                                    tcss.Dequeue().TrySetResult(players);
-                                }
-                                else if (mode == 2)
-                                {
-                                    var pBuffer = reader.ReadNext();
-                                    pBuffer = pBuffer.Decompress(CompressionMode.Deflate);
-                                    var localPlayer = pBuffer.Deserialize<NeutronPlayer>();
-                                    Synchronize(new NeutronPlayer[] { localPlayer });
-                                }
-                            }
-                            break;
-                        case Packet.Error:
+                            if (mode == 1)
                             {
-                                var capturedPacket = (Packet)reader.ReadPacket();
-                                var message = reader.ReadString();
-                                var errorCode = reader.ReadInt();
-                                Internal_OnError(capturedPacket, message, errorCode, () =>
-                                {
-                                    OnError?.Invoke(capturedPacket, message, errorCode, this);
-                                }, this);
+                                var aBuffer = reader.ReadNext();
+                                aBuffer = aBuffer.Decompress(CompressionMode.Deflate);
+                                var players = aBuffer.Deserialize<NeutronPlayer[]>();
+                                Synchronize(players);
+                                tcss.Dequeue().TrySetResult(players);
                             }
-                            break;
-                    }
+                            else if (mode == 2)
+                            {
+                                var pBuffer = reader.ReadNext();
+                                pBuffer = pBuffer.Decompress(CompressionMode.Deflate);
+                                var localPlayer = pBuffer.Deserialize<NeutronPlayer>();
+                                Synchronize(new NeutronPlayer[] { localPlayer });
+                            }
+                        }
+                        break;
+                    case Packet.Error:
+                        {
+                            var capturedPacket = (Packet)reader.ReadPacket();
+                            var message = reader.ReadString();
+                            var errorCode = reader.ReadInt();
+                            Internal_OnError(capturedPacket, message, errorCode, () =>
+                            {
+                                OnError?.Invoke(capturedPacket, message, errorCode, this);
+                            }, this);
+                        }
+                        break;
                 }
             }
         }
@@ -918,7 +916,7 @@ namespace NeutronNetwork
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.CustomPacket);
-                writer.Write(Player.ID);
+                writer.Write(LocalPlayer.ID);
                 writer.WritePacket(packet);
                 writer.WritePacket((byte)targetTo);
                 writer.WritePacket((byte)tunnelingTo);
@@ -1087,7 +1085,7 @@ namespace NeutronNetwork
         /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
         public void CreateRoom(NeutronRoom room, NeutronPlayer player = null)
         {
-            room.Owner = Player;
+            room.Owner = LocalPlayer;
             using (NeutronStream stream = PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;

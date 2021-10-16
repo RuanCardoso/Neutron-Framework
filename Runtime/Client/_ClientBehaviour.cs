@@ -45,7 +45,7 @@ namespace NeutronNetwork.Client
         #endregion
 
         #region Functions
-        protected void Initialize()
+        protected void StartSocket()
         {
             #region Provider
             if (Players.TryAdd(0, PlayerHelper.MakeTheServerPlayer()))

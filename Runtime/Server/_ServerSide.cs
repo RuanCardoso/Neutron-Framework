@@ -38,7 +38,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna a instância do servidor.
         /// </summary>
-        protected Neutron Instance {
+        protected Neutron Server {
             get;
             private set;
         }
@@ -58,6 +58,7 @@ namespace NeutronNetwork
             ServerBase.OnMessageReceived += OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed += OnPlayerDestroyed;
+            ServerBase.OnPlayerConnected += OnPlayerConnected;
             ServerBase.OnPlayerDisconnected += OnPlayerDisconnected;
             ServerBase.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
             ServerBase.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
@@ -81,6 +82,7 @@ namespace NeutronNetwork
             ServerBase.OnMessageReceived -= OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom -= OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed -= OnPlayerDestroyed;
+            ServerBase.OnPlayerConnected -= OnPlayerConnected;
             ServerBase.OnPlayerDisconnected -= OnPlayerDisconnected;
             ServerBase.OnPlayerJoinedChannel -= OnPlayerJoinedChannel;
             ServerBase.OnPlayerJoinedRoom -= OnPlayerJoinedRoom;
@@ -102,7 +104,7 @@ namespace NeutronNetwork
 
         protected virtual void OnStart()
         {
-            Instance = Neutron.Server.Instance;
+            Server = Neutron.Server.Instance;
             MakeServerContainer();
             MakeContainerOnChannels();
         }
@@ -155,6 +157,13 @@ namespace NeutronNetwork
         protected virtual async Task<bool> OnAuthentication(NeutronPlayer player, Authentication authentication)
         {
             return await Task.Run(() => true);
+        }
+
+#pragma warning disable UNT0006
+        protected virtual void OnPlayerConnected(NeutronPlayer player)
+#pragma warning restore UNT0006
+        {
+
         }
 
 #pragma warning disable UNT0006
@@ -244,10 +253,10 @@ namespace NeutronNetwork
         {
             //* Cria um container para a nova sala.
             room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server.LocalPhysicsMode);
-            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, IsServer, Instance);
+            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, IsServer, Server);
             SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.ID}]");
             //* Registra os objetos de cena.
-            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Instance);
+            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
         }
 
         private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
@@ -258,12 +267,12 @@ namespace NeutronNetwork
             {
                 MakeVirtualOwner(channel, channel, null);
                 channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server.LocalPhysicsMode);
-                if (Neutron.Server.EnableActionsOnChannel)
+                if (Neutron.Server.ActionsOnTheChannel)
                 {
                     GameObject matchManager = SceneHelper.OnMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
                     SceneHelper.MoveToContainer(matchManager, $"[Container] -> Channel[{channel.ID}]");
                     //* Registra os objetos de cena.
-                    SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Instance);
+                    SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Server);
                 }
                 MakeContainerOnRooms(channel);
             }
@@ -297,21 +306,20 @@ namespace NeutronNetwork
         ///* Envia o estado da autenticação ao seu usuário.
         /// </summary>
         /// <param name="user">* O usuário a ser autenticado.</param>
-        /// <param name="properties">* As propriedades(Json) que serão enviadas ao usuário autenticado.</param>
-        /// <param name="status">* O estado da autenticação</param>
+        /// <param name="authStatus">* O estado da autenticação</param>
         /// <returns></returns>
-        protected bool OnAuth(NeutronPlayer user, string properties, bool status)
+        protected bool OnAuth(NeutronPlayer user, bool authStatus)
         {
-            properties = string.IsNullOrEmpty(properties) ? "{\"Neutron\":\"Neutron\"}" : properties;
+            user.Properties = string.IsNullOrEmpty(user.Properties) ? "{\"Neutron\":\"Neutron\"}" : user.Properties;
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.AuthStatus);
-                writer.Write(properties);
-                writer.Write(status);
+                writer.Write(user.Properties);
+                writer.Write(authStatus);
                 user.Write(writer);
             }
-            return status;
+            return authStatus;
         }
         #endregion
     }

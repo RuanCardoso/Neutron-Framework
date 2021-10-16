@@ -15,9 +15,10 @@ MonoBehaviour:
   GlobalSettings:
     Addresses:
     - localhost
+    - 186.218.61.62
     Port: 1418
     AppId: 2bc6011d-5aaa-49e1-a795-6360c3e47ddf
-    FPS: 128
+    FPS: 60
     MaxPlayers: 300
     StreamPoolCapacity: 1200
     PacketPoolCapacity: 1200
