@@ -17,6 +17,11 @@ namespace NeutronNetwork.Examples
             return OnAuth(player, authStatus);
         }
 
+        protected override void OnPlayerJoinedRoom(NeutronPlayer player, NeutronRoom room)
+        {
+            LogHelper.Error(room.PhysicsManager.name);
+        }
+
         private string GenerateName(int len)
         {
             string[] consonants = { "b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "l", "n", "p", "q", "r", "s", "sh", "zh", "t", "v", "w", "x" };

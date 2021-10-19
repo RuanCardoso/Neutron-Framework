@@ -43,34 +43,15 @@ namespace NeutronNetwork
 
         }
 
-        public void OnNeutronRegister(NeutronPlayer player, bool isServer, byte[] buffer, Neutron neutron)
+        public void OnNeutronRegister(NeutronPlayer player, bool isServer, Neutron neutron)
         {
-            if (CompareTag("Player"))
-            {
-                if (!OnNeutronRegister(player, isServer, RegisterMode.Player, neutron))
-                    MonoBehaviour.Destroy(gameObject);
-            }
-            else
-            {
-                int lastPos = (sizeof(float) * 3) + (sizeof(float) * 4); //* Obtém a posição do Id do Objeto, pulando a posição(vec3) e a rotação(quat) no buffer.
-                if (buffer.Length < lastPos + 1)
-                    throw new NeutronException("Did you forget to set the \"Player\" tag? or are you using \"BeginPlayer\" instead of \"BeginObject\"?");
-                byte[] bufferId = new byte[sizeof(short)] //* cria uma matriz para armazenar o Id que é um short.
-                {
-                   buffer[lastPos], //* Obtém o primeiro byte a partir da posição.
-                   buffer[lastPos + 1] //* Obtém o segundo byte a partir da posição atual + 1.
-                };
-                //* Converte a matriz para o valor do tipo short(Int16).
-                short objectId = BitConverter.ToInt16(bufferId, 0);
-                //* Registra o objeto(NeutronView) na rede.
-                if (!OnNeutronRegister(player, isServer, RegisterMode.Dynamic, neutron, objectId))
-                    MonoBehaviour.Destroy(gameObject);
-            }
+            if (!OnNeutronRegister(player, isServer, CompareTag("Player") ? RegisterMode.Player : RegisterMode.Dynamic, neutron))
+                MonoBehaviour.Destroy(gameObject);
         }
 
-        public override bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron neutron, short dynamicId = 0)
+        public override bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron neutron)
         {
-            base.OnNeutronRegister(player, isServer, registerMode, neutron, dynamicId);
+            base.OnNeutronRegister(player, isServer, registerMode, neutron);
             {
                 //* O jogador dono da instância de neutron.
                 NeutronPlayer instanceOwner = neutron.LocalPlayer;
@@ -81,16 +62,18 @@ namespace NeutronNetwork
                 //* Define o tipo de registro.
                 RegisterMode = registerMode;
                 //* Define um ID para identificar o objeto de algum jogador.
-                int keyId = Owner.ID;
+                int keyId = Owner.Id;
+                // Obtém o matchmaking atual.
+                INeutronMatchmaking matchmaking = IsServer ? player.Matchmaking : instanceOwner.Matchmaking;
 
                 if (!IsServer)
                     SceneHelper.MoveToContainer(gameObject, neutron._sceneName);
                 else if (player.IsInMatchmaking())
                 {
                     if (!Owner.IsInRoom())
-                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Channel[{Owner.Channel.ID}]");
+                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Channel[{Owner.Channel.Id}]");
                     else if (Owner.IsInChannel())
-                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Room[{Owner.Room.ID}]");
+                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Room[{Owner.Room.Id}]");
                 }
                 else
                     return LogHelper.Error("Matchmaking not found!");
@@ -105,7 +88,7 @@ namespace NeutronNetwork
                         //* Define um nome de identificação para este objeto.
                         gameObject.name = $"Player -> {Owner.Nickname} [{(IsServer ? "Server" : "Client")}]";
                         //* Define o ID deste objeto.
-                        Id = Owner.ID;
+                        Id = Owner.Id;
                         //* Define este objeto como o objeto de rede do jogador.
                         Owner.NeutronView = this;
                     }
@@ -117,7 +100,9 @@ namespace NeutronNetwork
                     if (Id == 0)
                     {
                         //* Define o ID deste objeto.
-                        Id = dynamicId;
+                        Id = player.SceneObjectId++;
+                        if (!isServer)
+                            LogHelper.Error($"{IsServer} : {Id} -> {matchmaking.Name}");
                         //* Define um nome de identificação para este objeto.
                         gameObject.name = $"Dynamic Object -> [{name}] [{(IsServer ? "Server" : "Client")}] #-{Id}";
                     }
@@ -135,13 +120,12 @@ namespace NeutronNetwork
                 OnNeutronAwake();
                 // define a instância que invocou este metódo.
                 This = !IsServer ? neutron : Neutron.Server.Instance;
-                // Adiciona o objeto na lista de objetos de redes.
-                INeutronMatchmaking matchmaking = IsServer ? player.Matchmaking : instanceOwner.Matchmaking;
+                //* Vamos adicionar este objeto de rede no atual Matchmaking.
                 _viewId = (keyId, Id, registerMode);
                 if (!(matchmaking.Views.Count <= short.MaxValue))
                     return LogHelper.Error($"You have reached the object limit for this matchmaking.");
                 if (!matchmaking.Views.TryAdd(_viewId, this))
-                    return LogHelper.Error($"An object with the same id already exists: Id -> [{keyId} - {Id} - {_viewId}] -> Server: {IsServer}");
+                    return LogHelper.Error($"An object with the same id already exists: Id -> [{matchmaking.Name} - {_viewId}] -> Server: {IsServer} -> Count {matchmaking.Views.Count}");
                 // Invoca os metódos virtual e define como pronto para uso.
                 Invoke();
             }

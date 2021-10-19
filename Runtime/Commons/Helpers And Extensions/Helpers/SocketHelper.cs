@@ -29,10 +29,10 @@ namespace NeutronNetwork.Helpers
         public static bool RemovePlayerFromServer(NeutronPlayer player)
         {
             bool tryRemove = Neutron.Server.PlayersBySocket.TryRemove(player.TcpClient, out NeutronPlayer __)
-                && Neutron.Server.PlayersById.TryRemove(player.ID, out NeutronPlayer _);
+                && Neutron.Server.PlayersById.TryRemove(player.Id, out NeutronPlayer _);
             if (tryRemove)
             {
-                Neutron.Server._pooledIds.Enqueue(player.ID);
+                Neutron.Server._pooledIds.Enqueue(player.Id);
                 string addr = player.StateObject.TcpRemoteEndPoint.Address.ToString();
                 if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
                     Neutron.Server.RegisteredConnectionsByIp[addr] = --value;

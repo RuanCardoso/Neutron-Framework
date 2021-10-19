@@ -21,6 +21,8 @@ namespace NeutronNetwork.Helpers
         /// </summary>
         public static class Internal
         {
+            public static event NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling;
+            public static event NeutronEventNoReturn<NeutronPlayer, NeutronPacket, TargetTo, NeutronPlayer[]> OnCustomTarget;
             /// <summary>
             ///* Recomendado o uso dos pré-processadores #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN<br/>
             /// </summary>
@@ -43,7 +45,7 @@ namespace NeutronNetwork.Helpers
             [ThreadSafe]
             public static bool AddPlayer(NeutronPlayer player)
             {
-                return Neutron.Server.PlayersById.TryAdd(player.ID, player);
+                return Neutron.Server.PlayersById.TryAdd(player.Id, player);
             }
 
             /// <summary>
@@ -120,7 +122,7 @@ namespace NeutronNetwork.Helpers
                                 return Tunneling(player, TunnelingTo.Server);
                         }
                     default:
-                        return ServerBase.OnCustomTunneling?.Invoke(player, tunnelingTo);
+                        return OnCustomTunneling?.Invoke(player, tunnelingTo);
                 }
             }
 
@@ -162,7 +164,7 @@ namespace NeutronNetwork.Helpers
                         }
                         break;
                     default:
-                        ServerBase.OnCustomTarget?.Invoke(packet.Owner, packet, targetTo, players);
+                        OnCustomTarget?.Invoke(packet.Owner, packet, targetTo, players);
                         break;
                 }
                 packet.Recycle();
@@ -207,7 +209,7 @@ namespace NeutronNetwork.Helpers
                         }
                         break;
                     default:
-                        ServerBase.OnCustomTarget?.Invoke(owner, packet, targetTo, players);
+                        OnCustomTarget?.Invoke(owner, packet, targetTo, players);
                         break;
                 }
                 packet.Recycle();

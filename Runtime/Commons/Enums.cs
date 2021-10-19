@@ -402,5 +402,11 @@ namespace NeutronNetwork.Internal.Packets
         Server,
         Master
     }
+
+    public enum PhysicsMode : int
+    {
+        Physics2D = 0x1,
+        Physics3D = 0x2,
+    }
     #endregion
 }

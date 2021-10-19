@@ -14,6 +14,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
@@ -47,10 +48,8 @@ namespace NeutronNetwork.Server
         /// <summary>
         ///* Este evento é acionando quando o servidor é iniciado.
         /// </summary>
-        public static NeutronEventNoReturn OnStart {
-            get;
-            set;
-        }
+        public static event NeutronEventNoReturn OnStart;
+        public static event NeutronEventWithReturn<Packet, bool> OnReceivePacket;
         #endregion
 
         #region Properties
@@ -110,6 +109,9 @@ namespace NeutronNetwork.Server
             Initialized = true;
 
             #region Logger
+#if NET_STANDARD_2_1
+           //*
+#endif
             LogHelper.Info("The server is ready, all protocols(TCP, UDP, RUDP) have been initialized.\r\n");
             #endregion
 
@@ -199,7 +201,7 @@ namespace NeutronNetwork.Server
                                 {
                                     GameObject playerGlobalController = GameObject.Instantiate(PlayerGlobalController.gameObject);
                                     PlayerGlobalController.hideFlags = HideFlags.HideInHierarchy;
-                                    playerGlobalController.name = $"Player Global Controller[{player.ID}]";
+                                    playerGlobalController.name = $"Player Global Controller[{player.Id}]";
                                     foreach (Component component in playerGlobalController.GetComponents<Component>())
                                     {
                                         Type type = component.GetType();
@@ -334,7 +336,7 @@ namespace NeutronNetwork.Server
             {
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
-                    var playerId = (short)neutronPacket.Sender.ID;
+                    var playerId = (short)neutronPacket.Sender.Id;
                     byte[] pBuffer = neutronPacket.Buffer.Compress();
                     switch (neutronPacket.Protocol)
                     {
@@ -404,7 +406,7 @@ namespace NeutronNetwork.Server
                                     NeutronStatistics.ServerUDP.AddOutgoing(hBuffer.Length);
                                 }
                                 else
-                                    LogHelper.Error($"{player.ID} Udp Endpoint is null!");
+                                    LogHelper.Error($"{player.Id} Udp Endpoint is null!");
                             }
                             break;
                     }

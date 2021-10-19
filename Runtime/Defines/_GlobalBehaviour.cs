@@ -32,7 +32,7 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties
-        private Neutron Instance => Neutron.Server.Instance;
+        private Neutron Server => Neutron.Server.Instance;
         #endregion
 
         #region Mono Behaviour
@@ -54,7 +54,7 @@ namespace NeutronNetwork
         ///* (Server Side).
         /// </summary>
         /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        public NeutronStream.IWriter Begin_gRPC(NeutronStream parameters) => Instance.Begin_gRPC(parameters);
+        public NeutronStream.IWriter Begin_gRPC(NeutronStream parameters) => Server.Begin_gRPC(parameters);
 
         /// <summary>
         ///* gRPC(Global Remote Procedure Call), usado para a comunicação, isto é, a troca de dados via rede.<br/>
@@ -78,7 +78,7 @@ namespace NeutronNetwork
         /// <param name="protocol">* O protocolo que será usado para enviar os dados.</param>
         public void End_gRPC(byte id, NeutronStream parameters, Protocol protocol, NeutronPlayer player)
         {
-            Instance.End_gRPC(id, parameters, protocol, player);
+            Server.End_gRPC(id, parameters, protocol, player);
         }
         #endregion
 

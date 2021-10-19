@@ -41,9 +41,9 @@ namespace NeutronNetwork
 
         #region Properties
         /// <summary>
-        ///* Retorna o identificador dojogador.
+        ///* Retorna o identificador do jogador.
         /// </summary>
-        public int ID {
+        public int Id {
             get => _id;
             set => _id = value;
         }
@@ -100,7 +100,7 @@ namespace NeutronNetwork
         ///* Retorna se este jogador é o jogador que representa o servidor.
         /// </summary>
         public bool IsServerPlayer {
-            get => ID == 0;
+            get => Id == 0;
         }
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace NeutronNetwork
 
         /// <summary>
         ///* Seu atual Matchmaking, Sala ou Channel.<br/>
-        ///* Retorna o ultimo tipo de Matchmaking ingressado.
+        ///* Retorna o último tipo de Matchmaking ingressado.
         /// </summary>
         public INeutronMatchmaking Matchmaking {
             get;
@@ -155,19 +155,29 @@ namespace NeutronNetwork
         public TcpClient TcpClient {
             get;
         }
+
         public UdpClient UdpClient {
             get;
         }
+
         public Stream NetworkStream {
             get;
         }
+
         public CancellationTokenSource TokenSource {
             get;
         }
+
         public StateObject StateObject {
             get;
         } = new StateObject();
+
         public NeutronEventNoReturn OnDestroy {
+            get;
+            set;
+        }
+
+        public short SceneObjectId {
             get;
             set;
         }
@@ -177,7 +187,7 @@ namespace NeutronNetwork
 
         public NeutronPlayer(int id, TcpClient tcpClient, CancellationTokenSource cancellationTokenSource)
         {
-            ID = id;
+            Id = id;
             Nickname = $"Player#{id}";
             TcpClient = tcpClient;
             UdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, SocketHelper.GetFreePort(Protocol.Udp)));
@@ -191,27 +201,28 @@ namespace NeutronNetwork
 
         public NeutronPlayer(SerializationInfo info, StreamingContext context)
         {
-            ID = info.GetInt32("id");
+            Id = info.GetInt32("id");
             Nickname = info.GetString("nickname");
             Properties = info.GetString("properties");
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("id", ID);
+            info.AddValue("id", Id);
             info.AddValue("nickname", Nickname);
             info.AddValue("properties", Properties);
         }
 
         public void Apply(NeutronPlayer player)
         {
+            _id = player.Id;
             _nickname = player.Nickname;
             Properties = player.Properties;
         }
 
         public bool Equals(NeutronPlayer player)
         {
-            return this.ID == player.ID;
+            return this.Id == player.Id;
         }
 
         public bool Equals(NeutronPlayer x, NeutronPlayer y)
@@ -225,12 +236,12 @@ namespace NeutronNetwork
             {
                 return false;
             }
-            return x.ID == y.ID;
+            return x.Id == y.Id;
         }
 
         public Int32 GetHashCode(NeutronPlayer obj)
         {
-            return obj.ID.GetHashCode();
+            return obj.Id.GetHashCode();
         }
 
         public void Dispose()

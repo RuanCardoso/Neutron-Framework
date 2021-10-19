@@ -102,7 +102,7 @@ namespace NeutronNetwork.Internal
         }
 
         /// <summary>
-        ///* O SceneView do atual Matchmaking.
+        ///* Armazena os objetos de rede do matchmaking.
         /// </summary>
         public NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views {
             get;
@@ -174,7 +174,7 @@ namespace NeutronNetwork.Internal
             else
             {
                 bool TryValue;
-                if ((TryValue = PlayerDictionary.TryAdd(player.ID, player)))
+                if ((TryValue = PlayerDictionary.TryAdd(player.Id, player)))
                     _playerCount++;
                 return TryValue;
             }
@@ -186,7 +186,7 @@ namespace NeutronNetwork.Internal
             {
                 case CacheMode.Overwrite:
                     {
-                        (int, int, int) key = (neutronCache.Owner.ID, neutronCache.Id, viewId);
+                        (int, int, int) key = (neutronCache.Owner.Id, neutronCache.Id, viewId);
                         if (CachedPackets.ContainsKey(key))
                             CachedPackets[key] = neutronCache;
                         else
@@ -195,7 +195,7 @@ namespace NeutronNetwork.Internal
                     break;
                 case CacheMode.New:
                     {
-                        (int, int, int) key = (neutronCache.Owner.ID, ++_cacheId, viewId);
+                        (int, int, int) key = (neutronCache.Owner.Id, ++_cacheId, viewId);
                         CachedPackets.Add(key, neutronCache);
                     }
                     break;
@@ -205,7 +205,7 @@ namespace NeutronNetwork.Internal
         public bool Remove(NeutronPlayer player)
         {
             bool TryValue;
-            if ((TryValue = PlayerDictionary.TryRemove(player.ID, out NeutronPlayer _)))
+            if ((TryValue = PlayerDictionary.TryRemove(player.Id, out NeutronPlayer _)))
             {
                 var cachedPackets = CachedPackets.Where(x => x.Value.Owner.Equals(player)).ToList();
                 foreach (var neutronCache in cachedPackets)

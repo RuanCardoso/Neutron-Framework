@@ -191,7 +191,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Registra seu objeto em rede.
         /// </summary>
-        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron instance, short dynamicId = 0) => true;
+        public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron instance) => true;
         #endregion
 
         #region Reflection

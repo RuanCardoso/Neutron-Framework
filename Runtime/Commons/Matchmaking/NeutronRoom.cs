@@ -21,7 +21,7 @@ namespace NeutronNetwork
         ///* Retorna o identificador da sala.
         /// </summary>
         [Network("Serialized")]
-        public int ID {
+        public int Id {
             get => _id;
             set => _id = value;
         }
@@ -56,14 +56,14 @@ namespace NeutronNetwork
 
         public NeutronRoom(int id, string name, int maxPlayers, string properties) : base(name, maxPlayers, properties)
         {
-            ID = id;
+            Id = id;
             HasPassword = !string.IsNullOrEmpty(Password);
             IsVisible = !Name.StartsWith(".");
         }
 
         public NeutronRoom(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            ID = info.GetInt32("id");
+            Id = info.GetInt32("id");
             Password = info.GetString("password");
             HasPassword = !string.IsNullOrEmpty(Password);
             IsVisible = !Name.StartsWith(".");
@@ -72,18 +72,19 @@ namespace NeutronNetwork
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("id", ID);
+            info.AddValue("id", Id);
             info.AddValue("password", !string.IsNullOrEmpty(Password) ? "********" : Password);
         }
 
         public override void Apply(NeutronRoom room)
         {
             base.Apply(room);
+            _id = room.Id;
         }
 
         public bool Equals(NeutronRoom room)
         {
-            return ID == room.ID;
+            return Id == room.Id;
         }
 
         public bool Equals(NeutronRoom x, NeutronRoom y)
@@ -92,17 +93,17 @@ namespace NeutronNetwork
                 return true;
             if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
                 return false;
-            return x.ID == y.ID;
+            return x.Id == y.Id;
         }
 
         public int GetHashCode(NeutronRoom room)
         {
-            return room.ID.GetHashCode();
+            return room.Id.GetHashCode();
         }
 
         public override string ToString()
         {
-            return $"\n\rId: {ID}\n\rHasPassword: {HasPassword}\n\rIsVisible: {IsVisible}\n\rName: {Name}\r\nPlayerCount: {PlayerCount}\r\nMaxPlayers: {MaxPlayers}\r\nProperties: {Properties}\r\nPassword: {Password}";
+            return $"\n\rId: {Id}\n\rHasPassword: {HasPassword}\n\rIsVisible: {IsVisible}\n\rName: {Name}\r\nPlayerCount: {PlayerCount}\r\nMaxPlayers: {MaxPlayers}\r\nProperties: {Properties}\r\nPassword: {Password}";
         }
     }
 }

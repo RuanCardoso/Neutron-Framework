@@ -217,6 +217,7 @@ namespace NeutronNetwork.Helpers
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IReader reader = stream.Reader;
+                reader._autoDispose = true;
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {
@@ -238,6 +239,7 @@ namespace NeutronNetwork.Helpers
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IReader reader = stream.Reader;
+                reader._autoDispose = true;
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {

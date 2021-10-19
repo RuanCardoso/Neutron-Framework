@@ -24,7 +24,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o identificador do canal.
         /// </summary>
-        public int ID {
+        public int Id {
             get => _id;
             set => _id = value;
         }
@@ -48,12 +48,12 @@ namespace NeutronNetwork
 
         public NeutronChannel(int id, string name, int maxPlayers, string properties) : base(name, maxPlayers, properties)
         {
-            ID = id;
+            Id = id;
         }
 
         public NeutronChannel(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            ID = info.GetInt32("id");
+            Id = info.GetInt32("id");
             _roomCount = info.GetInt32("roomCount");
             _maxRooms = info.GetInt32("maxRooms");
         }
@@ -62,7 +62,7 @@ namespace NeutronNetwork
         {
             base.GetObjectData(info, context);
             {
-                info.AddValue("id", ID);
+                info.AddValue("id", Id);
                 info.AddValue("roomCount", RoomCount);
                 info.AddValue("maxRooms", MaxRooms);
             }
@@ -71,17 +71,18 @@ namespace NeutronNetwork
         public override void Apply(NeutronChannel channel)
         {
             base.Apply(channel);
+            _id = channel.Id;
             _roomCount = channel.RoomCount;
         }
 
-        public bool AddRoom(NeutronRoom room)
+        public bool Add(NeutronRoom room)
         {
             if (RoomCount >= MaxRooms)
-                return LogHelper.Error("Failed to enter, exceeded the maximum rooms limit.");
+                return LogHelper.Error("It was not possible to create the room because the maximum limit of rooms was exceeded.");
             else
             {
                 bool TryValue;
-                if ((TryValue = _rooms.TryAdd(room.ID, room)))
+                if ((TryValue = _rooms.TryAdd(room.Id, room)))
                     _roomCount++;
                 return TryValue;
             }
@@ -119,7 +120,7 @@ namespace NeutronNetwork
 
         public bool Equals(NeutronChannel channel)
         {
-            return this.ID == channel.ID;
+            return this.Id == channel.Id;
         }
 
         public bool Equals(NeutronChannel x, NeutronChannel y)
@@ -133,20 +134,24 @@ namespace NeutronNetwork
             {
                 return false;
             }
-            return x.ID == y.ID;
+            return x.Id == y.Id;
         }
 
         public int GetHashCode(NeutronChannel obj)
         {
-            return obj.ID.GetHashCode();
+            return obj.Id.GetHashCode();
         }
 
         public override void OnAfterDeserialize()
         {
             base.OnAfterDeserialize();
             {
+#if UNITY_EDITOR
                 if (_roomCount != _rooms.Count)
                     _roomCount = _rooms.Count;
+                if (_maxRooms < _roomCount)
+                    _maxRooms = _roomCount;
+#endif
             }
         }
     }

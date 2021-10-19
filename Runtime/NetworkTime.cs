@@ -1,4 +1,3 @@
-using NeutronNetwork.Constants;
 using NeutronNetwork.Internal;
 using System;
 using System.Diagnostics;
@@ -8,17 +7,13 @@ namespace NeutronNetwork.Client.Internal
     public class NetworkTime
     {
         private readonly Stopwatch _stopwatch = new Stopwatch();
-        //----------------------------------------------------------------
         public double Rpu = 1d;
         public double Spu = 1d;
-        //----------------------------------------------------------------
         private double _offsetMin = double.MinValue;
         private double _offsetMax = double.MaxValue;
         private const int Size = 10;
-        //----------------------------------------------------------------
         private readonly ExponentialAvg _rttExAvg = new ExponentialAvg(Size);
         private readonly ExponentialAvg _offsetExAvg = new ExponentialAvg(Size);
-        //----------------------------------------------------------------
         /// <summary>
         ///* Retorna o cronômetro.
         /// </summary>

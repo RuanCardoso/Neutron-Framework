@@ -37,90 +37,20 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Events
-        public static NeutronEventNoReturn OnAwake {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerConnected {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDisconnected {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerNicknameChanged {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnMessageReceived {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedRoom {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, NeutronRoom, Task<bool>> OnPlayerCreatedRoom {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftChannel {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftRoom {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerPropertiesChanged {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, string, bool> OnRoomPropertiesChanged {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling {
-            get;
-            set;
-        }
-
-        public static NeutronEventNoReturn<NeutronPlayer, NeutronPacket, TargetTo, NeutronPlayer[]> OnCustomTarget {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<NeutronPlayer, Authentication, Task<bool>> OnAuthentication {
-            get;
-            set;
-        }
-
-        public static NeutronEventWithReturn<Packet, bool> OnReceivePacket {
-            get;
-            set;
-        }
+        public static event NeutronEventNoReturn OnAwake;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerConnected;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerDisconnected;
+        public static event NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerNicknameChanged;
+        public static event NeutronEventWithReturn<NeutronPlayer, string, bool> OnMessageReceived;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerDestroyed;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerJoinedChannel;
+        public static event NeutronEventNoReturn<NeutronPlayer, NeutronRoom> OnPlayerJoinedRoom;
+        public static event NeutronEventWithReturn<NeutronPlayer, NeutronRoom, bool> OnPlayerCreatedRoom;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftChannel;
+        public static event NeutronEventNoReturn<NeutronPlayer> OnPlayerLeftRoom;
+        public static event NeutronEventWithReturn<NeutronPlayer, string, bool> OnPlayerPropertiesChanged;
+        public static event NeutronEventWithReturn<NeutronPlayer, string, bool> OnRoomPropertiesChanged;
+        public static event NeutronEventWithReturn<NeutronPlayer, Authentication, Task<bool>> OnAuthentication;
         #endregion
 
         #region Mono Behaviour
@@ -183,7 +113,7 @@ namespace NeutronNetwork.Server
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 NeutronPlayer[] players = MatchmakingHelper.Internal.Tunneling(player, TunnelingTo.Auto);
-                players = players.Where(x => x.ID != player.ID).ToArray();
+                players = players.Where(x => x.Id != player.Id).ToArray();
                 writer.WritePacket((byte)Packet.Synchronize);
                 writer.Write((byte)1);
                 writer.WriteNext(players.Serialize().Compress(CompressionMode.Deflate));
@@ -297,7 +227,7 @@ namespace NeutronNetwork.Server
                         Run((viewId, viewId, registerType));
                         break;
                     case RegisterMode.Dynamic:
-                        Run((owner.ID, viewId, registerType));
+                        Run((owner.Id, viewId, registerType));
                         break;
                 }
             }
@@ -438,7 +368,7 @@ namespace NeutronNetwork.Server
                         {
                             player.Room = room;
                             player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                            OnPlayerJoinedRoom?.Invoke(player);
+                            OnPlayerJoinedRoom?.Invoke(player, room);
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {
                                 NeutronStream.IWriter writer = stream.Writer;
@@ -460,23 +390,23 @@ namespace NeutronNetwork.Server
                 player.Error(Packet.JoinRoom, "You already in channel?/or/You are trying to get rooms from within a room, this function is not necessarily prohibited, you can change the behavior on the server, but it is not recommended to obtain the list of rooms within a room, in order to save bandwidth.", ErrorMessage.MATCHMAKING_INDISPONIBLE);
         }
 
-        protected async void CreateRoomHandler(NeutronPlayer player, NeutronRoom room, string password)
+        protected void CreateRoomHandler(NeutronPlayer player, NeutronRoom room, string password)
         {
             if (player.IsInChannel() && !player.IsInRoom())
             {
                 try
                 {
                     NeutronChannel channel = player.Channel;
-                    if (room.ID == 0)
-                        room.ID = Helper.GetAvailableId(channel.GetRooms(), x => x.ID, channel.MaxRooms);
+                    if (room.Id == 0)
+                        room.Id = Helper.GetAvailableId(channel.GetRooms(), x => x.Id, channel.MaxRooms);
                     room.Password = password;
                     room.Owner = player;
 
-                    if (await OnPlayerCreatedRoom.Invoke(player, room))
+                    if (OnPlayerCreatedRoom.Invoke(player, room))
                     {
                         if (!string.IsNullOrEmpty(room.Name))
                         {
-                            if (channel.AddRoom(room))
+                            if (channel.Add(room))
                             {
                                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                                 {
@@ -485,7 +415,7 @@ namespace NeutronNetwork.Server
                                     writer.WriteWithInteger(room);
                                     player.Write(writer, Helper.GetHandlers().OnPlayerCreatedRoom);
                                 }
-                                JoinRoomHandler(player, room.ID, password);
+                                JoinRoomHandler(player, room.Id, password);
                             }
                             else
                                 player.Error(Packet.CreateRoom, "Failed to create room!", ErrorMessage.FAILED_CREATE_ROOM);
@@ -710,7 +640,7 @@ namespace NeutronNetwork.Server
                         Run((viewId, viewId, registerType));
                         break;
                     case RegisterMode.Dynamic:
-                        Run((player.ID, viewId, registerType));
+                        Run((player.Id, viewId, registerType));
                         break;
                 }
             }

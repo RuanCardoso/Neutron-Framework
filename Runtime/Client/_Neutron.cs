@@ -535,7 +535,7 @@ namespace NeutronNetwork
                             #endregion
 
                             NetworkTime.GetNetworkTime(clientTime, serverTime);
-                            LocalPlayer = Players[localPlayer.ID];
+                            LocalPlayer = Players[localPlayer.Id];
                             LocalPlayer.Apply(localPlayer);
                             Internal_OnPlayerConnected(LocalPlayer, isMine, () =>
                             {
@@ -730,16 +730,16 @@ namespace NeutronNetwork
                             {
                                 SynchronizeHandler(players, (syncedPlayer) =>
                                 {
-                                        //* Inicializa o evento de conexão.
-                                        if (!syncedPlayer.IsConnected)
+                                    //* Inicializa o evento de conexão.
+                                    if (!syncedPlayer.IsConnected)
                                     {
                                         Internal_OnPlayerConnected(syncedPlayer, false, () =>
                                         {
                                             OnPlayerConnected?.Invoke(syncedPlayer, false, this);
                                         }, this);
                                     }
-                                        //* Inicializa o evento de entrada no canal.
-                                        if (!syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    //* Inicializa o evento de entrada no canal.
+                                    if (!syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
                                     {
                                         if (LocalPlayer.IsInChannel())
                                         {
@@ -750,8 +750,8 @@ namespace NeutronNetwork
                                             }, this);
                                         }
                                     }
-                                        //* Inicializa o evento de entrada na sala.
-                                        if (syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    //* Inicializa o evento de entrada na sala.
+                                    if (syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
                                     {
                                         if (LocalPlayer.IsInRoom())
                                         {
@@ -891,7 +891,7 @@ namespace NeutronNetwork
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.Chat);
                 writer.WritePacket((byte)ChatMode.Private);
-                writer.Write(player.ID);
+                writer.Write(player.Id);
                 writer.Write(message);
                 Send(stream, Protocol.Tcp);
             }
@@ -916,7 +916,7 @@ namespace NeutronNetwork
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.CustomPacket);
-                writer.Write(LocalPlayer.ID);
+                writer.Write(LocalPlayer.Id);
                 writer.WritePacket(packet);
                 writer.WritePacket((byte)targetTo);
                 writer.WritePacket((byte)tunnelingTo);
@@ -1258,7 +1258,7 @@ namespace NeutronNetwork
         /// <param name="position">* A posição que o objeto usará no momento de sua criação.</param>
         /// <param name="rotation">* A rotação que o objeto usará no momento de sua criação.</param>
         /// <returns>Retorna uma instância do tipo NeutronView.</returns>
-        public static GameObject NetworkSpawn(NeutronStream.IReader reader, bool isServer, NeutronPlayer player, GameObject prefab, Vector3 position, Quaternion rotation, Neutron neutron)
+        public static GameObject NetworkSpawn(bool isServer, NeutronPlayer player, GameObject prefab, Vector3 position, Quaternion rotation, Neutron neutron)
         {
             if (prefab.TryGetComponent(out NeutronView neutronView))
             {
@@ -1266,7 +1266,7 @@ namespace NeutronNetwork
                 {
                     GameObject gameObject = MonoBehaviour.Instantiate(prefab, position, rotation);
                     neutronView = gameObject.GetComponent<NeutronView>();
-                    neutronView.OnNeutronRegister(player, isServer, reader._internalBuffer, neutron);
+                    neutronView.OnNeutronRegister(player, isServer, neutron);
                     return gameObject;
                 }
 
@@ -1293,7 +1293,7 @@ namespace NeutronNetwork
                 }
             }
             else
-                LogHelper.Error("\"Neutron View\" object not found, failed to instantiate in network.");
+                LogHelper.Error("Add the \"Neutron View\" component to instantiate a networked object.");
             return null;
         }
 

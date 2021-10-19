@@ -13,7 +13,7 @@ namespace NeutronNetwork.Helpers
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.Disconnection);
-                writer.Write(player.ID);
+                writer.Write(player.Id);
                 writer.Write(reason);
                 player.Write(writer, Helper.GetHandlers().OnPlayerDisconnected);
             }
@@ -21,7 +21,7 @@ namespace NeutronNetwork.Helpers
 
         public static bool IsMine(NeutronPlayer player, int playerId)
         {
-            return player.ID == playerId;
+            return player.Id == playerId;
         }
 
         public static bool GetAvailableID(out int id)
@@ -41,7 +41,7 @@ namespace NeutronNetwork.Helpers
             return new NeutronPlayer()
             {
                 Nickname = "Server",
-                ID = 0,
+                Id = 0,
             };
         }
 
@@ -50,7 +50,7 @@ namespace NeutronNetwork.Helpers
             return new NeutronPlayer()
             {
                 Nickname = "Server",
-                ID = 0,
+                Id = 0,
                 Channel = channel,
                 Room = room,
                 Matchmaking = matchmaking,

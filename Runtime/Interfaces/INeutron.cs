@@ -2,6 +2,6 @@
 {
     public interface INeutron
     {
-        int ID { get; set; }
+        int Id { get; set; }
     }
 }

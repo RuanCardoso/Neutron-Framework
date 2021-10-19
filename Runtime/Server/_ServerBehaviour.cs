@@ -1,10 +1,9 @@
-﻿using NeutronNetwork.Editor;
-using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
+using NeutronNetwork.Packets;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -22,18 +21,20 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Collections
-        [Label("Channels")] public ChannelDictionary ChannelsById = new ChannelDictionary();
+        [SerializeField] private NeutronServerMatchmaking _serverMatchmaking;
+        [Label("Channels Matchmaking")] public ChannelDictionary ChannelsById = new ChannelDictionary();
         public NeutronSafeDictionary<TcpClient, NeutronPlayer> PlayersBySocket = new NeutronSafeDictionary<TcpClient, NeutronPlayer>();
         public NeutronSafeDictionary<int, NeutronPlayer> PlayersById = new NeutronSafeDictionary<int, NeutronPlayer>();
         public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
         #endregion
 
         #region Fields
-        [SerializeField] [HorizontalLine] private LocalPhysicsMode _localPhysicsMode = LocalPhysicsMode.Physics3D;
+        [SerializeField] [HorizontalLine] private PhysicsMode _localPhysicsMode = PhysicsMode.Physics3D;
         [SerializeField] [ReadOnly] private PlayerGlobalController _playerGlobalController;
         [SerializeField] [ReadOnly] private ServerSide _serverSideController;
         [SerializeField] private bool _autoStart = true;
         [SerializeField] private bool _actionsOnTheChannel = true;
+        [SerializeField] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
         [SerializeField] private OwnerMode _sceneObjectsOwner = OwnerMode.Server;
         [SerializeField] private OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
         [SerializeField] [ReadOnly] private NeutronBehaviour[] _actions;
@@ -52,7 +53,7 @@ namespace NeutronNetwork.Server
         } = new ThreadManager();
 
         public LocalPhysicsMode LocalPhysicsMode {
-            get => _localPhysicsMode;
+            get => (LocalPhysicsMode)_localPhysicsMode;
         }
 
         public PlayerGlobalController PlayerGlobalController {
@@ -172,11 +173,13 @@ namespace NeutronNetwork.Server
             if (_autoStart)
                 StartSocket();
 #else
-            Initialize();
+            StartSocket();
 #endif
         }
 
+#pragma warning disable IDE0051
         private void OnValidate()
+#pragma warning restore IDE0051
         {
 #if UNITY_EDITOR
             enabled = true;

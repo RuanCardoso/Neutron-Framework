@@ -18,6 +18,10 @@ namespace NeutronNetwork.Examples
         private Button[] _channelsButton;
         //* Player
         [SerializeField] private GameObject _playerPrefab;
+        //* Object
+        [SerializeField] private GameObject _objectPrefab;
+        //* Define se uma sala nova deve ser criada ou ingressada na sala padrão do servidor.
+        [SerializeField] private bool _createRoom;
 
         //* Use esta chamada para iniciar o servidor manualmente.
         //* Necessário desativar "AutoStart" no servidor em inspector.
@@ -48,6 +52,19 @@ namespace NeutronNetwork.Examples
                 UILogic.OnAuthentication += Connect;
             }
             SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.I))
+            {
+                using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                {
+                    var writer = Neutron.Client.BeginObject(stream, Vector3.zero, Quaternion.identity);
+                    writer.Write();
+                    Neutron.Client.EndObject(stream, 11);
+                }
+            }
         }
 
         protected override void OnNeutronConnected(bool isSuccess, Neutron neutron)
@@ -89,7 +106,16 @@ namespace NeutronNetwork.Examples
         protected override void OnPlayerJoinedChannel(NeutronChannel channel, NeutronPlayer player, bool isMine, Neutron neutron)
         {
             LogHelper.Info($"The [{player.Nickname}] player has entered on channel.");
-            neutron.JoinRoom(0);
+            if (!_createRoom)
+                neutron.JoinRoom(0);
+            else
+            {
+                neutron.CreateRoom(new NeutronRoom()
+                {
+                    MaxPlayers = 5,
+                    Name = "Yeah",     
+                });
+            }
         }
 
         protected override void OnPlayerJoinedRoom(NeutronRoom room, NeutronPlayer player, bool isMine, Neutron neutron)
@@ -124,13 +150,31 @@ namespace NeutronNetwork.Examples
         [gRPC(ID = 10, TargetTo = Packets.TargetTo.All, TunnelingTo = Packets.TunnelingTo.Room)]
         public void SpawnPlayer(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
         {
-            NeutronSchedule.ScheduleTask(() =>
+            if (neutron.EndPlayer(reader, out Vector3 pos, out Quaternion rot))
             {
-                if (neutron.EndPlayer(reader, out Vector3 pos, out Quaternion rot))
-                    Neutron.NetworkSpawn(reader, isServer, player, _playerPrefab, pos, rot, neutron);
-                else
-                    LogHelper.Error("Failed to instantiate player!");
-            });
+                byte[] buffer = reader._internalBuffer;
+                NeutronSchedule.ScheduleTask(() =>
+                {
+                    Neutron.NetworkSpawn(isServer, player, _playerPrefab, pos, rot, neutron);
+                });
+            }
+            else
+                LogHelper.Error("Failed to instantiate player!");
+        }
+
+        [gRPC(ID = 11, TargetTo = Packets.TargetTo.All, TunnelingTo = Packets.TunnelingTo.Room)]
+        public void SpawnObject(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron neutron)
+        {
+            if (neutron.EndObject(reader, out Vector3 pos, out Quaternion rot))
+            {
+                byte[] buffer = reader._internalBuffer;
+                NeutronSchedule.ScheduleTask(() =>
+                {
+                    Neutron.NetworkSpawn(isServer, player, _objectPrefab, pos, rot, neutron);
+                });
+            }
+            else
+                LogHelper.Error("Failed to instantiate player!");
         }
     }
 }

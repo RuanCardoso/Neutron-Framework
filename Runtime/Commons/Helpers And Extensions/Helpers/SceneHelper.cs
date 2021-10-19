@@ -31,31 +31,39 @@ namespace NeutronNetwork.Helpers
 
         public static void MoveToContainer(GameObject obj, string name)
         {
-            SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
+            Scene dstScene = SceneManager.GetSceneByName(name);
+            if (dstScene.IsValid())
+                SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, SceneManager.GetSceneByName(name));
+            else
+                LogHelper.Error($"Container {name} not found!");
         }
 
         public static void MoveToContainer(GameObject obj, Scene scene)
         {
-            SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, scene);
+            if (scene.IsValid())
+                SceneManager.MoveGameObjectToScene(obj.transform.root.gameObject, scene);
+            else
+                LogHelper.Error("Scene is not valid!");
         }
 
-        public static GameObject OnMatchmakingManager(NeutronPlayer player, bool isServer, Neutron neutron)
+        public static GameObject MakeMatchmakingManager(NeutronPlayer player, bool isServer, Neutron neutron)
         {
             //* Inicializa um Matchmaking Manager e o registra na rede.
             GameObject matchManager = new GameObject("Match Manager");
-            matchManager.hideFlags = HideFlags.HideInHierarchy;
+            //matchManager.hideFlags = HideFlags.HideInHierarchy;
             var neutronView = matchManager.AddComponent<NeutronView>();
             neutronView.AutoDestroy = false;
             //* Inicializa o iRpc Actions baseado no tipo.
             NeutronBehaviour[] actions = Neutron.Server.Actions;
+
+            #region Server Player
+            NeutronPlayer owner = player;
+            if (Neutron.Server.MatchmakingManagerOwner == OwnerMode.Server)
+                owner = PlayerHelper.MakeTheServerPlayer(player.Channel, player.Room, player.Matchmaking);
+            #endregion
+
             if (actions.Length > 0)
             {
-                #region Server Player
-                NeutronPlayer owner = player;
-                if (Neutron.Server.MatchmakingManagerOwner == OwnerMode.Server)
-                    owner = PlayerHelper.MakeTheServerPlayer(player.Channel, player.Room, player.Matchmaking);
-                #endregion
-
                 GameObject actionsObject = GameObject.Instantiate(actions[actions.Length - 1].gameObject, matchManager.transform);
                 actionsObject.name = "Actions Object";
                 foreach (Component component in actionsObject.GetComponents<Component>())
@@ -64,8 +72,8 @@ namespace NeutronNetwork.Helpers
                     if (type.BaseType != typeof(NeutronBehaviour) && type != typeof(Transform))
                         GameObject.Destroy(component);
                 }
-                neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Dynamic, neutron, short.MaxValue);
             }
+            neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Dynamic, neutron);
             return matchManager;
         }
 

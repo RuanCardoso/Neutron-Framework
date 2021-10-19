@@ -52,23 +52,23 @@ namespace NeutronNetwork
         protected virtual void OnEnable()
         {
             NeutronServer.OnStart += OnStart;
+            NeutronServer.OnReceivePacket += OnReceivePacket;
+            MatchmakingHelper.Internal.OnCustomTunneling += OnCustomBroadcast;
+            MatchmakingHelper.Internal.OnCustomTarget += OnCustomTarget;
             ServerBase.OnAwake += OnServerAwake;
-            ServerBase.OnCustomTunneling += OnCustomBroadcast;
-            ServerBase.OnCustomTarget += OnCustomTarget;
             ServerBase.OnMessageReceived += OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom += OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed += OnPlayerDestroyed;
             ServerBase.OnPlayerConnected += OnPlayerConnected;
             ServerBase.OnPlayerDisconnected += OnPlayerDisconnected;
             ServerBase.OnPlayerJoinedChannel += OnPlayerJoinedChannel;
-            ServerBase.OnPlayerJoinedRoom += OnPlayerJoinedRoom;
+            ServerBase.OnPlayerJoinedRoom += Internal_OnPlayerJoinedRoom;
             ServerBase.OnPlayerLeftChannel += OnPlayerLeftChannel;
             ServerBase.OnPlayerLeftRoom += OnPlayerLeftRoom;
             ServerBase.OnPlayerNicknameChanged += OnPlayerNicknameChanged;
             ServerBase.OnPlayerPropertiesChanged += OnPlayerPropertiesChanged;
             ServerBase.OnRoomPropertiesChanged += OnRoomPropertiesChanged;
             ServerBase.OnAuthentication += OnAuthentication;
-            ServerBase.OnReceivePacket += OnReceivePacket;
             PhysicsManager.OnPhysics += OnPhysics;
             PhysicsManager.OnPhysics2D += OnPhysics2D;
         }
@@ -76,23 +76,23 @@ namespace NeutronNetwork
         protected virtual void OnDisable()
         {
             NeutronServer.OnStart -= OnStart;
+            NeutronServer.OnReceivePacket -= OnReceivePacket;
+            MatchmakingHelper.Internal.OnCustomTunneling -= OnCustomBroadcast;
+            MatchmakingHelper.Internal.OnCustomTarget -= OnCustomTarget;
             ServerBase.OnAwake -= OnServerAwake;
-            ServerBase.OnCustomTunneling -= OnCustomBroadcast;
-            ServerBase.OnCustomTarget -= OnCustomTarget;
             ServerBase.OnMessageReceived -= OnMessageReceived;
             ServerBase.OnPlayerCreatedRoom -= OnPlayerCreatedRoom;
             ServerBase.OnPlayerDestroyed -= OnPlayerDestroyed;
             ServerBase.OnPlayerConnected -= OnPlayerConnected;
             ServerBase.OnPlayerDisconnected -= OnPlayerDisconnected;
             ServerBase.OnPlayerJoinedChannel -= OnPlayerJoinedChannel;
-            ServerBase.OnPlayerJoinedRoom -= OnPlayerJoinedRoom;
+            ServerBase.OnPlayerJoinedRoom -= Internal_OnPlayerJoinedRoom;
             ServerBase.OnPlayerLeftChannel -= OnPlayerLeftChannel;
             ServerBase.OnPlayerLeftRoom -= OnPlayerLeftRoom;
             ServerBase.OnPlayerNicknameChanged -= OnPlayerNicknameChanged;
             ServerBase.OnPlayerPropertiesChanged -= OnPlayerPropertiesChanged;
             ServerBase.OnRoomPropertiesChanged -= OnRoomPropertiesChanged;
             ServerBase.OnAuthentication -= OnAuthentication;
-            ServerBase.OnReceivePacket -= OnReceivePacket;
             PhysicsManager.OnPhysics -= OnPhysics;
             PhysicsManager.OnPhysics2D -= OnPhysics2D;
         }
@@ -149,6 +149,15 @@ namespace NeutronNetwork
             // Here you can access the transforms state right after the simulation, if needed...
         }
 
+        private async void Internal_OnPlayerJoinedRoom(NeutronPlayer player, NeutronRoom room)
+        {
+            await NeutronSchedule.ScheduleTaskAsync(() =>
+            {
+                MakeRoomContainer(room);
+            });
+            OnPlayerJoinedRoom(player, room);
+        }
+
         protected virtual bool OnReceivePacket(Packet packet)
         {
             return true;
@@ -178,13 +187,9 @@ namespace NeutronNetwork
             LogHelper.Info($"Usando hack porraaaaaaaa -> {player.Nickname}");
         }
 
-        protected async virtual Task<bool> OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
+        protected virtual bool OnPlayerCreatedRoom(NeutronPlayer player, NeutronRoom room)
         {
-            return await NeutronSchedule.ScheduleTaskAsync(() =>
-            {
-                MakeRoomContainer(room);
-                return true;
-            });
+            return true;
         }
 
         protected virtual bool OnRoomPropertiesChanged(NeutronPlayer player, string properties)
@@ -207,12 +212,12 @@ namespace NeutronNetwork
 
         }
 
-        protected virtual void OnPlayerLeftChannel(NeutronPlayer player)
+        protected virtual void OnPlayerJoinedRoom(NeutronPlayer player, NeutronRoom room)
         {
 
         }
 
-        protected virtual void OnPlayerJoinedRoom(NeutronPlayer player)
+        protected virtual void OnPlayerLeftChannel(NeutronPlayer player)
         {
 
         }
@@ -251,12 +256,15 @@ namespace NeutronNetwork
         #region Internal
         private void MakeRoomContainer(NeutronRoom room)
         {
-            //* Cria um container para a nova sala.
-            room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.ID}]", Neutron.Server.LocalPhysicsMode);
-            GameObject roomManager = SceneHelper.OnMatchmakingManager(room.Owner, IsServer, Server);
-            SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.ID}]");
-            //* Registra os objetos de cena.
-            SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
+            if (room.PhysicsManager == null)
+            {
+                //* Cria um container(scene) para a nova sala, somente se não existir um.
+                room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.Id}]", Neutron.Server.LocalPhysicsMode);
+                GameObject roomManager = SceneHelper.MakeMatchmakingManager(room.Owner, IsServer, Server);
+                SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.Id}]");
+                //* Registra os objetos de cena.
+                SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
+            }
         }
 
         private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
@@ -266,11 +274,11 @@ namespace NeutronNetwork
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
                 MakeVirtualOwner(channel, channel, null);
-                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.ID}]", Neutron.Server.LocalPhysicsMode);
+                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.Id}]", Neutron.Server.LocalPhysicsMode);
                 if (Neutron.Server.ActionsOnTheChannel)
                 {
-                    GameObject matchManager = SceneHelper.OnMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
-                    SceneHelper.MoveToContainer(matchManager, $"[Container] -> Channel[{channel.ID}]");
+                    GameObject matchManager = SceneHelper.MakeMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
+                    SceneHelper.MoveToContainer(matchManager, $"[Container] -> Channel[{channel.Id}]");
                     //* Registra os objetos de cena.
                     SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Server);
                 }
@@ -293,7 +301,7 @@ namespace NeutronNetwork
                 LogHelper.Error("Matchmaking already has an owner!");
             else
             {
-                //* Não pode aproveitar o Neutron.Server.Player? não, não podemos compartilhar a mesma instãncia pra vários matchmaking, um jogador só pode está em um Matchmaking ao mesmo tempo.
+                //* Não pode aproveitar o Neutron.Server.Player? não, não podemos compartilhar a mesma instância pra vários matchmaking, um jogador só pode está em um Matchmaking ao mesmo tempo.
                 NeutronPlayer player = PlayerHelper.MakeTheServerPlayer();
                 player.Channel = channel;
                 player.Room = room;

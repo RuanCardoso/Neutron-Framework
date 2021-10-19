@@ -12,10 +12,9 @@ GameObject:
   - component: {fileID: 7117136091862838597}
   - component: {fileID: 7117136091862838594}
   - component: {fileID: 7117136091862838595}
-  - component: {fileID: -8125109056234725725}
-  - component: {fileID: 6832699036195516674}
+  - component: {fileID: 1122801569334390587}
   m_Layer: 0
-  m_Name: Bullet
+  m_Name: Dynamic
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -99,23 +98,7 @@ SphereCollider:
   serializedVersion: 2
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &-8125109056234725725
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7117136091862838592}
-  serializedVersion: 2
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
---- !u!114 &6832699036195516674
+--- !u!114 &1122801569334390587
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -124,6 +107,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 7117136091862838592}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f29c15a76333cbc4180c36acad590db0, type: 3}
+  m_Script: {fileID: 11500000, guid: ca99d7fddf59b8b48bc1c71cc5e62a86, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _id: 0
+  _side: 2
+  _autoDestroy: 1
+  _owner:
+    _isInitialized: 1
+    Title: 
+    _id: 0
+    _nickname: 
+    _properties: '{"Team":"Neutron"}'
+    _databaseId: 0
+  Components: []

@@ -351,9 +351,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7214460213913520919}
+  - component: {fileID: -5240530200230602789}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -376,6 +377,29 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-5240530200230602789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7214460213913520918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca99d7fddf59b8b48bc1c71cc5e62a86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _id: 0
+  _side: 2
+  _autoDestroy: 1
+  _owner:
+    _isInitialized: 1
+    Title: 
+    _id: 0
+    _nickname: 
+    _properties: '{"Team":"Neutron"}'
+    _databaseId: 0
+  Components: []
 --- !u!1 &7214460214316645457
 GameObject:
   m_ObjectHideFlags: 0

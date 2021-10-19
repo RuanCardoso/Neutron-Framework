@@ -1,6 +1,7 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Packets;
 using System.Net;
@@ -44,6 +45,16 @@ namespace NeutronNetwork.Client
         protected ThreadManager ThreadManager { get; } = new ThreadManager();
         #endregion
 
+        #region Matchmaking
+        protected NeutronChannel NeutronChannel {
+            get;
+        } = new NeutronChannel();
+
+        protected NeutronRoom NeutronRoom {
+            get;
+        } = new NeutronRoom();
+        #endregion
+
         #region Functions
         protected void StartSocket()
         {
@@ -55,7 +66,7 @@ namespace NeutronNetwork.Client
                     int id = (NeutronConstantsSettings.GENERATE_PLAYER_ID + i) + 1;
                     if (Players.TryAdd(id, new NeutronPlayer()
                     {
-                        ID = id,
+                        Id = id,
                         Nickname = $"Client#{id}"
                     })) { }
                 }

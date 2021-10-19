@@ -14,12 +14,12 @@ namespace NeutronNetwork.Internal.Wrappers
         {
             base.Clear();
             for (int i = 0; i < m_Values.Length; i++)
-                if (!base.ContainsKey(m_Values[i].ID))
-                    base.Add(m_Values[i].ID, m_Values[i]);
+                if (!base.ContainsKey(m_Values[i].Id))
+                    base.Add(m_Values[i].Id, m_Values[i]);
                 else
                 {
-                    m_Values[i].ID = i;
-                    base.Add(m_Values[i].ID, m_Values[i]);
+                    m_Values[i].Id = i;
+                    base.Add(m_Values[i].Id, m_Values[i]);
                 }
         }
 
@@ -27,7 +27,7 @@ namespace NeutronNetwork.Internal.Wrappers
 
         public void Add(TValue value)
         {
-            base.Add(value.ID, value);
+            base.Add(value.Id, value);
         }
     }
 }
