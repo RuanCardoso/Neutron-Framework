@@ -33,7 +33,8 @@ namespace NeutronNetwork.Client
 
         #region Properties
         //* Obtém a instância de Neutron, classe derivada.
-        protected Neutron This {
+        protected Neutron This
+        {
             get;
             private set;
         }
@@ -41,13 +42,15 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Obtém o gerenciador de física.
         /// </summary>
-        public PhysicsManager PhysicsManager {
+        public PhysicsManager PhysicsManager
+        {
             get;
             protected set;
         }
 
         //* Mantém o estado do jogador.
-        protected StateObject StateObject {
+        protected StateObject StateObject
+        {
             get;
         } = new StateObject();
 
@@ -57,7 +60,8 @@ namespace NeutronNetwork.Client
         public NetworkTime NetworkTime { get; } = new NetworkTime();
 
         //* Define quando o cliente está pronto para uso.
-        protected bool IsReady {
+        protected bool IsReady
+        {
             get;
             private set;
         }
@@ -65,7 +69,8 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Define se é a instância do servidor.
         /// </summary>
-        public bool IsServer {
+        public bool IsServer
+        {
             get;
             private set;
         }
@@ -73,7 +78,8 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Obtém o tipo de cliente da instância.
         /// </summary>
-        public ClientMode ClientMode {
+        public ClientMode ClientMode
+        {
             get;
             private set;
         }
@@ -135,7 +141,8 @@ namespace NeutronNetwork.Client
             Internal_OnPlayerLeftChannel += OnPlayerLeftChannel;
             Internal_OnPlayerLeftRoom += OnPlayerLeftRoom;
             Internal_OnError += OnError;
-            _sceneName = Helper.GetSettings().ClientSettings.SceneName + $" - {UnityEngine.Random.Range(1, int.MaxValue)}";
+            //* Define nome da cena principal do cliente.
+            _sceneName = $"Client(Container) - {SceneHelper.GetSideTag(IsServer)} - [{clientMode}] - ({UnityEngine.Random.Range(1, int.MaxValue)})";
         }
 
         //* Client->Server
@@ -496,18 +503,14 @@ namespace NeutronNetwork.Client
         /// <returns></returns>
         public bool IsMine(NeutronPlayer otherPlayer) => otherPlayer.Equals(This.LocalPlayer);
 
-        private async Task OnCreateMatchmakingManager(Action OnCreate, NeutronPlayer player, Neutron neutron)
+        private void MakeMatchmakingManager(NeutronPlayer player, Neutron neutron)
         {
-            await NeutronSchedule.ScheduleTaskAsync(() =>
-            {
-                OnCreate();
-                //* Cacha o match manager, para depois ser destruído.
-                if (_matchManager != null)
-                    GameObject.Destroy(_matchManager);
-                _matchManager = SceneHelper.MakeMatchmakingManager(player, false, neutron);
-                //* Move a o gerenciador de sala pro seu container.
-                SceneHelper.MoveToContainer(_matchManager, _sceneName);
-            });
+            //* Cacha o match manager, para depois ser destruído.
+            if (_matchManager != null)
+                GameObject.Destroy(_matchManager);
+            _matchManager = SceneHelper.MakeMatchmakingManager(player, false, neutron);
+            //* Move a o gerenciador de sala pro seu container.
+            SceneHelper.MoveToContainer(_matchManager, _sceneName);
         }
         #endregion
 
@@ -566,25 +569,32 @@ namespace NeutronNetwork.Client
             onEvent.Invoke();
         }
 
-        private void OnPlayerJoinedChannel(NeutronChannel remoteChannel, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
+        private async void OnPlayerJoinedChannel(NeutronChannel remoteChannel, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
         {
             try
             {
-                if (!player.IsInChannel() && !player.IsInRoom())
+                await NeutronSchedule.ScheduleTaskAsync(() =>
                 {
-                    NeutronChannel channel = neutron.NeutronChannel;
-                    channel.Apply(remoteChannel);
-                    player.Channel = channel;
-                    player.Channel.Add(player);
-                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                    if (player.Matchmaking.PhysicsManager == null)
-                        player.Matchmaking.PhysicsManager = PhysicsManager;
-                    if (isMine)
-                        SceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
-                    player.Matchmaking.Owner = Players[remoteChannel.Owner.Id];
-                }
-                else
-                    LogHelper.Error("You are already in a channel, call \"Leave\".");
+                    if (!player.IsInChannel() && !player.IsInRoom())
+                    {
+                        NeutronChannel channel = neutron.NeutronChannel;
+                        channel.Apply(remoteChannel);
+                        player.Channel = channel;
+                        player.Channel.Add(player);
+                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                        if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Channel)
+                        {
+                            MakeMatchmakingManager(player, neutron);
+                            if (player.Matchmaking.PhysicsManager == null)
+                                player.Matchmaking.PhysicsManager = PhysicsManager;
+                            if (isMine)
+                                SceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
+                        }
+                        player.Matchmaking.Owner = Players[remoteChannel.Owner.Id];
+                    }
+                    else
+                        LogHelper.Error("You are already in a channel, call \"Leave\".");
+                });
                 //* Invoca os eventos registrados do cliente, após os eventos internos.
                 onEvent.Invoke();
             }
@@ -594,25 +604,32 @@ namespace NeutronNetwork.Client
             }
         }
 
-        private void OnPlayerJoinedRoom(NeutronRoom remoteRoom, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
+        private async void OnPlayerJoinedRoom(NeutronRoom remoteRoom, NeutronPlayer player, bool isMine, Action onEvent, Neutron neutron)
         {
             try
             {
-                if (player.IsInChannel() && !player.IsInRoom())
+                await NeutronSchedule.ScheduleTaskAsync(() =>
                 {
-                    NeutronRoom room = neutron.NeutronRoom;
-                    room.Apply(remoteRoom);
-                    player.Room = room;
-                    player.Room.Add(player);
-                    player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                    if (player.Matchmaking.PhysicsManager == null)
-                        player.Matchmaking.PhysicsManager = PhysicsManager;
-                    if (isMine)
-                        SceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
-                    player.Matchmaking.Owner = Players[remoteRoom.Owner.Id];
-                }
-                else
-                    LogHelper.Error("You are already in a room, call \"Leave\".");
+                    if (player.IsInChannel() && !player.IsInRoom())
+                    {
+                        NeutronRoom room = neutron.NeutronRoom;
+                        room.Apply(remoteRoom);
+                        player.Room = room;
+                        player.Room.Add(player);
+                        player.Matchmaking = MatchmakingHelper.Matchmaking(player);
+                        if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Room)
+                        {
+                            MakeMatchmakingManager(player, neutron);
+                            if (player.Matchmaking.PhysicsManager == null)
+                                player.Matchmaking.PhysicsManager = PhysicsManager;
+                            if (isMine)
+                                SceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
+                        }
+                        player.Matchmaking.Owner = Players[remoteRoom.Owner.Id];
+                    }
+                    else
+                        LogHelper.Error("You are already in a room, call \"Leave\".");
+                });
                 //* Invoca os eventos registrados do cliente, após os eventos internos.
                 onEvent.Invoke();
             }

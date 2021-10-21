@@ -217,7 +217,7 @@ namespace NeutronNetwork.Server
                                         }
                                     }
                                     //* Move o Player Actions para o container do servidor.
-                                    SceneHelper.MoveToContainer(playerGlobalController, "[Container] -> Server");
+                                    SceneHelper.MoveToContainer(playerGlobalController, "Server(Container)");
                                 });
                                 #endregion
 

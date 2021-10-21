@@ -71,9 +71,9 @@ namespace NeutronNetwork
                 else if (player.IsInMatchmaking())
                 {
                     if (!Owner.IsInRoom())
-                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Channel[{Owner.Channel.Id}]");
+                        SceneHelper.MoveToContainer(gameObject, $"Channel({Owner.Channel.Id}) - [Container] - {SceneHelper.GetSideTag(IsServer)}");
                     else if (Owner.IsInChannel())
-                        SceneHelper.MoveToContainer(gameObject, $"[Container] -> Room[{Owner.Room.Id}]");
+                        SceneHelper.MoveToContainer(gameObject, $"Room({Owner.Room.Id}) - [Container] - {SceneHelper.GetSideTag(IsServer)}");
                 }
                 else
                     return LogHelper.Error("Matchmaking not found!");
@@ -86,7 +86,7 @@ namespace NeutronNetwork
                     if (Id == 0)
                     {
                         //* Define um nome de identificação para este objeto.
-                        gameObject.name = $"Player -> {Owner.Nickname} [{(IsServer ? "Server" : "Client")}]";
+                        gameObject.name = $"Player -> {Owner.Nickname}";
                         //* Define o ID deste objeto.
                         Id = Owner.Id;
                         //* Define este objeto como o objeto de rede do jogador.
@@ -104,7 +104,7 @@ namespace NeutronNetwork
                         if (!isServer)
                             LogHelper.Error($"{IsServer} : {Id} -> {matchmaking.Name}");
                         //* Define um nome de identificação para este objeto.
-                        gameObject.name = $"Dynamic Object -> [{name}] [{(IsServer ? "Server" : "Client")}] #-{Id}";
+                        gameObject.name = $"Dynamic Object -> [{name}] #-{Id}";
                     }
                     else
                         return LogHelper.Error("Dynamically instantiated objects must have their ID at 0.");

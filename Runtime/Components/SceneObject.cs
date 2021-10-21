@@ -10,6 +10,7 @@ using UnityEngine.SceneManagement;
 namespace NeutronNetwork.Components
 {
     [RequireComponent(typeof(NeutronView))]
+    [RequireComponent(typeof(AllowOnServer))]
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CLIENT)]
     public class SceneObject : MonoBehaviour
     {
@@ -18,7 +19,7 @@ namespace NeutronNetwork.Components
         [SerializeField] [ReadOnly] private NeutronView _neutronView;
         [SerializeField] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
         [SerializeField] private string _mapkey = "Map";
-        [SerializeField] private string _mapName = "Neutron";
+        [SerializeField] private string _mapName = "testMap";
         [SerializeField] private bool _hideInHierarchy = true;
         [SerializeField] [ReadOnly] private bool _isOriginalObject = true;
 
@@ -28,7 +29,7 @@ namespace NeutronNetwork.Components
             {
                 OnSceneObjectRegister += OnNeutronRegister;
                 gameObject.SetActive(false);
-                gameObject.hideFlags = HideFlags.HideInHierarchy;
+                //gameObject.hideFlags = HideFlags.HideInHierarchy;
             }
         }
 
@@ -61,7 +62,7 @@ namespace NeutronNetwork.Components
                 else { /*continue;*/ }
             }
             else
-                LogHelper.Info($"This scene object({_mapName}) is not linked to a map, it will be instantiated in all scenes of the specified matchmaking.");
+                LogHelper.Info($"This scene object({_mapName} - {matchmaking.Name}) is not linked to a map, it will be instantiated in all scenes of the specified matchmaking.");
             switch (_neutronView.Side)
             {
                 case Side.Both:
@@ -94,15 +95,15 @@ namespace NeutronNetwork.Components
             #region Duplicate and Register
             SceneObject sceneObject = Instantiate(gameObject).GetComponent<SceneObject>();
             sceneObject._isOriginalObject = false;
-            sceneObject._neutronView = sceneObject.transform.root.GetComponent<NeutronView>();
             sceneObject.gameObject.SetActive(true);
             sceneObject.gameObject.hideFlags = _hideInHierarchy ? HideFlags.HideInHierarchy : HideFlags.None;
+            sceneObject._neutronView = sceneObject.transform.root.GetComponent<NeutronView>();
             if (sceneObject._neutronView != null)
             {
                 if (sceneObject._neutronView.This == null) // if null, not registered.
                     sceneObject._neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Scene, neutron);
                 else
-                    LogHelper.Error("Object has been registered!");
+                    LogHelper.Error("NeutronView has been registered!");
             }
             else
                 LogHelper.Error("NeutronView not found in scene object!");

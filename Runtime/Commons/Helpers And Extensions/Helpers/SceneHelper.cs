@@ -14,14 +14,14 @@ namespace NeutronNetwork.Helpers
             if (!fScene.IsValid())
             {
                 Scene newScene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
-                //* Cria um gerenciador de física.
+                //* Cria um gerenciador de fï¿½sica.
                 GameObject parent = new GameObject("Physics Manager");
                 parent.hideFlags = HideFlags.HideInHierarchy;
                 PhysicsManager manager = parent.AddComponent<PhysicsManager>();
                 manager.Scene = newScene;
                 manager.PhysicsScene = newScene.GetPhysicsScene();
                 manager.PhysicsScene2D = newScene.GetPhysicsScene2D();
-                //* Move o gerenciador de física para a sua cena em questão.
+                //* Move o gerenciador de fï¿½sica para a sua cena em questï¿½o.
                 MoveToContainer(parent, newScene.name);
                 return manager;
             }
@@ -80,6 +80,11 @@ namespace NeutronNetwork.Helpers
         public static bool IsInScene(GameObject gameObject)
         {
             return gameObject.scene.IsValid();
+        }
+
+        public static string GetSideTag(bool isServer)
+        {
+            return isServer ? "[Server-Side]" : "[Client-Side]";
         }
     }
 }

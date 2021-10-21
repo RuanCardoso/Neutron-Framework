@@ -98,7 +98,8 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_LightingSettings: {fileID: 4890085278179872738, guid: 887f3df69514af746bc8e2c3f6cb15f5, type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: 887f3df69514af746bc8e2c3f6cb15f5,
+    type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -2115,6 +2116,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1609046689}
+  - component: {fileID: 1609046692}
+  - component: {fileID: 1609046691}
+  - component: {fileID: 1609046690}
   m_Layer: 0
   m_Name: Network Map
   m_TagString: Untagged
@@ -2138,6 +2142,59 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1609046690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609046688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cdb719d1aef4f44eac0120a03a90ef9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _neutronView: {fileID: 1609046692}
+  _matchmakingMode: 2
+  _mapkey: Map
+  _mapName: testMap
+  _hideInHierarchy: 0
+  _isOriginalObject: 1
+--- !u!114 &1609046691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609046688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60a39fab62da813438d73b290adf3829, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1609046692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609046688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca99d7fddf59b8b48bc1c71cc5e62a86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _id: 1
+  _side: 2
+  _autoDestroy: 1
+  _owner:
+    _isInitialized: 1
+    Title: 
+    _id: 0
+    _nickname: 
+    _properties: '{"Team":"Neutron"}'
+    _databaseId: 0
+  Components: []
 --- !u!1 &1631802139
 GameObject:
   m_ObjectHideFlags: 0
@@ -3020,55 +3077,68 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_RootOrder
       value: 2
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalPosition.x
       value: 6.947869
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.4367957
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalRotation.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
+    - target: {fileID: 7214460213913520919, guid: 63d6b49367b851440bc9ed0f7748af93,
+        type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}

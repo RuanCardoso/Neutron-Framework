@@ -1,4 +1,5 @@
-﻿using NeutronNetwork.Internal;
+﻿using NeutronNetwork.Components;
+using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Naughty.Attributes;
@@ -14,7 +15,8 @@ namespace NeutronNetwork.Server
     public class ServerBehaviour : MonoBehaviour
     {
         #region Socket
-        public TcpListener TcpListener {
+        public TcpListener TcpListener
+        {
             get;
             private set;
         }
@@ -29,54 +31,64 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Fields
-        [SerializeField] [HorizontalLine] private PhysicsMode _localPhysicsMode = PhysicsMode.Physics3D;
-        [SerializeField] [ReadOnly] private PlayerGlobalController _playerGlobalController;
-        [SerializeField] [ReadOnly] private ServerSide _serverSideController;
-        [SerializeField] private bool _autoStart = true;
-        [SerializeField] private bool _actionsOnTheChannel = true;
+        [SerializeField] [HorizontalLine] private bool _autoStart = true;
+        [SerializeField] private PhysicsMode _localPhysicsMode = PhysicsMode.Physics3D;
+        [SerializeField] [HideInInspector] [ReadOnly] private PlayerGlobalController _playerGlobalController;
+        [SerializeField] [HideInInspector] [ReadOnly] private ServerSide _serverSideController;
         [SerializeField] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
         [SerializeField] private OwnerMode _sceneObjectsOwner = OwnerMode.Server;
-        [SerializeField] private OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
-        [SerializeField] [ReadOnly] private NeutronBehaviour[] _actions;
-        [SerializeField] private string[] _scenes;
+        [SerializeField] [Label("Matchmaking Owner")] private OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
+        [SerializeField] [HideInInspector] [ReadOnly] private NeutronBehaviour[] _actions;
+        [SerializeField]
+        [InfoBox("Scenes must also be defined in Build Settings.")]
+        private string[] _scenes;
         [ReadOnly] [HorizontalLine] public int _playerCount;
         #endregion
 
         #region Properties
-        public bool IsReady {
+        public bool IsReady
+        {
             get;
             private set;
         }
 
-        protected ThreadManager ThreadManager {
+        protected ThreadManager ThreadManager
+        {
             get;
         } = new ThreadManager();
 
-        public LocalPhysicsMode LocalPhysicsMode {
+        public LocalPhysicsMode LocalPhysicsMode
+        {
             get => (LocalPhysicsMode)_localPhysicsMode;
         }
 
-        public PlayerGlobalController PlayerGlobalController {
+        public PlayerGlobalController PlayerGlobalController
+        {
             get => _playerGlobalController;
         }
 
-        public ServerSide ServerSideController {
+        public ServerSide ServerSideController
+        {
             get => _serverSideController;
         }
 
-        public bool ActionsOnTheChannel {
-            get => _actionsOnTheChannel;
+        public MatchmakingMode MatchmakingMode
+        {
+            get => _matchmakingMode;
         }
 
-        public OwnerMode MatchmakingManagerOwner {
+        public OwnerMode MatchmakingManagerOwner
+        {
             get => _matchmakingManagerOwner;
         }
 
-        public OwnerMode SceneObjectsOwner {
+        public OwnerMode SceneObjectsOwner
+        {
             get => _sceneObjectsOwner;
         }
 
-        public NeutronBehaviour[] Actions {
+        public NeutronBehaviour[] Actions
+        {
             get => _actions;
         }
         public bool AutoStart => _autoStart;
@@ -117,7 +129,7 @@ namespace NeutronNetwork.Server
             {
                 if (mode == LoadSceneMode.Additive)
                 {
-                    if (!(gameObject.GetComponent<NeutronView>() != null))
+                    if (!(gameObject.GetComponent<AllowOnServer>() != null))
                         Destroy(gameObject);
                 }
             }

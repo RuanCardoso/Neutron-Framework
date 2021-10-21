@@ -35,7 +35,6 @@ namespace NeutronNetwork.Constants
     {
         [Range(0.1F, 5F)] public float UdpKeepAlive = 2F;
         [Range(1F, 15F)] public float TcpKeepAlive = 5F;
-        public string SceneName = "[Container] -> Player[Main]";
     }
 
     [Serializable]

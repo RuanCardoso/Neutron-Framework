@@ -29,7 +29,7 @@ MonoBehaviour:
   ClientSettings:
     UdpKeepAlive: 5
     TcpKeepAlive: 15
-    SceneName: '[Container] -> Player[Main]'
+    SceneName: Client(Container)
   ServerSettings:
     BackLog: 10
     NeutronAntiCheat: 1

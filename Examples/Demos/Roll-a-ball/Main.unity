@@ -2623,16 +2623,16 @@ MonoBehaviour:
       _maxRooms: 0
       _rooms:
         m_Values: []
+  _autoStart: 1
   _localPhysicsMode: 2
   _playerGlobalController: {fileID: 0}
   _serverSideController: {fileID: 0}
-  _autoStart: 1
-  _actionsOnTheChannel: 1
-  _matchmakingMode: 1
+  _matchmakingMode: 2
   _sceneObjectsOwner: 0
   _matchmakingManagerOwner: 1
   _actions: []
-  _scenes: []
+  _scenes:
+  - Roll-a-ball
   _playerCount: 0
 --- !u!114 &1869394987
 MonoBehaviour:
@@ -3210,6 +3210,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ace2af95e43f5a94597971a32581287c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playerPrefab: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93, type: 3}
-  _objectPrefab: {fileID: 7117136091862838592, guid: d196e8c434f0487428ba3e80e1494ad7, type: 3}
+  _playerPrefab: {fileID: 7214460213913520918, guid: 63d6b49367b851440bc9ed0f7748af93,
+    type: 3}
+  _objectPrefab: {fileID: 7117136091862838592, guid: d196e8c434f0487428ba3e80e1494ad7,
+    type: 3}
   _createRoom: 1

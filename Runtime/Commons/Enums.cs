@@ -41,6 +41,7 @@ namespace NeutronNetwork.Packets
     [Network]
     public enum MatchmakingMode : byte
     {
+        All,
         Server,
         Room,
         Channel,
@@ -405,6 +406,7 @@ namespace NeutronNetwork.Internal.Packets
 
     public enum PhysicsMode : int
     {
+        Disabled = 0x0,
         Physics2D = 0x1,
         Physics3D = 0x2,
     }

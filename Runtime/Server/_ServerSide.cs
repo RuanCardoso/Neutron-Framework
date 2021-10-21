@@ -24,7 +24,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Define se a simulação de física deve ser no FixedUpdate.
         /// </summary>
-        protected virtual bool SimulateOnFixedUpdate {
+        protected virtual bool SimulateOnFixedUpdate
+        {
             get;
         }
         /// <summary>
@@ -38,7 +39,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna a instância do servidor.
         /// </summary>
-        protected Neutron Server {
+        protected Neutron Server
+        {
             get;
             private set;
         }
@@ -256,29 +258,36 @@ namespace NeutronNetwork
         #region Internal
         private void MakeRoomContainer(NeutronRoom room)
         {
-            if (room.PhysicsManager == null)
+            if (Neutron.Server.MatchmakingMode == MatchmakingMode.Room || Neutron.Server.MatchmakingMode == MatchmakingMode.All)
             {
-                //* Cria um container(scene) para a nova sala, somente se não existir um.
-                room.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Room[{room.Id}]", Neutron.Server.LocalPhysicsMode);
-                GameObject roomManager = SceneHelper.MakeMatchmakingManager(room.Owner, IsServer, Server);
-                SceneHelper.MoveToContainer(roomManager, $"[Container] -> Room[{room.Id}]");
-                //* Registra os objetos de cena.
-                SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
+                if (room.PhysicsManager == null)
+                {
+                    string containerName = $"Room({room.Id}) - [Container] - {SceneHelper.GetSideTag(IsServer)}";
+                    //* Cria um container(scene) para a nova sala, somente se não existir um.
+                    room.PhysicsManager = SceneHelper.CreateContainer(containerName, Neutron.Server.LocalPhysicsMode);
+                    GameObject matchManager = SceneHelper.MakeMatchmakingManager(room.Owner, IsServer, Server);
+                    SceneHelper.MoveToContainer(matchManager, containerName);
+                    //* Registra os objetos de cena.
+                    SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
+                }
             }
         }
 
-        private void MakeServerContainer() => SceneHelper.CreateContainer($"[Container] -> Server");
+        private void MakeServerContainer() => SceneHelper.CreateContainer($"Server(Container)");
 
         private void MakeContainerOnChannels()
         {
             foreach (var channel in Neutron.Server.ChannelsById.Values)
             {
+                MakeProperties(channel);
                 MakeVirtualOwner(channel, channel, null);
-                channel.PhysicsManager = SceneHelper.CreateContainer($"[Container] -> Channel[{channel.Id}]", Neutron.Server.LocalPhysicsMode);
-                if (Neutron.Server.ActionsOnTheChannel)
+                if (Neutron.Server.MatchmakingMode == MatchmakingMode.Channel || Neutron.Server.MatchmakingMode == MatchmakingMode.All)
                 {
+                    string containerName = $"Channel({channel.Id}) - [Container] - {SceneHelper.GetSideTag(IsServer)}";
+                    //* Cria um container(scene) para a nova sala, somente se não existir um.
+                    channel.PhysicsManager = SceneHelper.CreateContainer(containerName, Neutron.Server.LocalPhysicsMode);
                     GameObject matchManager = SceneHelper.MakeMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
-                    SceneHelper.MoveToContainer(matchManager, $"[Container] -> Channel[{channel.Id}]");
+                    SceneHelper.MoveToContainer(matchManager, containerName);
                     //* Registra os objetos de cena.
                     SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Server);
                 }
@@ -290,7 +299,10 @@ namespace NeutronNetwork
         {
             foreach (NeutronRoom room in channel.GetRooms())
             {
+                MakeProperties(room);
+                //* Cria um master/dono para a sala padrão.....
                 MakeVirtualOwner(room, channel, room);
+                //* Inicializa as salas padrão definidas no inspetor.
                 MakeRoomContainer(room);
             }
         }
@@ -308,6 +320,13 @@ namespace NeutronNetwork
                 player.Matchmaking = MatchmakingHelper.Matchmaking(player);
                 matchmaking.Owner = player; //! reforço: um jogador só pode está em um Matchmaking ao mesmo tempo.
             }
+        }
+
+        private void MakeProperties(INeutronMatchmaking matchmaking)
+        {
+            //* Gambiarra
+            var props = matchmaking.Properties;
+            matchmaking.Properties = props;
         }
 
         /// <summary>
