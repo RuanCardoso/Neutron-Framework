@@ -2,7 +2,7 @@
     "name": "Neutron.Editor",
     "rootNamespace": "",
     "references": [
-        "Neutron.Runtime",
+        "Neutron",
         "NaughtyAttributes.Editor"
     ],
     "includePlatforms": [

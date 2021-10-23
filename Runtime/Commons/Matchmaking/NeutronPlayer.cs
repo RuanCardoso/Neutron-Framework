@@ -17,7 +17,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class NeutronPlayer : INeutron, INeutronSerializable, IDisposable, ISerializationCallbackReceiver, IEquatable<NeutronPlayer>, IEqualityComparer<NeutronPlayer>
+    public class NeutronPlayer : INeutronIdentify, INeutronSerializable, IDisposable, ISerializationCallbackReceiver, IEquatable<NeutronPlayer>, IEqualityComparer<NeutronPlayer>
     {
         [SerializeField]
         [HideInInspector]

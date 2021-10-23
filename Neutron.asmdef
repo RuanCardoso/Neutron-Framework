@@ -2,12 +2,11 @@
     "name": "Neutron",
     "rootNamespace": "",
     "references": [
-        "Neutron.Runtime",
-        "Unity.TextMeshPro"
+        "NaughtyAttributes.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

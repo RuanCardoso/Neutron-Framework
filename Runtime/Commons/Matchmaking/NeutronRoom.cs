@@ -10,7 +10,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class NeutronRoom : MatchmakingBehaviour, INeutronSerializable, INeutron, IEquatable<NeutronRoom>, IEqualityComparer<NeutronRoom>
+    public class NeutronRoom : MatchmakingBehaviour, INeutronSerializable, INeutronIdentify, IEquatable<NeutronRoom>, IEqualityComparer<NeutronRoom>
     {
         #region Fields
         [SerializeField] private string _password = string.Empty;

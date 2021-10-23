@@ -12,7 +12,7 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class NeutronChannel : MatchmakingBehaviour, INeutronSerializable, INeutron, IEquatable<NeutronChannel>, IEqualityComparer<NeutronChannel>
+    public class NeutronChannel : MatchmakingBehaviour, INeutronSerializable, INeutronIdentify, IEquatable<NeutronChannel>, IEqualityComparer<NeutronChannel>
     {
         #region Fields
         [SerializeField] [ReadOnly] [HorizontalLine] [AllowNesting] private int _roomCount;

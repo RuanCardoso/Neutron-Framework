@@ -7,7 +7,7 @@ using UnityEngine;
 namespace NeutronNetwork.Internal.Wrappers
 {
     [Serializable]
-    public class NeutronSerializableDictionary<TValue> : Dictionary<int, TValue>, ISerializationCallbackReceiver where TValue : INeutron
+    public class NeutronSerializableDictionary<TValue> : Dictionary<int, TValue>, ISerializationCallbackReceiver where TValue : INeutronIdentify
     {
         [SerializeField] private TValue[] m_Values;
         public void OnAfterDeserialize()

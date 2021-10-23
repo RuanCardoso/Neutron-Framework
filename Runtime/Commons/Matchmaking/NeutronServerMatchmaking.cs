@@ -5,7 +5,7 @@ using System;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class NeutronServerMatchmaking : MatchmakingBehaviour, INeutron
+    public class NeutronServerMatchmaking : MatchmakingBehaviour, INeutronIdentify
     {
         #region Properties
         /// <summary>
