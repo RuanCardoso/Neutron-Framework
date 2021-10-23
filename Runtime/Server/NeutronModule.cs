@@ -16,34 +16,40 @@ namespace NeutronNetwork
         public NeutronModule() { }
 
         #region Properties
-        public static Settings Settings {
+        public static Settings Settings
+        {
             get;
             private set;
         }
 
-        public static Synchronization Synchronization {
+        public static Synchronization Synchronization
+        {
             get;
 
             private set;
         }
-        public static Encoding Encoding {
+        public static Encoding Encoding
+        {
             get;
             private set;
         }
 
-        public static int HeaderSize {
+        public static int HeaderSize
+        {
             get;
             private set;
         }
 
-        public static int UnityThreadId {
+        public static int UnityThreadId
+        {
             get;
             private set;
         }
         #endregion
 
         #region Properties -> Events
-        public static NeutronEventNoReturn<Settings> OnLoadSettings {
+        public static NeutronEventNoReturn<Settings> OnLoadSettings
+        {
             get;
             set;
         }
@@ -56,9 +62,6 @@ namespace NeutronNetwork
         private void Awake()
         {
             UnityThreadId = ThreadHelper.GetThreadID();
-#if UNITY_EDITOR
-            CreateLogDelegate();
-#endif
             LoadSettings();
             LoadSynchronizationSettings();
             InitializePools();
@@ -189,15 +192,5 @@ namespace NeutronNetwork
 #endif
 
         public static void SetPassword(string password) => PassPhrase = password;
-
-        #region Log
-        private void CreateLogDelegate()
-        {
-            LogHelper.LogErrorWithoutStackTrace = (Action<string, string, int, int>)typeof(UnityEngine.Debug).GetMethod(
-                "LogPlayerBuildError",
-                BindingFlags.Static | BindingFlags.InvokeMethod | BindingFlags.NonPublic
-            ).CreateDelegate(typeof(Action<string, string, int, int>), null);
-        }
-        #endregion
     }
 }

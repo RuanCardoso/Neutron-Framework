@@ -321,11 +321,11 @@ namespace NeutronNetwork.Server
                 catch (ObjectDisposedException) { continue; }
                 catch (OperationCanceledException) { continue; }
                 catch (ArgumentNullException) { continue; }
-                catch (Exception ex)
-                {
-                    LogHelper.Stacktrace(ex);
-                    continue;
-                }
+                // catch (Exception ex)
+                // {
+                //     LogHelper.Stacktrace(ex);
+                //     continue;
+                // }
             }
         }
 
