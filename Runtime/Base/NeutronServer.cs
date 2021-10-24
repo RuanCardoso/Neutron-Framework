@@ -56,21 +56,24 @@ namespace NeutronNetwork.Server
         /// <summary>
         ///* Obtém o status do servidor.
         /// </summary>
-        public static bool Initialized {
+        public static bool Initialized
+        {
             get;
             set;
         }
         /// <summary>
         ///* Objeto de jogador que representa o servidor.
         /// </summary>
-        public NeutronPlayer Player {
+        public NeutronPlayer Player
+        {
             get;
             set;
         }
         /// <summary>
         ///* Intância de Neutron do Servidor.
         /// </summary>
-        public Neutron Instance {
+        public Neutron Instance
+        {
             get;
             set;
         }
@@ -227,9 +230,12 @@ namespace NeutronNetwork.Server
                                 //***************************************************************************************************************************************************************************************************************************************************************
                                 LogHelper.Info($"\r\nIncoming Client -> Ip: [{tcpRemote.Address.ToString().Bold()}] & Port: [Tcp: {tcpRemote.Port.ToString().Bold()} | Udp: {tcpRemote.Port.ToString().Bold()} - {udpLocal.Port.ToString().Bold()}]\r\n");
 #if UNITY_EDITOR
-                                LogHelper.Info("\r\nFilters(Server->Client): ".Italic() + $"(tcp.SrcPort == {tcpLocal.Port}) or (udp.SrcPort == {udpLocal.Port})".Bold().Color("yellow") + "\r\n");
-                                LogHelper.Info("\r\nFilters(Client->Server): ".Italic() + $"(tcp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {tcpRemote.Port})".Bold().Color("yellow") + "\r\n");
-                                LogHelper.Info("\r\nFilters(Client->Server->Client): ".Italic() + $"((tcp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {tcpRemote.Port})) or ((tcp.SrcPort == {tcpLocal.Port}) or (udp.SrcPort == {udpLocal.Port}))".Bold().Color("yellow") + "\r\n");
+                                if (Helper.GetSettings().ServerSettings.FiltersLog)
+                                {
+                                    LogHelper.Info("\r\nFilters(Server->Client): ".Italic() + $"(tcp.SrcPort == {tcpLocal.Port}) or (udp.SrcPort == {udpLocal.Port})".Bold().Color("yellow") + "\r\n");
+                                    LogHelper.Info("\r\nFilters(Client->Server): ".Italic() + $"(tcp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {tcpRemote.Port})".Bold().Color("yellow") + "\r\n");
+                                    LogHelper.Info("\r\nFilters(Client->Server->Client): ".Italic() + $"((tcp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {tcpRemote.Port})) or ((tcp.SrcPort == {tcpLocal.Port}) or (udp.SrcPort == {udpLocal.Port}))".Bold().Color("yellow") + "\r\n");
+                                }
                                 //***************************************************************************************************************************************************************************************************************************************************************
                                 filter_tcp_udp_client_server.Append($"\r\n{((_playerCount > 1) ? " or " : string.Empty)}((tcp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {tcpRemote.Port})) or ((tcp.SrcPort == {tcpLocal.Port}) or (udp.SrcPort == {udpLocal.Port}))");
                                 filter_udp_client_server.Append($"\r\n{((_playerCount > 1) ? " or " : string.Empty)}((udp.SrcPort == {tcpRemote.Port}) or (udp.SrcPort == {udpLocal.Port}))");

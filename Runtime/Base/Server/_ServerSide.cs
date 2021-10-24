@@ -268,7 +268,7 @@ namespace NeutronNetwork
                     GameObject matchManager = SceneHelper.MakeMatchmakingManager(room.Owner, IsServer, Server);
                     SceneHelper.MoveToContainer(matchManager, containerName);
                     //* Registra os objetos de cena.
-                    SceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
+                    NeutronSceneObject.OnSceneObjectRegister(room.Owner, IsServer, room.PhysicsManager.Scene, MatchmakingMode.Room, room, Server);
                 }
             }
         }
@@ -289,7 +289,7 @@ namespace NeutronNetwork
                     GameObject matchManager = SceneHelper.MakeMatchmakingManager(channel.Owner, true, Neutron.Server.Instance);
                     SceneHelper.MoveToContainer(matchManager, containerName);
                     //* Registra os objetos de cena.
-                    SceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Server);
+                    NeutronSceneObject.OnSceneObjectRegister(channel.Owner, IsServer, channel.PhysicsManager.Scene, MatchmakingMode.Channel, channel, Server);
                 }
                 MakeContainerOnRooms(channel);
             }

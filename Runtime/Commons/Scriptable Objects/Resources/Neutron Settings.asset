@@ -29,10 +29,9 @@ MonoBehaviour:
   ClientSettings:
     UdpKeepAlive: 5
     TcpKeepAlive: 15
-    SceneName: Client(Container)
   ServerSettings:
     BackLog: 10
-    NeutronAntiCheat: 1
+    FiltersLog: 0
   NetworkSettings:
     MaxConnectionsPerIp: 2
     MaxLatency: 150

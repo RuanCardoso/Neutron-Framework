@@ -11,8 +11,9 @@ namespace NeutronNetwork.Components
 {
     [RequireComponent(typeof(NeutronView))]
     [RequireComponent(typeof(AllowOnServer))]
+    [AddComponentMenu("Neutron/Neutron Scene Object")]
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_CLIENT)]
-    public class SceneObject : MonoBehaviour
+    public class NeutronSceneObject : MonoBehaviour
     {
         public static NeutronEventNoReturn<NeutronPlayer, bool, Scene, MatchmakingMode, INeutronMatchmaking, Neutron> OnSceneObjectRegister = delegate { };
 
@@ -93,7 +94,7 @@ namespace NeutronNetwork.Components
             #endregion
 
             #region Duplicate and Register
-            SceneObject sceneObject = Instantiate(gameObject).GetComponent<SceneObject>();
+            NeutronSceneObject sceneObject = Instantiate(gameObject).GetComponent<NeutronSceneObject>();
             sceneObject._isOriginalObject = false;
             sceneObject.gameObject.SetActive(true);
             sceneObject.gameObject.hideFlags = _hideInHierarchy ? HideFlags.HideInHierarchy : HideFlags.None;

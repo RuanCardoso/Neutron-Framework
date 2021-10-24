@@ -23,18 +23,26 @@ public class SubScenesEditor : EditorWindow
     private void OnEnable()
     {
         _subSceneList = FindObjectOfType<SubSceneList>();
-        _serializedObject = new SerializedObject(_subSceneList);
-        _propertyList = _serializedObject.FindProperty("_subScenes");
+        if (_subSceneList != null)
+        {
+            _serializedObject = new SerializedObject(_subSceneList);
+            _propertyList = _serializedObject.FindProperty("_subScenes");
+        }
     }
 
     private void OnGUI()
     {
-        _serializedObject.Update();
-        EditorGUILayout.BeginVertical();
-        _scrollView = EditorGUILayout.BeginScrollView(_scrollView);
-        EditorGUILayout.PropertyField(_propertyList, true);
-        EditorGUILayout.EndScrollView();
-        EditorGUILayout.EndVertical();
-        //_serializedObject.ApplyModifiedProperties();
+        if (_serializedObject != null)
+        {
+            _serializedObject.Update();
+            EditorGUILayout.BeginVertical();
+            _scrollView = EditorGUILayout.BeginScrollView(_scrollView);
+            EditorGUILayout.PropertyField(_propertyList, true);
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+            //_serializedObject.ApplyModifiedProperties();
+        }
+        else
+            EditorGUILayout.LabelField("No Sub-Scenes found");
     }
 }

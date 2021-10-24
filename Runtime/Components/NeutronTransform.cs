@@ -10,6 +10,7 @@ using UnityEngine;
 /// </summary>
 namespace NeutronNetwork.Components
 {
+    [AddComponentMenu("Neutron/Neutron Transform")]
     public class NeutronTransform : NeutronBehaviour
     {
         private const byte RpcId = 1;
@@ -94,7 +95,7 @@ namespace NeutronNetwork.Components
                 {
                     lock (_bufferLock)
                     {
-                        //* Corrige a posição, se o buffer estiver grande, logo o processamento está atrasado, limpa e continua....
+                        //* Corrige a posiï¿½ï¿½o, se o buffer estiver grande, logo o processamento estï¿½ atrasado, limpa e continua....
                         if (_buffer.Count > _bufferMaxCount)
                             Clear();
                         if (SnapshotInterpolation.Compute(LocalTime, Time.deltaTime, ref _interpolationTime, _bufferTime, _buffer, _catchupThreshold, _catchupMultiplier, _interpolate, out NetworkTransformSnapshot computed))

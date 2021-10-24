@@ -44,7 +44,7 @@ public class NeutronProfilerEditor : EditorWindow
 
     private bool _hasProtocolHeaderIncluded = true;
 
-    [MenuItem("Neutron/Settings/Analysis/Profiler &F9")]
+    [MenuItem("Neutron/Settings/Tools/Profiler &F9")]
     static void Init()
     {
         EditorWindow Window = GetWindow(typeof(NeutronProfilerEditor), true, "Profiler");

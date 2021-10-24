@@ -56,12 +56,14 @@ namespace NeutronNetwork
         /// <summary>
         ///* Providencia um pool de leitores e escritores, utilize-o para melhor performance.
         /// </summary>
-        public static NeutronPool<NeutronStream> PooledNetworkStreams {
+        public static NeutronPool<NeutronStream> PooledNetworkStreams
+        {
             get;
             set;
         }
         //* Providencia um pool de Pacotes, utilize-o para melhor performance.
-        public static NeutronPool<NeutronPacket> PooledNetworkPackets {
+        public static NeutronPool<NeutronPacket> PooledNetworkPackets
+        {
             get;
             set;
         }
@@ -76,16 +78,17 @@ namespace NeutronNetwork
         #region Properties -> Static
         /// <summary>
         ///* Retorna a instância do servidor.<br/>
-        ///! Só pode ser obtido no lado do servidor ou no Unity Editor, no cliente será nulo.
         /// </summary>
-        public static NeutronServer Server {
+        public static NeutronServer Server
+        {
             get => ServerBase.This;
         }
         /// <summary>
         ///* Retorna a instância principal do Cliente.<br/>
         ///* Retorna a instância principal do Servidor, se estiver sendo executado em uma compilação de servidor.<br/>
         /// </summary>
-        public static Neutron Client {
+        public static Neutron Client
+        {
             get;
             private set;
         }
@@ -95,7 +98,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o objeto que representa seu jogador.
         /// </summary>
-        public NeutronPlayer LocalPlayer {
+        public NeutronPlayer LocalPlayer
+        {
             get;
             private set;
         }
@@ -103,7 +107,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o status da sua conexão.
         /// </summary>
-        public bool IsConnected {
+        public bool IsConnected
+        {
             get;
             private set;
         }
@@ -111,7 +116,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Obtém o nickname do seu jogador.
         /// </summary>
-        public string Nickname {
+        public string Nickname
+        {
             get;
             private set;
         }
@@ -405,11 +411,11 @@ namespace NeutronNetwork
                 catch (ObjectDisposedException) { continue; }
                 catch (OperationCanceledException) { continue; }
                 catch (ArgumentNullException) { continue; }
-                catch (Exception ex)
-                {
-                    LogHelper.Stacktrace(ex);
-                    continue;
-                }
+                // catch (Exception ex)
+                // {
+                //     LogHelper.Stacktrace(ex);
+                //     continue;
+                // }
             }
         }
 
@@ -1238,7 +1244,7 @@ namespace NeutronNetwork
                 return neutron;
             }
 #endif
-            if (neutron.PhysicsManager == null)
+            if (neutron.PhysicsManager == null && Server != null)
                 neutron.PhysicsManager = SceneHelper.CreateContainer(neutron._sceneName, physics: Server.LocalPhysicsMode);
             if (clientMode == ClientMode.Player)
             {

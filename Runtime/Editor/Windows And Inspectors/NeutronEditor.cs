@@ -1,5 +1,6 @@
 ﻿using NeutronNetwork;
 using NeutronNetwork.Editor;
+using NeutronNetwork.Example.System.Default;
 using NeutronNetwork.Server;
 using System.Diagnostics;
 using System.IO;
@@ -41,7 +42,7 @@ public class NeutronEditor : EditorWindow
         }
     }
 
-    [MenuItem("Neutron/Settings/Setup", priority = 0)]
+    [MenuItem("Neutron/Settings/Setup/Controllers", priority = 0)]
     private static void Setup()
     {
         GameObject l_Controllers = GameObject.Find("Controllers");
@@ -63,7 +64,22 @@ public class NeutronEditor : EditorWindow
             UnityEngine.Debug.LogError("A setup object has already been created.");
     }
 
-    [MenuItem("Neutron/Settings/Lag Simulation &F12")]
+    [MenuItem("Neutron/Settings/Setup/Default Defines", priority = 0)]
+    private static void SetupDefaultDefines()
+    {
+        GameObject l_Controllers = GameObject.Find("Controllers").transform.GetChild(2).gameObject;
+        if (l_Controllers != null)
+        {
+            l_Controllers.AddComponent<InternGlobalController>();
+            l_Controllers.AddComponent<InternServerController>();
+            EditorUtility.SetDirty(l_Controllers);
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        }
+        else
+            UnityEngine.Debug.LogError("Controllers object not found!");
+    }
+
+    [MenuItem("Neutron/Settings/Tools/Lag Simulation &F12")]
     private static void Lag()
     {
         string clumsyFilters = string.Empty;

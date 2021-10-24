@@ -96,19 +96,20 @@ namespace NeutronNetwork.Server
 
         private void Controllers()
         {
-            _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
             if (ServerSideController == null)
             {
                 _serverSideController = transform.root.GetComponentInChildren<ServerSide>();
                 if (ServerSideController == null)
-                    throw new NeutronException("Server Side Controller not defined!");
+                    throw new NeutronException("Server controller not defined!");
             }
+
             if (PlayerGlobalController == null)
             {
                 _playerGlobalController = transform.root.GetComponentInChildren<PlayerGlobalController>();
                 if (PlayerGlobalController == null)
-                    throw new NeutronException("Player Global Controller not defined!");
+                    throw new NeutronException("Player controller not defined!");
             }
+            _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
         }
 
         private void LoadScenes()

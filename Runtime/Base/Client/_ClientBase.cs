@@ -588,7 +588,7 @@ namespace NeutronNetwork.Client
                             if (player.Matchmaking.PhysicsManager == null)
                                 player.Matchmaking.PhysicsManager = PhysicsManager;
                             if (isMine)
-                                SceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
+                                NeutronSceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
                         }
                         player.Matchmaking.Owner = Players[remoteChannel.Owner.Id];
                     }
@@ -623,7 +623,7 @@ namespace NeutronNetwork.Client
                             if (player.Matchmaking.PhysicsManager == null)
                                 player.Matchmaking.PhysicsManager = PhysicsManager;
                             if (isMine)
-                                SceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
+                                NeutronSceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
                         }
                         player.Matchmaking.Owner = Players[remoteRoom.Owner.Id];
                     }

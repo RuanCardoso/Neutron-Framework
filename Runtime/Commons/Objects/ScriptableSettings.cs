@@ -27,7 +27,7 @@ namespace NeutronNetwork.Constants
     public class NeutronServerSettings
     {
         public int BackLog = 10;
-        [HideInInspector] public bool NeutronAntiCheat = true;
+        public bool FiltersLog = true;
     }
 
     [Serializable]
