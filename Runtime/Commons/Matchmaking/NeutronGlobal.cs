@@ -5,13 +5,14 @@ using System;
 namespace NeutronNetwork
 {
     [Serializable]
-    public class NeutronServerMatchmaking : MatchmakingBehaviour, INeutronIdentify
+    public class NeutronGlobal : MatchmakingBehaviour, INeutronIdentify
     {
         #region Properties
         /// <summary>
         ///* Retorna o identificador do canal.
         /// </summary>
-        public int Id {
+        public int Id
+        {
             get => _id;
             set => _id = value;
         }

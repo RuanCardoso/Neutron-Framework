@@ -874,7 +874,7 @@ namespace NeutronNetwork
                 writer.WritePacket((byte)Packet.Chat);
                 writer.WritePacket((byte)ChatMode.Global);
                 writer.WritePacket((byte)tunnelingTo);
-                writer.Write(message);
+                writer.Write(message ?? string.Empty);
                 Send(stream, Protocol.Tcp);
             }
 #else
@@ -898,7 +898,7 @@ namespace NeutronNetwork
                 writer.WritePacket((byte)Packet.Chat);
                 writer.WritePacket((byte)ChatMode.Private);
                 writer.Write(player.Id);
-                writer.Write(message);
+                writer.Write(message ?? string.Empty);
                 Send(stream, Protocol.Tcp);
             }
 #else

@@ -164,18 +164,18 @@ namespace NeutronNetwork
 
         private void Update()
         {
-            try
+            // try
+            // {
+            while (_tasks.Count > 0)
             {
-                while (_tasks.Count > 0)
-                {
-                    if (_tasks.TryDequeue(out Action action))
-                        action();
-                }
+                if (_tasks.TryDequeue(out Action action))
+                    action();
             }
-            catch (Exception ex)
-            {
-                LogHelper.Stacktrace(ex);
-            }
+            // }
+            // catch (Exception ex)
+            // {
+            //     LogHelper.Stacktrace(ex);
+            // }
         }
     }
 }

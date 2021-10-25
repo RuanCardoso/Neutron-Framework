@@ -104,6 +104,7 @@ namespace NeutronNetwork
                         Writer.Clear();
                         Reader.Clear();
                         hWriter.Clear();
+                        //* Recycle object again.
                         Neutron.PooledNetworkStreams.Push(this);
                     }
                 }

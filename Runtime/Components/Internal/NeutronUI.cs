@@ -104,6 +104,7 @@ namespace NeutronNetwork.UI
         private void Start()
         {
             GetComponents();
+            //* Obtém os componentes da Ui na nova scene carregada.
             SceneManager.sceneLoaded += (scene, mode) => GetComponents();
         }
     }

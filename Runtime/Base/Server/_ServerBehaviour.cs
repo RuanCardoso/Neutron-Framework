@@ -23,7 +23,7 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Collections
-        [SerializeField] private NeutronServerMatchmaking _serverMatchmaking;
+        [SerializeField] private NeutronGlobal _serverMatchmaking;
         [Label("Channels Matchmaking")] public ChannelDictionary ChannelsById = new ChannelDictionary();
         public NeutronSafeDictionary<TcpClient, NeutronPlayer> PlayersBySocket = new NeutronSafeDictionary<TcpClient, NeutronPlayer>();
         public NeutronSafeDictionary<int, NeutronPlayer> PlayersById = new NeutronSafeDictionary<int, NeutronPlayer>();

@@ -21,7 +21,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Id globalmente exclusivo para a identificação do metódo na rede.
         /// </summary>
-        public byte ID {
+        public byte ID
+        {
             get;
             set;
         }
@@ -29,26 +30,29 @@ namespace NeutronNetwork
         /// <summary>
         ///* Defina como o metódo será "cachado" no servidor.
         /// </summary>
-        public CacheMode Cache {
+        public CacheMode Cache
+        {
             get;
             set;
-        }
+        } = CacheMode.None;
 
         /// <summary>
         ///* Defina para quem os dados devem ser redirecionados.
         /// </summary>
-        public TargetTo TargetTo {
+        public TargetTo TargetTo
+        {
             get;
             set;
-        }
+        } = TargetTo.Me;
 
         /// <summary>
         ///* Defina o túnel que será usado para redirecionar os dados.
         /// </summary>
-        public TunnelingTo TunnelingTo {
+        public TunnelingTo TunnelingTo
+        {
             get;
             set;
-        }
+        } = TunnelingTo.Me;
 
         public gRPCAttribute()
         { }

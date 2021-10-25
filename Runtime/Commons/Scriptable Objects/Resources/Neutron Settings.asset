@@ -15,10 +15,9 @@ MonoBehaviour:
   GlobalSettings:
     Addresses:
     - localhost
-    - 186.218.61.62
     Port: 1418
-    AppId: 2bc6011d-5aaa-49e1-a795-6360c3e47ddf
-    FPS: 60
+    AppId: 498a212d-901b-4201-ba8d-c37810f184f8
+    FPS: 128
     MaxPlayers: 300
     StreamPoolCapacity: 1200
     PacketPoolCapacity: 1200
@@ -27,8 +26,8 @@ MonoBehaviour:
     NoDelay: 1
     PerfomanceMode: 0
   ClientSettings:
-    UdpKeepAlive: 5
-    TcpKeepAlive: 15
+    UdpKeepAlive: 2
+    TcpKeepAlive: 5
   ServerSettings:
     BackLog: 10
     FiltersLog: 0
@@ -41,7 +40,7 @@ MonoBehaviour:
     SendModel: 1
     SendAsyncPattern: 1
     ReceiveAsyncPattern: 1
-    Encoding: 5
+    Encoding: 0
     HeaderSize: 2
     Tcp:
       MaxTcpPacketSize: 2048
