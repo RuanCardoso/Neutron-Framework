@@ -56,6 +56,13 @@ namespace NeutronNetwork.Examples.Chat
             }
         }
 
+        protected override void OnPlayerConnected(NeutronPlayer player, bool isMine, Neutron neutron)
+        {
+            var players = neutron.GetPlayers(x => x.IsConnected == false);
+            foreach (var pl in players)
+                LogHelper.Error(pl.Nickname);
+        }
+
         //* Auto chat
         protected override void OnMessageReceived(string message, NeutronPlayer player, bool isMine, Neutron neutron)
         {

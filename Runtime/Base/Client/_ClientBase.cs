@@ -11,6 +11,7 @@ using NeutronNetwork.Server.Internal;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -390,6 +391,26 @@ namespace NeutronNetwork.Client
         #endregion
 
         #region Funcs
+        /// <summary>
+        ///* Obtém a lista de jogadores do atual Matchmaking.
+        /// </summary>
+        public NeutronPlayer[] GetPlayers(Func<NeutronPlayer, bool> filter = null, bool includeLocalPlayer = true)
+        {
+            if (filter == null)
+                filter = x => true;
+
+            var matchmaking = This.LocalPlayer.Matchmaking;
+            if (matchmaking != null)
+                return matchmaking.Players();
+            else
+            {
+                if (includeLocalPlayer)
+                    return Players.Values.ToArray().Where(x => x.IsConnected).Where(filter).ToArray();
+                else
+                    return Players.Values.ToArray().Where(x => x.IsConnected && !x.Equals(This.LocalPlayer)).Where(filter).ToArray();
+            }
+        }
+
         /// <summary>
         ///* Inicia uma chamada de preparação para a criação do seu jogador em rede. 
         /// </summary>
