@@ -35,7 +35,7 @@ namespace NeutronNetwork.Examples.Chat
                 if (_inputField.text.Length > 0)
                 {
                     if (_autoChat)
-                        Main.SendMessage(_inputField.text, TunnelingTo.Auto); //* Send the message to all clients.
+                        Main.SendMessage(_inputField.text, MatchmakingTo.Auto); //* Send the message to all clients.
                     else
                     {
                         //* Send the message to all clients.
@@ -72,7 +72,7 @@ namespace NeutronNetwork.Examples.Chat
         }
 
         //* Manual chat
-        [gRPC(ID = CHAT_ID, TargetTo = TargetTo.All, TunnelingTo = TunnelingTo.Auto, Cache = CacheMode.None)]
+        [gRPC(CHAT_ID, CacheMode.None, TargetTo.All, MatchmakingTo.Auto)]
         private void OnMessageReceived(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron instance)
         {
             if (!isServer)

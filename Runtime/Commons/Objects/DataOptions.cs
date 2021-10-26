@@ -11,7 +11,7 @@ namespace NeutronNetwork.Internal
     {
         #region Fields
         [SerializeField] private TargetTo _targetTo;
-        [SerializeField] private TunnelingTo _tunnelingTo;
+        [SerializeField] private MatchmakingTo _matchmakingTo;
         [SerializeField] private Protocol _protocol;
         #endregion
 
@@ -21,9 +21,9 @@ namespace NeutronNetwork.Internal
             set => _targetTo = value;
         }
 
-        public TunnelingTo TunnelingTo {
-            get => _tunnelingTo;
-            set => _tunnelingTo = value;
+        public MatchmakingTo MatchmakingTo {
+            get => _matchmakingTo;
+            set => _matchmakingTo = value;
         }
 
         public Protocol Protocol {
@@ -32,10 +32,10 @@ namespace NeutronNetwork.Internal
         }
         #endregion
 
-        public HandlerOptions(TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        public HandlerOptions(TargetTo targetTo, MatchmakingTo matchmakingTo, Protocol protocol)
         {
             _targetTo = targetTo;
-            _tunnelingTo = tunnelingTo;
+            _matchmakingTo = matchmakingTo;
             _protocol = protocol;
         }
     }

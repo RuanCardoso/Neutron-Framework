@@ -107,10 +107,10 @@ namespace NeutronNetwork
                             for (int ii = 0; ii < methods.Item1.Count(); ii++)
                             {
                                 gRPCAttribute method = methods.Item1[ii];
-                                if (!gRPCs.ContainsKey(method.ID)) //* Verifica se não existe um metódo duplicado, ou seja, um gRPC com mesmo ID.
-                                    gRPCs.Add(method.ID, new RPCInvoker(instance, methods.Item2, method));
+                                if (!gRPCs.ContainsKey(method.Id)) //* Verifica se não existe um metódo duplicado, ou seja, um gRPC com mesmo ID.
+                                    gRPCs.Add(method.Id, new RPCInvoker(instance, methods.Item2, method));
                                 else
-                                    throw new NeutronException($"gRPC: Duplicate Id not allowed in \"{type.Name}\" Id -> [{method.ID}]");
+                                    throw new NeutronException($"gRPC: Duplicate Id not allowed in \"{type.Name}\" Id -> [{method.Id}]");
                             }
                         }
                     }

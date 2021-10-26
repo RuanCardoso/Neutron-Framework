@@ -113,12 +113,12 @@ namespace NeutronNetwork.Server
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
-                NeutronPlayer[] players = MatchmakingHelper.Internal.Tunneling(player, TunnelingTo.Auto);
+                NeutronPlayer[] players = MatchmakingHelper.Internal.GetPlayersByMatchmakingTo(player, MatchmakingTo.Auto);
                 players = players.Where(x => x.Id != player.Id).ToArray();
                 writer.WritePacket((byte)Packet.Synchronize);
                 writer.Write((byte)1);
                 writer.WriteNext(players.Serialize().Compress(CompressionMode.Deflate));
-                player.Write(writer, TargetTo.Me, TunnelingTo.Me, protocol);
+                player.Write(writer, TargetTo.Me, MatchmakingTo.Me, protocol);
             }
 
             //* Envia-me para todos os jogadores conectados.
@@ -128,7 +128,7 @@ namespace NeutronNetwork.Server
                 writer.WritePacket((byte)Packet.Synchronize);
                 writer.Write((byte)2);
                 writer.WriteNext(player.Serialize().Compress(CompressionMode.Deflate));
-                player.Write(writer, TargetTo.Others, TunnelingTo.Auto, protocol);
+                player.Write(writer, TargetTo.Others, MatchmakingTo.Auto, protocol);
             }
         }
 
@@ -147,7 +147,7 @@ namespace NeutronNetwork.Server
             }
         }
 
-        protected void ChatHandler(NeutronPlayer player, ChatMode packet, TunnelingTo tunnelingTo, int viewId, string message)
+        protected void ChatHandler(NeutronPlayer player, ChatMode packet, MatchmakingTo matchmakingTo, int viewId, string message)
         {
             if (OnMessageReceived.Invoke(player, message))
             {
@@ -157,11 +157,11 @@ namespace NeutronNetwork.Server
                     writer.WritePacket((byte)Packet.Chat);
                     writer.Write(message);
                     if (packet == ChatMode.Global)
-                        player.Write(writer, TargetTo.All, tunnelingTo, Protocol.Tcp);
+                        player.Write(writer, TargetTo.All, matchmakingTo, Protocol.Tcp);
                     else if (packet == ChatMode.Private)
                     {
                         if (MatchmakingHelper.Server.GetPlayer(viewId, out NeutronPlayer playerFound))
-                            playerFound.Write(player, writer, TargetTo.Me, TunnelingTo.Me, Protocol.Tcp);
+                            playerFound.Write(player, writer, TargetTo.Me, MatchmakingTo.Me, Protocol.Tcp);
                         else
                             player.Error(Packet.Chat, "Player not found!", ErrorMessage.PLAYER_NOT_FOUND);
                     }
@@ -177,9 +177,9 @@ namespace NeutronNetwork.Server
             {
                 bool Send()
                 {
-                    TunnelingTo tunnelingTo = TunnelingTo.Auto;
+                    MatchmakingTo matchmakingTo = MatchmakingTo.Auto;
                     if (targetTo == TargetTo.Me)
-                        tunnelingTo = TunnelingTo.Me;
+                        matchmakingTo = MatchmakingTo.Me;
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         NeutronStream.IWriter writer = stream.Writer;
@@ -190,7 +190,7 @@ namespace NeutronNetwork.Server
                         writer.Write(instanceId);
                         writer.WriteNext(buffer);
                         MatchmakingHelper.Internal.AddCache(rpcId, viewId, writer, owner, cache, CachedPacket.iRPC);
-                        owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
+                        owner.Write(sender, writer, targetTo, matchmakingTo, protocol);
                     }
                     return true;
                 }
@@ -243,7 +243,7 @@ namespace NeutronNetwork.Server
 #if UNITY_EDITOR
             ThreadManager.WarnSimultaneousAccess();
 #endif
-            bool Send(CacheMode cache, TargetTo targetTo, TunnelingTo tunnelingTo)
+            bool Send(CacheMode cache, TargetTo targetTo, MatchmakingTo matchmakingTo)
             {
 #if UNITY_EDITOR
                 ThreadManager.WarnSimultaneousAccess();
@@ -255,7 +255,7 @@ namespace NeutronNetwork.Server
                     writer.Write(id);
                     writer.WriteNext(buffer);
                     MatchmakingHelper.Internal.AddCache(id, 0, writer, owner, cache, CachedPacket.gRPC);
-                    owner.Write(sender, writer, targetTo, tunnelingTo, protocol);
+                    owner.Write(sender, writer, targetTo, matchmakingTo, protocol);
                 }
                 return true;
             }
@@ -264,7 +264,7 @@ namespace NeutronNetwork.Server
             {
                 gRPCAttribute gRPCAttribute = remoteProceduralCall.gRPC;
                 ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance);
-                Send(gRPCAttribute.Cache, gRPCAttribute.TargetTo, gRPCAttribute.TunnelingTo);
+                Send(gRPCAttribute.CacheMode, gRPCAttribute.TargetTo, gRPCAttribute.MatchmakingTo);
             }
             else
                 owner.Error(Packet.gRPC, "Invalid gRPC ID, there is no attribute with this ID.", ErrorMessage.RPC_ID_NOT_FOUND);
@@ -350,7 +350,7 @@ namespace NeutronNetwork.Server
                                     NeutronStream.IWriter writer = stream.Writer;
                                     writer.WritePacket((byte)Packet.JoinChannel);
                                     writer.WriteWithInteger(channel);
-                                    player.Write(writer, TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+                                    player.Write(writer, TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
                                 }
                             }
                             else
@@ -604,11 +604,11 @@ namespace NeutronNetwork.Server
                 writer.WritePacket((byte)Packet.UdpKeepAlive);
                 writer.Write(LocalTime);
                 writer.Write(time);
-                player.Write(writer, TargetTo.Me, TunnelingTo.Me, Protocol.Udp);
+                player.Write(writer, TargetTo.Me, MatchmakingTo.Me, Protocol.Udp);
             }
         }
 
-        protected void CustomPacketHandler(NeutronPlayer player, bool isMine, int viewId, byte[] parameters, byte packet, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        protected void CustomPacketHandler(NeutronPlayer player, bool isMine, int viewId, byte[] parameters, byte packet, TargetTo targetTo, MatchmakingTo matchmakingTo, Protocol protocol)
         {
             if (MatchmakingHelper.Server.GetPlayer(viewId, out NeutronPlayer nPlayer))
             {
@@ -619,9 +619,9 @@ namespace NeutronNetwork.Server
                     writer.WritePacket(packet);
                     writer.WriteWithInteger(parameters);
                     if (isMine)
-                        nPlayer.Write(writer, targetTo, tunnelingTo, protocol);
+                        nPlayer.Write(writer, targetTo, matchmakingTo, protocol);
                     else
-                        nPlayer.Write(writer, TargetTo.Me, TunnelingTo.Me, protocol);
+                        nPlayer.Write(writer, TargetTo.Me, MatchmakingTo.Me, protocol);
                 }
             }
             else
@@ -633,7 +633,7 @@ namespace NeutronNetwork.Server
             NeutronPlayer player = packet.Owner;
             void Run((int, int, RegisterMode) key)
             {
-                void Send() => MatchmakingHelper.Internal.Redirect(packet, MatchmakingHelper.Internal.GetTargetTo(packet.IsServerSide), MatchmakingHelper.Internal.Tunneling(player, TunnelingTo.Auto));
+                void Send() => MatchmakingHelper.Internal.Redirect(packet, MatchmakingHelper.Internal.GetTargetTo(packet.IsServerSide), MatchmakingHelper.Internal.GetPlayersByMatchmakingTo(player, MatchmakingTo.Auto));
                 if (MatchmakingHelper.Server.GetNetworkObject(key, player, out NeutronView neutronView))
                 {
                     if (neutronView.NeutronBehaviours.TryGetValue(instanceId, out NeutronBehaviour neutronBehaviour))

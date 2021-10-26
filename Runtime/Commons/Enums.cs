@@ -91,7 +91,7 @@ namespace NeutronNetwork.Packets
     ///* Define onde os dados devem ser tunelados.
     /// </summary>
     [Network]
-    public enum TunnelingTo : byte
+    public enum MatchmakingTo : byte
     {
         /// <summary>
         ///* Usado com <see cref="TargetTo.Me"></see>

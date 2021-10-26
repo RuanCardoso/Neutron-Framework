@@ -878,8 +878,8 @@ namespace NeutronNetwork
         ///* Retorno de chamada: OnMessageReceived ou OnError.<br/>
         /// </summary>
         /// <param name="message">* A mensagem que será enviada.</param>
-        /// <param name="tunnelingTo">* O Túnel que será usado para a transmissão.</param>
-        public void SendMessage(string message, TunnelingTo tunnelingTo)
+        /// <param name="matchmakingTo">* O Túnel que será usado para a transmissão.</param>
+        public void SendMessage(string message, MatchmakingTo matchmakingTo)
         {
 #if !UNITY_SERVER || UNITY_EDITOR
             using (NeutronStream stream = PooledNetworkStreams.Pull())
@@ -887,7 +887,7 @@ namespace NeutronNetwork
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.Chat);
                 writer.WritePacket((byte)ChatMode.Global);
-                writer.WritePacket((byte)tunnelingTo);
+                writer.WritePacket((byte)matchmakingTo);
                 writer.Write(message ?? string.Empty);
                 Send(stream, Protocol.Tcp);
             }
@@ -927,10 +927,10 @@ namespace NeutronNetwork
         /// <param name="parameters">* Os parâmetros que o pacote irá enviar.</param>
         /// <param name="packet">* O Pacote personalizado que será usado.</param>
         /// <param name="targetTo">* Define quais jogadores devem ser incluídos na lista de recepção do pacote.</param>
-        /// <param name="tunnelingTo">* O Túnel que será usado para a transmissão.</param>
+        /// <param name="matchmakingTo">* O Túnel que será usado para a transmissão.</param>
         /// <param name="recProtocol">* O protocolo que será usado para receber o pacote.</param>
         /// <param name="protocol">* O protocolo que será usado para enviar o pacote.</param>
-        public void SendCustomPacket(NeutronStream.IWriter parameters, byte packet, TargetTo targetTo, TunnelingTo tunnelingTo, Protocol protocol)
+        public void SendCustomPacket(NeutronStream.IWriter parameters, byte packet, TargetTo targetTo, MatchmakingTo matchmakingTo, Protocol protocol)
         {
             using (NeutronStream stream = PooledNetworkStreams.Pull())
             {
@@ -939,7 +939,7 @@ namespace NeutronNetwork
                 writer.Write(LocalPlayer.Id);
                 writer.WritePacket(packet);
                 writer.WritePacket((byte)targetTo);
-                writer.WritePacket((byte)tunnelingTo);
+                writer.WritePacket((byte)matchmakingTo);
                 writer.WriteWithInteger(parameters);
                 Send(stream, protocol);
             }

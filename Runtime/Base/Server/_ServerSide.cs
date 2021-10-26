@@ -55,7 +55,7 @@ namespace NeutronNetwork
         {
             NeutronServer.OnStart += OnStart;
             NeutronServer.OnReceivePacket += OnReceivePacket;
-            MatchmakingHelper.Internal.OnCustomTunneling += OnCustomBroadcast;
+            MatchmakingHelper.Internal.OnCustomMatchmakingTo += OnCustomMatchmakingTo;
             MatchmakingHelper.Internal.OnCustomTarget += OnCustomTarget;
             ServerBase.OnAwake += OnServerAwake;
             ServerBase.OnMessageReceived += OnMessageReceived;
@@ -79,7 +79,7 @@ namespace NeutronNetwork
         {
             NeutronServer.OnStart -= OnStart;
             NeutronServer.OnReceivePacket -= OnReceivePacket;
-            MatchmakingHelper.Internal.OnCustomTunneling -= OnCustomBroadcast;
+            MatchmakingHelper.Internal.OnCustomMatchmakingTo -= OnCustomMatchmakingTo;
             MatchmakingHelper.Internal.OnCustomTarget -= OnCustomTarget;
             ServerBase.OnAwake -= OnServerAwake;
             ServerBase.OnMessageReceived -= OnMessageReceived;
@@ -239,12 +239,12 @@ namespace NeutronNetwork
             return true;
         }
 
-        protected virtual NeutronPlayer[] OnCustomBroadcast(NeutronPlayer player, TunnelingTo tunnelingTo)
+        protected virtual NeutronPlayer[] OnCustomMatchmakingTo(NeutronPlayer player, MatchmakingTo matchmakingTo)
         {
-            switch (tunnelingTo)
+            switch (matchmakingTo)
             {
                 default:
-                    LogHelper.Error("Broadcast Packet not implemented! " + tunnelingTo);
+                    LogHelper.Error("Broadcast Packet not implemented! " + matchmakingTo);
                     return null;
             }
         }

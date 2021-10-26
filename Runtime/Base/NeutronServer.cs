@@ -615,7 +615,7 @@ namespace NeutronNetwork.Server
                         case Packet.Chat:
                             {
                                 #region Defaults
-                                TunnelingTo tunnelingTo = default(TunnelingTo);
+                                MatchmakingTo matchmakingTo = default(MatchmakingTo);
                                 int viewId = default(int);
                                 #endregion
 
@@ -624,7 +624,7 @@ namespace NeutronNetwork.Server
                                 switch (chatPacket)
                                 {
                                     case ChatMode.Global:
-                                        tunnelingTo = (TunnelingTo)reader.ReadPacket();
+                                        matchmakingTo = (MatchmakingTo)reader.ReadPacket();
                                         break;
                                     case ChatMode.Private:
                                         viewId = reader.ReadInt();
@@ -634,7 +634,7 @@ namespace NeutronNetwork.Server
                                 #endregion
 
                                 #region Logic
-                                ChatHandler(owner, chatPacket, tunnelingTo, viewId, message);
+                                ChatHandler(owner, chatPacket, matchmakingTo, viewId, message);
                                 #endregion
                             }
                             break;
@@ -788,7 +788,7 @@ namespace NeutronNetwork.Server
                                 #region Defaults
                                 bool isMine;
                                 TargetTo targetTo = default(TargetTo);
-                                TunnelingTo tunnelingTo = default(TunnelingTo);
+                                MatchmakingTo matchmakingTo = default(MatchmakingTo);
                                 #endregion
 
                                 #region Reader
@@ -797,13 +797,13 @@ namespace NeutronNetwork.Server
                                 if ((isMine = PlayerHelper.IsMine(owner, viewId)))
                                 {
                                     targetTo = (TargetTo)reader.ReadPacket();
-                                    tunnelingTo = (TunnelingTo)reader.ReadPacket();
+                                    matchmakingTo = (MatchmakingTo)reader.ReadPacket();
                                 }
                                 byte[] buffer = reader.ReadWithInteger();
                                 #endregion
 
                                 #region Logic
-                                CustomPacketHandler(owner, isMine, viewId, buffer, packet, targetTo, tunnelingTo, protocol);
+                                CustomPacketHandler(owner, isMine, viewId, buffer, packet, targetTo, matchmakingTo, protocol);
                                 #endregion
                             }
                             break;

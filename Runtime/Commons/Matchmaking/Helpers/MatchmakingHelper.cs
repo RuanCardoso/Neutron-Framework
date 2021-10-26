@@ -21,7 +21,7 @@ namespace NeutronNetwork.Helpers
         /// </summary>
         public static class Internal
         {
-            public static event NeutronEventWithReturn<NeutronPlayer, TunnelingTo, NeutronPlayer[]> OnCustomTunneling;
+            public static event NeutronEventWithReturn<NeutronPlayer, MatchmakingTo, NeutronPlayer[]> OnCustomMatchmakingTo;
             public static event NeutronEventNoReturn<NeutronPlayer, NeutronPacket, TargetTo, NeutronPlayer[]> OnCustomTarget;
             /// <summary>
             ///* Recomendado o uso dos pré-processadores #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN<br/>
@@ -87,17 +87,17 @@ namespace NeutronNetwork.Helpers
             /// </summary>
             [Internal]
             [ThreadSafe]
-            public static NeutronPlayer[] Tunneling(NeutronPlayer player, TunnelingTo tunnelingTo)
+            public static NeutronPlayer[] GetPlayersByMatchmakingTo(NeutronPlayer player, MatchmakingTo matchmakingTo)
             {
-                switch (tunnelingTo)
+                switch (matchmakingTo)
                 {
-                    case TunnelingTo.Me:
+                    case MatchmakingTo.Me:
                         return null;
-                    case TunnelingTo.Server:
+                    case MatchmakingTo.Server:
                         {
                             return Neutron.Server.PlayersBySocket.Values.ToArray();
                         }
-                    case TunnelingTo.Channel:
+                    case MatchmakingTo.Channel:
                         {
                             if (player.IsInChannel())
                                 return player.Channel.Players();
@@ -105,7 +105,7 @@ namespace NeutronNetwork.Helpers
                                 LogHelper.Error("Failed to direct packet, channel not found. Join a channel before sending the packet.");
                             return default;
                         }
-                    case TunnelingTo.Room:
+                    case MatchmakingTo.Room:
                         {
                             if (player.IsInRoom())
                                 return player.Room.Players();
@@ -113,16 +113,16 @@ namespace NeutronNetwork.Helpers
                                 LogHelper.Error("Failed to direct packet, room not found. Join a room before sending the packet.");
                             return default;
                         }
-                    case TunnelingTo.Auto:
+                    case MatchmakingTo.Auto:
                         {
                             INeutronMatchmaking matchmaking = player.Matchmaking;
                             if (matchmaking != null)
                                 return matchmaking.Players();
                             else
-                                return Tunneling(player, TunnelingTo.Server);
+                                return GetPlayersByMatchmakingTo(player, MatchmakingTo.Server);
                         }
                     default:
-                        return OnCustomTunneling?.Invoke(player, tunnelingTo);
+                        return OnCustomMatchmakingTo?.Invoke(player, matchmakingTo);
                 }
             }
 

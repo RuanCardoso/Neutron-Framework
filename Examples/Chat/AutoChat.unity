@@ -1013,7 +1013,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _rcvField: {fileID: 0}
   _inputField: {fileID: 0}
-  _autoChat: 1
+  _autoChat: 0
 --- !u!1 &1047464918
 GameObject:
   m_ObjectHideFlags: 0

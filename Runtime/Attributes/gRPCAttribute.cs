@@ -1,17 +1,15 @@
 ﻿using NeutronNetwork.Packets;
 using System;
 
-/// <summary>
-///* Criado por: Ruan Cardoso(Brasil)
-///* Os br também são pica.
-///* Email: cardoso.ruan050322@gmail.com
-///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
-/// </summary>
+//* Created by: Ruan Cardoso(Brasil)
+//* Email: neutron050322@gmail.com
+//* License: MIT
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* É usado para a comunicação geral, ex: Eventos, Chat, Criação de objetos.....etc.<br/>
-    ///* É usado por instâncias globais, isto é, funciona mas como um metódo estático/global.
+    ///* Attribute to mark a method as a gRPC(Global Remote Procedure Call) service, the gRPC service must have a globally unique Id and cannot be declared in scripts that have multiple instances.<br/>
+    ///*In gRPC, a client or server application can directly call a method on a server or client application on a different or local machine as if it were a local object, making it easier for you to create distributed applications and services.<br/>
+    ///* gRPC is based around the idea of defining a service, specifying the methods that can be called remotely with their parameters types.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 #pragma warning disable IDE1006
@@ -19,42 +17,46 @@ namespace NeutronNetwork
 #pragma warning restore IDE1006
     {
         /// <summary>
-        ///* Id globalmente exclusivo para a identificação do metódo na rede.
+        ///* The globally unique Id of the gRPC service.
         /// </summary>
-        public byte ID
+        /// <value></value>
+        public byte Id
         {
             get;
-            set;
         }
 
         /// <summary>
-        ///* Defina como o metódo será "cachado" no servidor.
+        ///* Defines how the service will be cached on the server side.
         /// </summary>
-        public CacheMode Cache
+        /// <value></value>
+        public CacheMode CacheMode
         {
             get;
-            set;
-        } = CacheMode.None;
+        }
 
         /// <summary>
-        ///* Defina para quem os dados devem ser redirecionados.
+        ///* These define which remote clients get your RPC call.
         /// </summary>
+        /// <value></value>
         public TargetTo TargetTo
         {
             get;
-            set;
-        } = TargetTo.Me;
+        }
 
         /// <summary>
-        ///* Defina o túnel que será usado para redirecionar os dados.
+        ///* These define which matchmaking get your RPC call.
         /// </summary>
-        public TunnelingTo TunnelingTo
+        public MatchmakingTo MatchmakingTo
         {
             get;
-            set;
-        } = TunnelingTo.Me;
+        }
 
-        public gRPCAttribute()
-        { }
+        public gRPCAttribute(byte id, CacheMode cacheMode = CacheMode.None, TargetTo targetTo = TargetTo.All, MatchmakingTo matchmakingTo = MatchmakingTo.Auto)
+        {
+            Id = id;
+            CacheMode = cacheMode;
+            TargetTo = targetTo;
+            MatchmakingTo = matchmakingTo;
+        }
     }
 }

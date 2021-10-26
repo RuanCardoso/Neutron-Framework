@@ -81,15 +81,15 @@ namespace NeutronNetwork.Constants
     [Serializable]
     public class NeutronDefaultHandlerSettings
     {
-        public HandlerOptions OnPlayerNicknameChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerDisconnected = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerCreatedRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerJoinedRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerLeaveRoom = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerLeaveChannel = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnRoomPropertiesChanged = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
-        public HandlerOptions OnPlayerDestroyed = new HandlerOptions(TargetTo.All, TunnelingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerNicknameChanged = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerDisconnected = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerCreatedRoom = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerJoinedRoom = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerLeaveRoom = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerLeaveChannel = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerPropertiesChanged = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnRoomPropertiesChanged = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
+        public HandlerOptions OnPlayerDestroyed = new HandlerOptions(TargetTo.All, MatchmakingTo.Auto, Protocol.Tcp);
     }
 
     [Serializable]
