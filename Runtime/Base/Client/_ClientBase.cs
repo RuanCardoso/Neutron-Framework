@@ -27,7 +27,6 @@ namespace NeutronNetwork.Client
     public class ClientBase : ClientBehaviour
     {
         #region Fields
-        protected readonly Queue<TaskCompletionSource<NeutronPlayer[]>> tcss = new Queue<TaskCompletionSource<NeutronPlayer[]>>();
         private GameObject _matchManager;
         public string _sceneName;
         #endregion
@@ -369,23 +368,6 @@ namespace NeutronNetwork.Client
                 case RegisterMode.Dynamic:
                     Run((player.Id, viewId, registerType));
                     break;
-            }
-        }
-
-        protected void SynchronizeHandler(NeutronPlayer[] players, Action<NeutronPlayer> onEvent)
-        {
-            //* Atualiza os outros players para você.
-            foreach (var player in players)
-            {
-                //* Atualiza o jogador, mas mantem a refêrencia.
-                if (player.Equals(This.LocalPlayer))
-                    continue;
-                else
-                {
-                    var currentPlayer = Players[player.Id];
-                    currentPlayer.Apply(player);
-                    onEvent(currentPlayer);
-                }
             }
         }
         #endregion

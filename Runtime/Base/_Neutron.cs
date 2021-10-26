@@ -732,43 +732,56 @@ namespace NeutronNetwork
                     case Packet.Synchronize:
                         {
                             var mode = reader.ReadByte();
-                            void Synchronize(NeutronPlayer[] players)
+                            void SetState(NeutronPlayer[] otherPlayers)
                             {
-                                SynchronizeHandler(players, (syncedPlayer) =>
+                                //* Atualiza os outros players para você.
+                                foreach (var player in otherPlayers)
                                 {
+                                    //* Atualiza o jogador, mas mantem a refêrencia.
+                                    if (player.Equals(This.LocalPlayer))
+                                        continue;
+
+                                    var currentPlayer = Players[player.Id];
+                                    currentPlayer.Apply(player);
+
                                     //* Inicializa o evento de conexão.
-                                    if (!syncedPlayer.IsConnected)
+                                    if (!currentPlayer.IsConnected)
                                     {
-                                        Internal_OnPlayerConnected(syncedPlayer, false, () =>
+                                        if (LocalPlayer.IsConnected)
                                         {
-                                            OnPlayerConnected?.Invoke(syncedPlayer, false, this);
-                                        }, this);
+                                            Internal_OnPlayerConnected(currentPlayer, false, () =>
+                                            {
+                                                OnPlayerConnected?.Invoke(currentPlayer, false, this);
+                                            }, this);
+                                        }
                                     }
+
                                     //* Inicializa o evento de entrada no canal.
-                                    if (!syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    if (!currentPlayer.IsInChannel() && !currentPlayer.IsInRoom())
                                     {
                                         if (LocalPlayer.IsInChannel())
                                         {
                                             var channel = LocalPlayer.Channel;
-                                            Internal_OnPlayerJoinedChannel(channel, syncedPlayer, false, () =>
+                                            Internal_OnPlayerJoinedChannel(channel, currentPlayer, false, () =>
                                             {
-                                                OnPlayerJoinedChannel?.Invoke(channel, syncedPlayer, false, this);
+                                                OnPlayerJoinedChannel?.Invoke(channel, currentPlayer, false, this);
                                             }, this);
                                         }
                                     }
+
                                     //* Inicializa o evento de entrada na sala.
-                                    if (syncedPlayer.IsInChannel() && !syncedPlayer.IsInRoom())
+                                    if (currentPlayer.IsInChannel() && !currentPlayer.IsInRoom())
                                     {
                                         if (LocalPlayer.IsInRoom())
                                         {
                                             var room = LocalPlayer.Room;
-                                            Internal_OnPlayerJoinedRoom(room, syncedPlayer, false, () =>
+                                            Internal_OnPlayerJoinedRoom(room, currentPlayer, false, () =>
                                             {
-                                                OnPlayerJoinedRoom?.Invoke(room, syncedPlayer, false, this);
+                                                OnPlayerJoinedRoom?.Invoke(room, currentPlayer, false, this);
                                             }, this);
                                         }
                                     }
-                                });
+                                }
                             }
 
                             if (mode == 1)
@@ -776,15 +789,16 @@ namespace NeutronNetwork
                                 var aBuffer = reader.ReadNext();
                                 aBuffer = aBuffer.Decompress(CompressionMode.Deflate);
                                 var players = aBuffer.Deserialize<NeutronPlayer[]>();
-                                Synchronize(players);
-                                tcss.Dequeue().TrySetResult(players);
+                                SetState(players);
+                                synchronizeTcs.TrySetResult(true);
+                                synchronizeTcs = new TaskCompletionSource<bool>();
                             }
                             else if (mode == 2)
                             {
                                 var pBuffer = reader.ReadNext();
                                 pBuffer = pBuffer.Decompress(CompressionMode.Deflate);
                                 var localPlayer = pBuffer.Deserialize<NeutronPlayer>();
-                                Synchronize(new NeutronPlayer[] { localPlayer });
+                                SetState(new NeutronPlayer[] { localPlayer });
                             }
                         }
                         break;
@@ -1190,23 +1204,22 @@ namespace NeutronNetwork
             }
         }
 
+        private TaskCompletionSource<bool> synchronizeTcs = new TaskCompletionSource<bool>();
         /// <summary>
         ///* Sincroniza o estado do seu jogador para os outros jogadores, o estado dos outros jogadores também serão sincronizados para você.<br/>
         ///* Obtém todos os jogadores do matchmaking atual.<br/>
         ///* Só pode ser executado uma vez no matchmaking atual.
         /// </summary>
         /// <param name="player">* Attribuir este valor caso deseje enviar a partir do lado do servidor.</param>
-        public async Task<NeutronPlayer[]> Synchronize(NeutronPlayer player = null)
+        public Task Synchronize(NeutronPlayer player = null)
         {
-            var tcs = new TaskCompletionSource<NeutronPlayer[]>();
-            tcss.Enqueue(tcs);
             using (NeutronStream stream = PooledNetworkStreams.Pull())
             {
                 NeutronStream.IWriter writer = stream.Writer;
                 writer.WritePacket((byte)Packet.Synchronize);
                 Send(stream, player, Protocol.Tcp);
             }
-            return await tcs.Task;
+            return synchronizeTcs.Task;
         }
 
         /// <summary>
