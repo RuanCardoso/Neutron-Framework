@@ -10,35 +10,33 @@ using UnityEngine;
 #if UNITY_EDITOR
 #endif
 
-/// <summary>
-///* Criado por: Ruan Cardoso(Brasil)
-///* Os br também são pica.
-///* Email: cardoso.ruan050322@gmail.com
-///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
-/// </summary>
+//* Created by: Ruan Cardoso(Brasil)
+//* Email: neutron050322@gmail.com
+//* License: MIT
 namespace NeutronNetwork.Internal
 {
-    ///* Esta classe é a base do objeto de rede(NeutronView).
+    /// <summary>
+    ///* This class provides an identity to the object on the network.
+    /// </summary>
     public class ViewBehaviour : MonoBehaviour
     {
-        //* Preguiça de transformar isto aqui em propriedade, deixa assim por enquanto...
         #region Fields
         /// <summary>
-        ///* Este ID é usado para identificar a instância que irá invocar os iRPC'S.
+        ///* The unique identity of the object on the network.
         /// </summary>
         [SerializeField] private int _id;
         /// <summary>
-        ///* Define o ambiente que o objeto deve ser criado, Client, Server ou ambos.
+        ///* On which side should the object exist?
         /// </summary>
         [SerializeField]
         private Side _side = Side.Both;
         /// <summary>
-        ///* Define se o objeto deve ser destruído automaticamente.
+        ///* Defines if the object has auto destruction.
         /// </summary>
         [SerializeField]
         private bool _autoDestroy = true;
         /// <summary>
-        ///* Retorna o jogador que é dono do objeto.
+        ///* Returns the owner of the object.
         /// </summary>
         [SerializeField]
         [InfoBox("The properties of the owner of this network object.")]
@@ -47,75 +45,89 @@ namespace NeutronNetwork.Internal
 
         #region Properties
         /// <summary>
-        ///*Id do objeto de rede.
+        ///* Returns the unique identity of the object on the network.
         /// </summary>
-        public int Id {
+        /// <value></value>
+        public int Id
+        {
             get => _id;
             protected set => _id = value;
         }
 
         /// <summary>
-        ///* A instância de Neutron a qual este objeto pertence.
+        ///* Returns the instance owns this object.
         /// </summary>
-        public Neutron This {
+        /// <value></value>
+        public Neutron This
+        {
             get;
             protected set;
         }
 
         /// <summary>
-        ///* Retorna o dono deste objeto.
+        ///* Returns the owner of the object.
         /// </summary>
-        public NeutronPlayer Owner {
+        /// <value></value>
+        public NeutronPlayer Owner
+        {
             get => _owner;
             protected set => _owner = value;
         }
 
         /// <summary>
-        ///* Retorna se o objeto é o objeto do lado do servidor.
+        ///* Returns if object is server-side.
         /// </summary>
-        public bool IsServer {
+        /// <value></value>
+        public bool IsServer
+        {
             get;
             protected set;
         }
 
         /// <summary>
-        ///* Retorna se o objeto será destruído quando seu dono for desconectado ou sair do matchmaking.
+        ///* Returns if object has auto destruction.
         /// </summary>
-        public bool AutoDestroy {
+        /// <value></value>
+        public bool AutoDestroy
+        {
             get => _autoDestroy;
             set => _autoDestroy = value;
         }
 
         /// <summary>
-        ///* Retorna o lado que o objeto de rede será instanciado.
+        ///* Returns the side of the object.
         /// </summary>
         public Side Side => _side;
 
         /// <summary>
-        ///* Retorna se o objeto é um objeto de cena.
+        ///* Returns the is a scene object.
         /// </summary>
         public bool IsSceneObject => RegisterMode == RegisterMode.Scene;
 
         /// <summary>
-        ///* O tipo de registro usado para o objeto.
+        ///* Defines the register mode.
         /// </summary>
-        public RegisterMode RegisterMode {
+        /// <value></value>
+        public RegisterMode RegisterMode
+        {
             get;
             set;
         }
 
-        /// <summary>
-        ///* O Transform anexado a este GameObject. 
-        /// </summary>
-        public Transform Transform {
+        public Transform Transform
+        {
             get;
             set;
         }
         #endregion
 
         #region Collections
-        ///* Aqui será armazenado todos os metódos marcado com o atributo iRPC.
+        /// <summary>
+        ///* Store all iRPC methods of all instances.
+        /// </summary>
         [NonSerialized] public Dictionary<(byte, byte), RPCInvoker> iRPCs = new Dictionary<(byte, byte), RPCInvoker>();
+        /// <summary>
+        ///* Store all network instances....
         [NonSerialized] public Dictionary<int, NeutronBehaviour> NeutronBehaviours = new Dictionary<int, NeutronBehaviour>();
         #endregion
 
@@ -130,13 +142,14 @@ namespace NeutronNetwork.Internal
             {
                 foreach (Transform tr in transform)
                 {
+                    //* Check if the object has a network object.
                     if (tr.TryGetComponent<NeutronView>(out NeutronView _))
                     {
                         if (!LogHelper.Error("Child objects cannot have \"NeutronView\", because their parent already has one."))
                             Destroy(gameObject);
                     }
                     else
-                        continue;
+                        continue; //* Continue if the object has no network object.
                 }
             }
 #endif
@@ -145,8 +158,8 @@ namespace NeutronNetwork.Internal
         private void Reset()
         {
 #if UNITY_EDITOR
-            Id = 0;
-            OnValidate();
+            Id = 0; //* Set the default value.
+            OnValidate(); //* Validate the object on reset.
 #endif
         }
 
@@ -157,74 +170,65 @@ namespace NeutronNetwork.Internal
             {
                 if (SceneHelper.IsInScene(gameObject))
                 {
-                    var views = FindObjectsOfType<NeutronView>();
+                    //* Check if the object is in the scene.
+                    var views = FindObjectsOfType<NeutronView>(); //* Find all network objects in the scene.
                     if (Id == 0)
-                        Id = Helper.GetAvailableId(views, x => x.Id, short.MaxValue);
+                        Id = Helper.GetAvailableId(views, x => x.Id, short.MaxValue); //* Get the available id.
                     else
                     {
                         if (!(Id >= short.MaxValue))
                         {
-                            int count = views.Count(x => x.Id == Id);
+                            //* Check if the id is valid.
+                            int count = views.Count(x => x.Id == Id); //* find duplicated id.
                             if (count > 1)
-                                Reset();
+                                Reset(); //* Reset the id if it is already in use.
                         }
                         else
                             LogHelper.Error("Max Neutron Views reached!");
                     }
                 }
                 else
-                    Id = 0;
+                    Id = 0; //* Set the default value.
             }
 #endif
         }
         #endregion
 
         #region Virtual Methods
-        /// <summary>
-        ///* Este método é chamado quando o objeto é instanciado e está pronto para uso, não tenho certeza, depois vejo.
-        /// </summary>
         public virtual void OnNeutronStart() { }
-        /// <summary>
-        ///* Este método é chamado quando o objeto é registrado na rede, não tenho certeza, depois vejo.
-        /// </summary>
         public virtual void OnNeutronAwake() { }
-        /// <summary>
-        ///* Registra seu objeto em rede.
-        /// </summary>
         public virtual bool OnNeutronRegister(NeutronPlayer player, bool isServer, RegisterMode registerMode, Neutron instance) => true;
         #endregion
 
         #region Reflection
-        //* Este método usa reflexão(Lento? é, mas só uma vez, foda-se hehehehhe), é chamado apenas uma vez quando o objeto é instanciado.
         public void MakeAttributes()
         {
-            var childs = GetComponentsInChildren<NeutronBehaviour>(); //* pega todas as instâncias que herdam de NeutronBehaviour
+            var childs = GetComponentsInChildren<NeutronBehaviour>(); //* Get all network instances in the scene.
             if (childs.Length > 0)
             {
-                //* Percorre as instâncias e pega os metódos e armazena no dicionário iRPC'S.
                 for (int c = 0; c < childs.Length; c++)
                 {
-                    NeutronBehaviour child = childs[c];
-
+                    NeutronBehaviour child = childs[c]; //* Get the current network instance.
                     #region Add Instances
-                    if (!NeutronBehaviours.ContainsKey(child.Id))
-                        NeutronBehaviours.Add(child.Id, child); //* Adiciona a instância no dict, para manter rápido acesso a qualquer instância.
+                    if (!NeutronBehaviours.ContainsKey(child.Id)) //* Check if the instance is already in the dictionary.
+                        NeutronBehaviours.Add(child.Id, child); //* Add the instance to the dictionary.
                     else
                         LogHelper.Error($"Duplicate \"NeutronBehaviour\" ID not allowed in \"{child.GetType().Name}\". {child.Id}");
                     #endregion
 
                     if (child != null && child.enabled)
                     {
-                        (iRPCAttribute[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPCAttribute>(child);
+                        //* Check if the instance is enabled.
+                        (iRPCAttribute[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPCAttribute>(child); //* Get all iRPC methods.
                         for (int i = 0; i < multiplesMethods.Length; i++)
                         {
-                            (iRPCAttribute[], MethodInfo) methods = multiplesMethods[i];
+                            (iRPCAttribute[], MethodInfo) methods = multiplesMethods[i]; //* Get the current iRPC method.
                             for (int ii = 0; ii < methods.Item1.Count(); ii++)
                             {
-                                iRPCAttribute method = methods.Item1[ii];
-                                (byte, byte) key = (method.Id, child.Id);
-                                if (!iRPCs.ContainsKey(key)) //* Verifica se não existe um metódo duplicado, ou seja, um iRPC com o mesmo ID.
-                                    iRPCs.Add(key, new RPCInvoker(child, methods.Item2, method)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
+                                iRPCAttribute method = methods.Item1[ii]; //* Get the current iRPC attribute.
+                                (byte, byte) key = (method.Id, child.Id); //* Get the key.
+                                if (!iRPCs.ContainsKey(key)) //* Check if the key is already in the dictionary.
+                                    iRPCs.Add(key, new RPCInvoker(child, methods.Item2, method)); //* Add the key to the dictionary.
                                 else
                                     LogHelper.Error($"Duplicate ID not allowed in \"{child.GetType().Name}\".");
                             }
