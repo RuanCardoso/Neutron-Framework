@@ -222,7 +222,7 @@ namespace NeutronNetwork.Internal
                             for (int ii = 0; ii < methods.Item1.Count(); ii++)
                             {
                                 iRPCAttribute method = methods.Item1[ii];
-                                (byte, byte) key = (method.ID, child.Id);
+                                (byte, byte) key = (method.Id, child.Id);
                                 if (!iRPCs.ContainsKey(key)) //* Verifica se não existe um metódo duplicado, ou seja, um iRPC com o mesmo ID.
                                     iRPCs.Add(key, new RPCInvoker(child, methods.Item2, method)); //* Adiciona o método no Dict, e monta sua estrutura RPC.
                                 else

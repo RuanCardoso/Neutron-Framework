@@ -134,7 +134,7 @@ namespace NeutronNetwork.Components
             _interpolationTime = 0;
         }
 
-        [iRPC(ID = RpcId)]
+        [iRPC(RpcId)]
         public void SyncSnapshot(NeutronStream.IReader reader, NeutronPlayer player)
         {
             var position = _syncPosition ? reader.ReadVector3() : Vector3.zero;

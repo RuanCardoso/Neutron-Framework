@@ -1,16 +1,14 @@
 ﻿using System;
 using UnityEngine;
 
-/// <summary>
-///* Criado por: Ruan Cardoso(Brasil)
-///* Os br também são pica.
-///* Email: cardoso.ruan050322@gmail.com
-///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
-/// </summary>
+//* Created by: Ruan Cardoso(Brasil)
+//* Email: neutron050322@gmail.com
+//* License: MIT
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* Defina para serializar um campo ou propriedade via rede.<br/>
+    ///* Attribute to mark a variable or property as a auto-synchonized, which are synchronized from the server to clients and vice-versa.<br/>
+    ///* This attribute allows validation of entries if the authority belongs to the client.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class SyncVarAttribute : PropertyAttribute

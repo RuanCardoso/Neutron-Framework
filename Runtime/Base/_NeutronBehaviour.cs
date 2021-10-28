@@ -12,135 +12,154 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-///* Criado por: Ruan Cardoso(Brasil)
-///* Os br também são pica.
-///* Email: cardoso.ruan050322@gmail.com
-///* Licença: GNU AFFERO GENERAL PUBLIC LICENSE
-/// </summary>
+//* Created by: Ruan Cardoso(Brasil)
+//* Email: neutron050322@gmail.com
+//* License: MIT
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* Base de todos os objetos de rede, seja ao lado do servidor ou ao lado do cliente.
+    ///* This class is the base class for all objects that can be controlled by the network.
     /// </summary>
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_BEHAVIOUR)]
     public class NeutronBehaviour : GlobalBehaviour
     {
+        /// <summary>
+        ///* Stream used by the network to send and receive data.
+        /// </summary>
+        /// <returns></returns>
         private readonly NeutronStream _packetStream = new NeutronStream();
 
         #region Fields -> Inspector
+        /// <summary>
+        ///* The network ID of the object.
+        /// </summary>
+        /// <returns></returns>
         [Header("[Identity]")]
         [SerializeField] private byte _id;
+        /// <summary>
+        ///* Define if the authority is handled by other object.
+        /// </summary>
+        /// <returns></returns>
         [SerializeField] [ShowIf("_authority", AuthorityMode.Handled)] private NeutronBehaviour _authorityHandledBy;
+        /// <summary>
+        ///* The level of authority of the object.
+        /// </summary>
         [SerializeField] [HorizontalLineDown] private AuthorityMode _authority = AuthorityMode.Mine;
         [HideInInspector]
         [SerializeField] private bool _hasOnAutoSynchronization, _hasIRPC;
         #endregion
 
         #region Fields
+        /// <summary>
+        ///* Timer of auto synchronization.
+        /// </summary>
         private float _autoSyncTimeDelay;
+        /// <summary>
+        ///* Store the auto synchronization options.
+        /// </summary>
+        /// <returns></returns>
         [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
         #endregion
 
         #region Properties
         /// <summary>
-        ///* Id que será usado para identificar a instância que deve invocar os iRPC's.
+        ///* The id used to identify the object on the network.
         /// </summary>
-        /// <value></value>
         public byte Id => _id;
 
         /// <summary>
-        ///* Retorna o nível de autoridade usado.
+        ///* Returns the level of authority of the object.
         /// </summary>
         protected AuthorityMode Authority => _authority;
 
         /// <summary>
-        ///* Define o nível de autoridade para o OnAutoSynchronization.
+        ///* Override to set the auto sync authority level.
         /// </summary>
         protected virtual bool AutoSyncAuthority => HasAuthority;
 
         /// <summary>
-        ///* Retorna se o objeto está registrado na rede.
+        ///* Returns if the object has registered on the network.
         /// </summary>
-        public bool IsRegistered {
+        /// <value></value>
+        public bool IsRegistered
+        {
             get;
             private set;
         }
 
         /// <summary>
-        ///* Retorna se o objeto é seu, HasAuthority é uma alternativa.
+        ///* Returns if you has authority over the object.
         /// </summary>
         /// <returns></returns>
         protected bool IsMine => IsRegistered && This.IsMine(Owner);
 
         /// <summary>
-        ///* Retorna se você é o dono(master) da sala.<br/>
+        ///* Returns if you is the owner of matchmaking.
         /// </summary>
-        /// <returns></returns>
         protected bool IsMasterClient => IsRegistered && Owner.IsMaster;
 
         /// <summary>
-        ///* Retorna se o objeto é o objeto do lado do servidor, HasAuthority é uma alternativa.
+        ///* Returns if server has authority over the object.
         /// </summary>
-        /// <returns></returns>
         protected bool IsServer => IsRegistered && NeutronView.IsServer;
 
         /// <summary>
-        ///* Retorna se o objeto é o objeto do lado do cliente, HasAuthority é uma alternativa.
+        ///* Returns is client has authority over the object.
         /// </summary>
-        /// <returns></returns>
         protected bool IsClient => IsRegistered && !IsServer;
 
         /// <summary>
-        ///* Retorna se o objeto é seu, HasAuthority é uma alternativa.
+        ///* Implements custom authority logic.
         /// </summary>
         /// <returns></returns>
         protected bool IsCustom => IsRegistered && OnCustomAuthority();
 
         /// <summary>
-        ///* Retorna se você tem autoridade para controlar este objeto, uma versão simplificada de IsMine|IsServer|IsClient|IsMasterClient.<br/>
-        ///* Retorna com base no tipo de Autoridade escolhido no inspetor.
+        ///* Simplified version of <see cref="IsMine"/> or <see cref="IsCustom"/> or <see cref="IsServer"/> or <see cref="IsClient"/> or <see cref="IsMasterClient"/> or <see cref="_authorityHandledBy"/> and others...<br/>
+        ///* Returns based on the authority mode defined in the inspector.
         /// </summary>
         /// <value></value>
-        protected bool HasAuthority {
-            get {
+        protected bool HasAuthority
+        {
+            get
+            {
                 switch (Authority)
                 {
                     case AuthorityMode.Mine:
                         {
-                            return IsMine;
+                            return IsMine; //* If the authority is mine, return true.
                         }
                     case AuthorityMode.Server:
                         {
-                            return IsServer;
+                            return IsServer; //* If the authority is server, return true.
                         }
                     case AuthorityMode.Master:
                         {
-                            return IsMasterClient;
+                            return IsMasterClient; //* If the authority is master client, return true.
                         }
                     case AuthorityMode.MineAndServer:
                         {
-                            return IsMine || IsServer;
+                            return IsMine || IsServer; //* If the authority is mine or server, return true.
                         }
                     case AuthorityMode.MineAndMaster:
                         {
-                            return IsMine || IsMasterClient;
+                            return IsMine || IsMasterClient; //* If the authority is mine or master client, return true.
                         }
                     case AuthorityMode.ServerAndMaster:
                         {
-                            return IsServer || IsMasterClient;
+                            return IsServer || IsMasterClient; //* If the authority is server or master client, return true.
                         }
                     case AuthorityMode.All:
                         {
-                            return true;
+                            return true; //* If the authority is all, return true.
                         }
                     case AuthorityMode.Custom:
                         {
-                            return IsCustom;
+                            return IsCustom; //* If the authority is custom, return the result of <see cref="OnCustomAuthority"/>.
                         }
                     case AuthorityMode.Handled:
                         {
-                            return _authorityHandledBy != null && _authorityHandledBy.HasAuthority;
+                            return _authorityHandledBy != null && _authorityHandledBy.HasAuthority; //* If the authority is handled, return the result of <see cref="_authorityHandledBy"/>.
                         }
                     default:
                         return LogHelper.Error("Authority not implemented!");
@@ -149,73 +168,76 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* Definido quando o servidor tem a autoridade sobre o objeto, isto é, impede que o servidor execute a sí mesmo alguma instrução que faz parte do iRPC ou OnAutoSynchronization.<br/>
-        ///* Se o Cliente possuir a autoridade sobre o objeto, retorna "True".
+        /// * Set when the server has authority over the object, that is, to prevent the server from executing itself an instruction that is part of the iRPC or OnAutoSynchronization. <br/>
+        /// * If the Client has an authority on the object, returns "true".
         /// </summary>
         protected bool DoNotPerformTheOperationOnTheServer => IsClient || Authority != AuthorityMode.Server;
 
         /// <summary>
-        ///* Retorna o seu objeto de rede.
+        ///* Returns the identity of the object.
         /// </summary>
         /// <value></value>
-        public NeutronView NeutronView {
+        public NeutronView NeutronView
+        {
             get;
             set;
         }
 
         /// <summary>
-        ///* A instância de Neutron a qual este objeto pertence.
+        ///* Returns the instance who owns the object.
         /// </summary>
         protected Neutron This => NeutronView.This;
 
         /// <summary>
-        ///* Retorna o jogador que é dono do objeto.
+        ///* Returns the owner of the object.
         /// </summary>
         protected NeutronPlayer Owner => NeutronView.Owner;
 
         /// <summary>
-        ///* Obtém a cena a qual este objeto pertence.
+        ///* Returns the scene who owns the object.
         /// </summary>
         protected Scene Scene => gameObject.scene;
 
         /// <summary>
-        ///* Obtém a cena de física 3D usada pela cena.
+        ///* Returns the 3D physics scene used by the object.
         /// </summary>
+        /// <returns></returns>
         protected PhysicsScene Physics3D => Scene.GetPhysicsScene();
 
         /// <summary>
-        ///* Obtém a cena de física 2D usada pela cena.
+        ///* Returns the 2D physics scene used by the object.
         /// </summary>
+        /// <returns></returns>
         protected PhysicsScene2D Physics2D => Scene.GetPhysicsScene2D();
 
         /// <summary>
-        ///* Obtenha o tempo atual da rede em segundos(sec).<br/>
-        ///* Multiplique por mil para obter em milisegundos(ms).
+        ///* Returns the network time in seconds.
         /// </summary>
         protected double NetworkTime => This.NetworkTime.Time;
 
         /// <summary>
-        ///* Obtenha o tempo atual em segundos(sec) desde do início da conexão.<br/>
-        ///* Multiplique por mil para obter em milisegundos(ms).<br/>
-        ///* Não afetado pela rede.
+        ///* Returns the local time in seconds.
         /// </summary>
         protected double LocalTime => This.NetworkTime.LocalTime;
 
         /// <summary>
-        ///* Obtém as opções do AutoSync definidas no inspetor.
+        ///* Returns the auto-sync options.
         /// </summary>
         public AutoSyncOptions AutoSyncOptions => _onAutoSynchronizationOptions;
         #endregion
 
         #region Collections
+        /// <summary>
+        ///* Store the all methods marked with iRPC attribute in the Editor.
+        /// </summary>
         [SerializeField] [ShowIf("_hasIRPC")] [Label("iRpcOptions")] protected List<iRpcOptions> _iRpcOptions = new List<iRpcOptions>();
+        /// <summary>
+        ///* Store the all methods marked with iRPC attribute in the Runtime.
+        /// </summary>
         [NonSerialized] protected readonly Dictionary<byte, iRpcOptions> RuntimeIRpcOptions = new Dictionary<byte, iRpcOptions>();
         #endregion
 
         #region Custom Mono Behaviour Methods
-        /// <summary>
-        ///* É Seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
-        /// </summary>
         public virtual void OnNeutronStart()
         {
             if (_hasOnAutoSynchronization)
@@ -227,27 +249,22 @@ namespace NeutronNetwork
                     LogHelper.Warn("AutoSync: The stream has no fixed size! performance is lower if you send with very frequency.");
             }
 
-            //* Inicializa os iRpcs.
             foreach (iRpcOptions option in _iRpcOptions)
             {
+                //* Add the iRPC options to the runtime dictionary.
                 if (option.Instance.Id == Id)
-                    RuntimeIRpcOptions.Add(option.RpcId, option);
+                    RuntimeIRpcOptions.Add(option.RpcId, option); //* If the instance id is the same as the object id, add the option to the runtime dictionary.
                 else
-                    NeutronView.NeutronBehaviours[option.Instance.Id].RuntimeIRpcOptions.Add(option.RpcId, option);
+                    NeutronView.NeutronBehaviours[option.Instance.Id].RuntimeIRpcOptions.Add(option.RpcId, option); //* If the instance id is different, add the option to the runtime dictionary of the instance.
             }
-            //* Define que o metódo foi registrado.
-            IsRegistered = true;
+            IsRegistered = true; //* Set the object as registered.
         }
 
-        /// <summary>
-        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
-        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
-        /// </summary>
         protected virtual void OnNeutronUpdate()
         {
             if (_hasOnAutoSynchronization)
             {
-                _autoSyncTimeDelay -= Time.deltaTime;
+                _autoSyncTimeDelay -= Time.deltaTime; //* Decrease the auto-sync delay.
                 if (_autoSyncTimeDelay <= 0)
                 {
                     NeutronStream packetStream = GetPacketStream();
@@ -257,33 +274,25 @@ namespace NeutronNetwork
                         {
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {
-                                stream.Writer.SetPosition(PacketSize.AutoSync);
+                                stream.Writer.SetPosition(PacketSize.AutoSync); //* Set the position of the stream to the auto-sync packet size.
                                 if (OnAutoSynchronization(stream, true))
-                                    This.OnAutoSynchronization(stream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                    This.OnAutoSynchronization(stream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Send the auto-sync packet.
                             }
                         }
                         else
                         {
-                            packetStream.Writer.SetPosition(PacketSize.AutoSync);
+                            //* If the stream has a fixed size, send the auto-sync packet with the fixed size.
+                            packetStream.Writer.SetPosition(PacketSize.AutoSync); //* Set the position of the stream to the auto-sync packet size.
                             if (OnAutoSynchronization(packetStream, true))
-                                This.OnAutoSynchronization(packetStream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Envia para a rede.
+                                This.OnAutoSynchronization(packetStream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Send the auto-sync packet.
                         }
                     }
-                    _autoSyncTimeDelay = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond;
+                    _autoSyncTimeDelay = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond; //* Set the auto-sync delay per second.
                 }
             }
         }
 
-        /// <summary>
-        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
-        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
-        /// </summary>
         protected virtual void OnNeutronFixedUpdate() { }
-
-        /// <summary>
-        ///* Single Update, as atualizações de todos os objetos são chamados por um só invocador(Global).<br/>
-        ///* É seguro para chamadas internas.(IsMine, HasAuthority, IsServer..etc).
-        /// </summary>
         protected virtual void OnNeutronLateUpdate() { }
         #endregion
 
@@ -321,25 +330,24 @@ namespace NeutronNetwork
 #endif
         }
 
-        //* Não entendo porra nenhuma que tá aqui, sim foi eu que fiz..... só sei que é pra attribuir o Id do view e os metódos rpc no dict.
-        //* Chamado apenas no editor..
         private void LoadOptions()
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR //* If the application is in the editor.
             if (!Application.isPlaying)
             {
-                var behaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
+                var behaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>(); //* Get all.......
                 if (behaviours.Length <= byte.MaxValue)
                 {
                     if (Id == 0)
-                        _id = (byte)Helper.GetAvailableId(behaviours, x => x.Id, byte.MaxValue);
+                        _id = (byte)Helper.GetAvailableId(behaviours, x => x.Id, byte.MaxValue); //* If the object id is 0, get the available id.
                     else
                     {
                         if (!(Id >= byte.MaxValue))
                         {
-                            int count = behaviours.Count(x => x.Id == Id);
+                            //* If the object id is not 0 and less than the maximum value, check if the id is available.
+                            int count = behaviours.Count(x => x.Id == Id); //* find duplicate id.
                             if (count > 1)
-                                Reset();
+                                Reset(); //* If the id is already in use, reset the id.
                         }
                         else
                             LogHelper.Error("Max Neutron Behaviours reached in this Neutron View!");
@@ -352,61 +360,68 @@ namespace NeutronNetwork
             #region Reflection
             if (!Application.isPlaying)
             {
-                NeutronBehaviour instance = this;
+                NeutronBehaviour instance = this; //* Get local instance.
                 if (instance != null)
                 {
-                    var method = ReflectionHelper.GetMethod("OnAutoSynchronization", instance);
+                    var method = ReflectionHelper.GetMethod("OnAutoSynchronization", instance); //* Get the virtual auto-sync method.
                     if (method != null)
-                        _hasOnAutoSynchronization = method.DeclaringType != typeof(NeutronBehaviour); //* Define se OnNeutronSerializedView está implementado.
+                        _hasOnAutoSynchronization = method.DeclaringType != typeof(NeutronBehaviour); //* If the method is not null, check if the method is not from the base class.
                     else
                         _hasOnAutoSynchronization = false;
 
-                    (iRPCAttribute[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPCAttribute>(instance);
-                    _hasIRPC = multiplesMethods.Length > 0;
+                    (iRPCAttribute[], MethodInfo)[] multiplesMethods = ReflectionHelper.GetMultipleAttributesWithMethod<iRPCAttribute>(instance); //* Get all the methods marked with iRPC attribute.
+                    _hasIRPC = multiplesMethods.Length > 0; //* If the methods are not null, set the hasIRPC to true.
                     if (_hasIRPC && _iRpcOptions != null)
                     {
-                        List<byte> listOfId = new List<byte>();
+                        //* If the methods are not null, set the iRPC options.
+                        List<byte> listOfId = new List<byte>(); //* Create a list of ids.
                         for (int i = 0; i < multiplesMethods.Length; i++)
                         {
+                            //* For each method marked with iRPC attribute, create a new iRPC option.
                             (iRPCAttribute[], MethodInfo) iRPCs = multiplesMethods[i];
                             for (int rI = 0; rI < iRPCs.Item1.Length; rI++)
                             {
-                                iRPCAttribute iRPC = iRPCs.Item1[rI];
+                                //* For each iRPC attribute, create a new iRPC option.
+                                iRPCAttribute iRPC = iRPCs.Item1[rI]; //* Get the iRPC attribute.
+
                                 var option = new iRpcOptions
                                 {
                                     Instance = instance,
                                     OriginalInstance = instance,
-                                    RpcId = iRPC.ID,
+                                    RpcId = iRPC.Id,
                                     Name = iRPCs.Item2.Name,
-                                };
-                                listOfId.Add(option.RpcId);
-                                if (!_iRpcOptions.Contains(option))
-                                    _iRpcOptions.Add(option);
+                                }; //* Create a new iRPC option.
+
+                                listOfId.Add(option.RpcId); //* Add the id to the list of ids.
+                                if (!_iRpcOptions.Contains(option)) //* If the option is not in the list of iRPC options.
+                                    _iRpcOptions.Add(option);//* Add the option to the list of iRPC options.
                                 else
-                                    continue;
+                                    continue; //* If the option is already in the list of iRPC options, continue.
                             }
                         }
 
                         if (_iRpcOptions.Count > listOfId.Count)
                         {
+                            //* If the list of ids is less than the list of iRPC options, remove the extra options.
                             _iRpcOptions.Where(x => !listOfId.Contains(x.RpcId)).ToList().ForEach((x) =>
                             {
-                                _iRpcOptions.Remove(x);
+                                _iRpcOptions.Remove(x); //* Remove the iRPC options that are not in the list of ids.
                             });
                         }
 
                         if (_iRpcOptions.Count > listOfId.Count)
                         {
+                            //* If the list of ids is less than the list of iRPC options, remove the extra options.
                             int diff = _iRpcOptions.Count - listOfId.Count;
                             for (int i = 0; i < diff; i++)
-                                _iRpcOptions.RemoveAt(_iRpcOptions.Count - 1);
+                                _iRpcOptions.RemoveAt(_iRpcOptions.Count - 1); //* Remove the extra options.
                         }
-                        _iRpcOptions = _iRpcOptions.OrderBy(x => x.RpcId).ToList();
+                        _iRpcOptions = _iRpcOptions.OrderBy(x => x.RpcId).ToList(); //* Order the iRPC options by id.
                     }
                     else
                     {
                         if (_iRpcOptions != null)
-                            _iRpcOptions.Clear();
+                            _iRpcOptions.Clear(); //* If the methods are null, clear the list of iRPC options.
                     }
                 }
             }
@@ -415,12 +430,14 @@ namespace NeutronNetwork
         }
         #endregion
 
-        #region RPC
+        #region Service Calls
         /// <summary>
-        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados via rede.<br/>
-        ///* Prepara uma chamada iRPC na rede.
+        ///* Initiates a iRPC(Instance Remote Procedure Call) service call.<br/>
         /// </summary>
-        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="id">The id of the iRPC service.</param>
+        /// <param name="parameters">The parameters of the iRPC service.</param>
+        /// <param name="options">Returns the current options of iRPC.</param>
+        /// <returns></returns>
         protected NeutronStream.IWriter Begin_iRPC(byte id, NeutronStream parameters, out iRpcOptions options)
         {
             if (RuntimeIRpcOptions.TryGetValue(id, out options))
@@ -429,69 +446,68 @@ namespace NeutronNetwork
         }
 
         /// <summary>
-        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados via rede.
+        ///* Ends a iRPC(Instance Remote Procedure Call) service call.<br/>
         /// </summary>
-        /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
+        /// <param name="id">The id of the iRPC service.</param>
+        /// <param name="parameters">The parameters of the iRPC service.</param>
         protected void End_iRPC(byte id, NeutronStream parameters) => End_iRPC(id, parameters, NeutronView);
 
         /// <summary>
-        ///* iRPC(Instance Remote Procedure Call), usado para a comunicação, isto é, a troca de dados via rede.
+        ///* Ends a iRPC(Instance Remote Procedure Call) service call.<br/>
         /// </summary>
-        /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="view">* O Objeto de rede de destino.</param>
+        /// <param name="id">The id of the iRPC service.</param>
+        /// <param name="parameters">The parameters of the iRPC service.</param>
+        /// <param name="view">The view to execute the iRPC service call on.</param>
         protected void End_iRPC(byte id, NeutronStream parameters, NeutronView view)
         {
-            if (RuntimeIRpcOptions.TryGetValue(id, out iRpcOptions option)) //* como é a perfomance disso?
-                This.End_iRPC(parameters, view, option.RpcId, option.OriginalInstance.Id, option.CacheMode, option.TargetTo, option.Protocol, IsServer);
+            if (RuntimeIRpcOptions.TryGetValue(id, out iRpcOptions option)) //* If the option is found.
+                This.End_iRPC(parameters, view, option.RpcId, option.OriginalInstance.Id, option.CacheMode, option.TargetTo, option.Protocol, IsServer); //* Execute the iRPC service call.
             else
                 LogHelper.Error($"Rpc [{id}] not found!");
         }
 
         /// <summary>
-        ///* gRPC(Global Remote Procedure Call), usado para a comunicação, isto é, a troca de dados via rede.<br/>
+        ///* Ends a gRPC(Global Remote Procedure Call) service call.<br/>
         /// </summary>
-        /// <param name="id">* ID do metódo que será invocado.</param>
-        /// <param name="parameters">* Os parâmetros que serão enviados para o metódo a ser invocado.</param>
-        /// <param name="protocol">* O protocolo que será usado para enviar os dados.</param>
+        /// <param name="id">The id of the gRPC service.</param>
+        /// <param name="parameters">The parameters of the gRPC service.</param>
+        /// <param name="protocol">The protocol to send the gRPC service call on</param>
         protected void End_gRPC(byte id, NeutronStream parameters, Protocol protocol)
         {
             if (!IsServer)
-                End_gRPC(id, parameters, protocol, This);
+                End_gRPC(id, parameters, protocol, This); //* If the client, execute the gRPC service call.
             else
-                End_gRPC(id, parameters, protocol, Owner);
+                End_gRPC(id, parameters, protocol, Owner); //* If the server, execute the gRPC service call.
         }
         #endregion
 
         #region Virtual Methods
         /// <summary>
-        ///* Define o stream a ser usado para serializar os dados, somente se "HighPerformance" for verdadeiro.<br/>
-        ///* Utilizado para serialização de dados de alta performance, reduz alocações no GC.<br/>
+        ///* Reduce the GC pressure, reusing the same instance of the <see cref="NeutronStream"/> with fixed size.
         /// </summary>
         /// <returns></returns>
         protected virtual NeutronStream GetPacketStream() => _packetStream;
 
         /// <summary>
-        ///* Usado para personalizar a sincronização de variáveis ​​em um script monitorado por um NeutronView.<br/>
-        ///* É determinado automaticamente se as variáveis ​​que estão sendo serializadas devem ser enviadas ou recebidas.<br/>
-        ///* Usa o nível de autoridade definido no Inspetor.<br/>
-        ///* O stream é descartado automaticamente, não é necessário o descarte manual.
+        ///* Called by Neutron several times per second, so that your script can write and read synchronization data for the PhotonView.<br/>
+        ///* Implementing this method, you can customize which data a NeutronView regularly synchronizes. Your code defines what is being sent (content) and how your data is used by receiving clients.
         /// </summary>
-        /// <param name="stream">* Fluxo usado para escrever ou ler os parâmetros enviados ou recebidos.</param>
-        /// <param name="isMine">* Define se você está escrevendo ou lendo os dados.</param>
+        /// <param name="stream">The stream to write or read data.</param>
+        /// <param name="isMine">The IsMine property will be true if this client is the "owner" of the NeutronView (and thus the GameObject). Add data to the stream and it's sent via the server to the other players in a matchmaking. On the receiving side, IsMine is false and the data should be read.</param>
+        /// <returns></returns>
         public virtual bool OnAutoSynchronization(NeutronStream stream, bool isMine) => OnValidateAutoSynchronization(isMine);
 
         /// <summary>
-        ///* Usado para validar "OnAutoSynchronization" ao lado do cliente ou servidor.
+        ///* Used to validate the OnAutoSynchronization method, if returning false, the OnAutoSynchronization method will not be sended by the server, except if object not exists on the server.
         /// </summary>
-        /// <param name="isMine">Se "True", Validação ocorre ao lado do Cliente, se "False", ocorre ao lado do Servidor.</param>
+        /// <param name="isMine">If true, the validate method will be called in client, otherwise will be called in server.</param>
         /// <returns></returns>
         protected virtual bool OnValidateAutoSynchronization(bool isMine) => true;
 
         /// <summary>
-        ///* Implemente um nível personalizado de autoridade.
+        ///* Implements your custom authority logic.
         /// </summary>
+        /// <returns></returns>
         protected virtual bool OnCustomAuthority() => throw new Exception("Custom Authority not implemented!");
         #endregion
     }

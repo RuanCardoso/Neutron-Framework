@@ -7,8 +7,8 @@ using System;
 namespace NeutronNetwork
 {
     /// <summary>
-    ///* Attribute to mark a method as a gRPC(Global Remote Procedure Call) service, the gRPC service must have a globally unique Id and cannot be declared in scripts that have multiple instances.<br/>
-    ///*In gRPC, a client or server application can directly call a method on a server or client application on a different or local machine as if it were a local object, making it easier for you to create distributed applications and services.<br/>
+    ///* Attribute to mark a method as a gRPC(Global Remote Procedure Call) service, the gRPC service must have a globally unique id and cannot be declared in scripts that have multiple instances.<br/>
+    ///* In gRPC, a client or server application can directly call a method on a server or client application on a different or local machine as if it were a local object, making it easier for you to create distributed applications and services.<br/>
     ///* gRPC is based around the idea of defining a service, specifying the methods that can be called remotely with their parameters types.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
@@ -51,6 +51,15 @@ namespace NeutronNetwork
             get;
         }
 
+        /// <summary>
+        ///* Attribute to mark a method as a gRPC(Global Remote Procedure Call) service, the gRPC service must have a globally unique Id and cannot be declared in scripts that have multiple instances.<br/>
+        ///* In gRPC, a client or server application can directly call a method on a server or client application on a different or local machine as if it were a local object, making it easier for you to create distributed applications and services.<br/>
+        ///* gRPC is based around the idea of defining a service, specifying the methods that can be called remotely with their parameters types.
+        /// </summary>
+        /// <param name="id">The globally unique Id of the gRPC service.</param>
+        /// <param name="cacheMode">Defines how the service will be cached on the server side.</param>
+        /// <param name="targetTo">These define which remote clients get your RPC call.</param>
+        /// <param name="matchmakingTo">These define which matchmaking get your RPC call.</param>
         public gRPCAttribute(byte id, CacheMode cacheMode = CacheMode.None, TargetTo targetTo = TargetTo.All, MatchmakingTo matchmakingTo = MatchmakingTo.Auto)
         {
             Id = id;
