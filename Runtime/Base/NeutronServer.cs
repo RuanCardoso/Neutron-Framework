@@ -728,16 +728,13 @@ namespace NeutronNetwork.Server
         #endregion
 
         #region Mono Behaviour
-        /// <summary>
-        ///* Inicia o servidor.
-        /// </summary>
         public void StartServer()
         {
-            StartSocket();
+            StartSocket(); //* Start the socket.
             if (IsReady)
             {
                 if (!AutoStart)
-                    StartThreads();
+                    StartThreads(); //* Start the threads.
                 else
                     LogHelper.Error("The server has already been initialized!");
             }
@@ -746,7 +743,7 @@ namespace NeutronNetwork.Server
         private void Start()
         {
             if (IsReady && AutoStart)
-                StartThreads();
+                StartThreads(); //* Start the threads.
         }
 
         private void OnApplicationQuit()
@@ -755,10 +752,10 @@ namespace NeutronNetwork.Server
             {
                 if (Initialized)
                 {
-                    Initialized = false; //* Marca o servidor como off.
-                    TokenSource.Cancel(); //* Cancela todos os threads.
+                    Initialized = false; //* Set the initialized to false.
+                    TokenSource.Cancel(); //* stop all threads.
                     foreach (NeutronPlayer player in PlayersById.Values)
-                        player.Dispose(); //* Libera todos os recursos não gerenciados.
+                        player.Dispose(); //* Dispose all players.
                     _acceptedClients.Dispose();
                     _dataForProcessing.Dispose();
                     TcpListener.Stop();

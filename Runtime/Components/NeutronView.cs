@@ -101,8 +101,8 @@ namespace NeutronNetwork
                     {
                         //* Define o ID deste objeto.
                         Id = player.SceneObjectId++;
-                        if (!isServer) //! test Mode
-                            LogHelper.Error($"{IsServer} : {Id} -> {matchmaking.Name}");
+                        // if (!isServer) //! test Mode
+                        //     LogHelper.Error($"{IsServer} : {Id} -> {matchmaking.Name}");
                         //* Define um nome de identificação para este objeto.
                         gameObject.name = $"Dynamic Object -> [{name}] #-{Id}";
                     }

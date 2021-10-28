@@ -1014,7 +1014,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _rcvField: {fileID: 0}
   _inputField: {fileID: 0}
-  _autoChat: 0
+  _autoChat: 1
 --- !u!114 &891665446
 MonoBehaviour:
   m_ObjectHideFlags: 0
