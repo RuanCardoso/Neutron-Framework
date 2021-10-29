@@ -183,6 +183,7 @@ GameObject:
   - component: {fileID: 670107468}
   - component: {fileID: 670107467}
   - component: {fileID: 670107469}
+  - component: {fileID: 670107470}
   m_Layer: 0
   m_Name: Defines
   m_TagString: Untagged
@@ -259,6 +260,38 @@ MonoBehaviour:
     _targetTo: 0
     _cacheMode: 0
     _protocol: 0
+  - Title: Mov
+    _rpcId: 3
+    _name: Mov
+    _instance: {fileID: 670107469}
+    _originalInstance: {fileID: 670107469}
+    _targetTo: 0
+    _cacheMode: 0
+    _protocol: 0
+--- !u!114 &670107470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 670107465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3aa38b9c48867424ab7e0cabd1f459f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _id: 2
+  _authorityHandledBy: {fileID: 0}
+  _authority: 3
+  _hasOnAutoSynchronization: 1
+  _hasIRPC: 0
+  _onAutoSynchronizationOptions:
+    _fixedSize: 0
+    _protocol: 2
+    _packetsPerSecond: 128
+  _iRpcOptions: []
+  health: 100
+  level: 1
 --- !u!1 &835775807
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,6 +1,6 @@
+using Fossil;
 using NeutronNetwork.Constants;
 using UnityEngine;
-using Fossil;
 
 namespace NeutronNetwork.Examples.DeltaEx
 {
@@ -44,6 +44,12 @@ namespace NeutronNetwork.Examples.DeltaEx
                     }
                 }
             }
+        }
+
+        [iRPC(3)]
+        private void Mov(NeutronStream.IReader reader, NeutronPlayer player)
+        {
+
         }
 
         [iRPC(1)]

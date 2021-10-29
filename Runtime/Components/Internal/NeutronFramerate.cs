@@ -11,11 +11,13 @@ namespace NeutronNetwork
         #endregion
 
         #region Properties
-        public static float Fps {
+        public static float Fps
+        {
             get;
             private set;
         }
-        public static float Ms {
+        public static float Ms
+        {
             get;
             private set;
         }

@@ -1,6 +1,6 @@
+using System;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Server.Internal;
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -69,7 +69,7 @@ namespace NeutronNetwork.Helpers
                 foreach (Component component in actionsObject.GetComponents<Component>())
                 {
                     Type type = component.GetType();
-                    if (type.BaseType != typeof(NeutronBehaviour) && type != typeof(Transform))
+                    if (type.BaseType != typeof(NeutronBehaviour) && type.BaseType != typeof(SyncVarBehaviour) && type != typeof(Transform))
                         GameObject.Destroy(component);
                 }
             }
