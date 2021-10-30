@@ -1,5 +1,5 @@
-﻿using NeutronNetwork.Internal.Attributes;
-using System;
+﻿using System;
+using NeutronNetwork.Internal.Attributes;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -227,6 +227,10 @@ namespace NeutronNetwork.Internal.Packets
         ///* Habilita a compressão Gzip.
         /// </summary>
         Gzip,
+        /// <summary>
+        ///* Habilita a compressão Lz4.
+        /// </summary>
+        LZ4,
         /// <summary>
         ///* Compressão de bytes customizada.
         /// </summary>

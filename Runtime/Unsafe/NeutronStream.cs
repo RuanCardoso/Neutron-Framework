@@ -1,9 +1,9 @@
-using NeutronNetwork.Helpers;
-using NeutronNetwork.Internal.Interfaces;
-using NeutronNetwork.Internal.Packets;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using NeutronNetwork.Helpers;
+using NeutronNetwork.Internal.Interfaces;
+using NeutronNetwork.Internal.Packets;
 using UnityEngine;
 
 namespace NeutronNetwork
@@ -14,13 +14,15 @@ namespace NeutronNetwork
         /// <summary>
         ///* Escritor utilizado para escrever o pacote.
         /// </summary>
-        public IWriter Writer {
+        public IWriter Writer
+        {
             get;
         }
 
         //* Escritor utilizado para escrever o cabe�alho.
 #pragma warning disable IDE1006
-        public IWriter hWriter {
+        public IWriter hWriter
+        {
 #pragma warning restore IDE1006
             get;
         }
@@ -28,21 +30,24 @@ namespace NeutronNetwork
         /// <summary>
         ///* Leitor utilizado para ler o pacote.
         /// </summary>
-        public IReader Reader {
+        public IReader Reader
+        {
             get;
         }
 
         /// <summary>
         ///* Retorna se o stream � recicl�vel.
         /// </summary>
-        public bool IsRecyclable {
+        public bool IsRecyclable
+        {
             get;
         }
 
         /// <summary>
         ///* Retorna se o stream possui um tamanho fixo.
         /// </summary>
-        public bool IsFixedSize {
+        public bool IsFixedSize
+        {
             get;
         }
 
@@ -594,6 +599,11 @@ namespace NeutronNetwork
                 return _stream.GetBuffer();
             }
 
+            public MemoryStream AsStream()
+            {
+                return _stream;
+            }
+
             /// <summary>
             ///* Define a posi��o do fluxo.
             /// </summary>
@@ -995,6 +1005,11 @@ namespace NeutronNetwork
             public byte[] GetBuffer()
             {
                 return _stream.GetBuffer();
+            }
+
+            public MemoryStream AsStream()
+            {
+                return _stream;
             }
 
             public void SetPosition(int position)

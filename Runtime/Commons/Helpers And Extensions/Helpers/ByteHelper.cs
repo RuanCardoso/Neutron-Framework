@@ -1,10 +1,11 @@
-using NeutronNetwork.Constants;
-using NeutronNetwork.Internal.Packets;
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.Serialization.Formatters.Binary;
+using K4os.Compression.LZ4;
+using NeutronNetwork.Constants;
+using NeutronNetwork.Internal.Packets;
+using Newtonsoft.Json;
 
 namespace NeutronNetwork.Helpers
 {
@@ -46,6 +47,8 @@ namespace NeutronNetwork.Helpers
                             return compressIntoMs.ToArray();
                         }
                     }
+                case Internal.Packets.CompressionMode.LZ4:
+                    return LZ4Pickler.Pickle(data);
                 case Internal.Packets.CompressionMode.Custom:
                     return OnCustomCompression?.Invoke(data);
                 default:
@@ -91,6 +94,8 @@ namespace NeutronNetwork.Helpers
                             }
                         }
                     }
+                case Internal.Packets.CompressionMode.LZ4:
+                    return LZ4Pickler.Unpickle(data);
                 case Internal.Packets.CompressionMode.Custom:
                     return OnCustomDecompression?.Invoke(data);
                 default:
