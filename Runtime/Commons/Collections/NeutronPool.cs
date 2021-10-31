@@ -45,7 +45,7 @@ namespace NeutronNetwork
         [ThreadSafe]
         public T Pull()
         {
-            if (_queue.TryDequeue(out T item))
+            if (_queue.TryPull(out T item))
                 return item;
             else
             {
@@ -63,7 +63,7 @@ namespace NeutronNetwork
         [ThreadSafe]
         public void Push(T obj)
         {
-            _queue.Enqueue(obj);
+            _queue.Push(obj);
         }
     }
 }

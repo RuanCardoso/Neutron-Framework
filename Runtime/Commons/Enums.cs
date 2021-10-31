@@ -1,5 +1,7 @@
 ﻿using System;
 using NeutronNetwork.Internal.Attributes;
+using NeutronNetwork.Naughty.Attributes;
+using UnityEngine;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -381,8 +383,8 @@ namespace NeutronNetwork.Internal.Packets
 
     public enum ThreadType : int
     {
-        Unity,
-        Neutron,
+        [InspectorName("Low(Unity Thread)")] Unity,
+        [InspectorName("Ultra(Neutron Thread)")] Neutron,
     }
 
     public enum ReceiveType : int

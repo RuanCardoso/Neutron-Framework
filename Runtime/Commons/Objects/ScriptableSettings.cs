@@ -17,6 +17,7 @@ namespace NeutronNetwork.Constants
         [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
         [Range(1, 65535)] public int StreamPoolCapacity = 1200;
         [Range(1, 65535)] public int PacketPoolCapacity = 1200;
+        public ThreadType Performance = ThreadType.Neutron;
         public SerializationMode Serialization = SerializationMode.Json;
         public CompressionMode Compression = CompressionMode.None;
         public bool NoDelay = true;
@@ -64,8 +65,6 @@ namespace NeutronNetwork.Constants
         #endregion
 
         #region Others
-        [NonSerialized] public ThreadType ReceiveThread = ThreadType.Neutron;
-        [NonSerialized] [AllowNesting] public ThreadType PacketThread = ThreadType.Neutron;
         public ReceiveType ReceiveModel = ReceiveType.Asynchronous;
         public SendType SendModel = SendType.Synchronous;
         [ShowIf("SendModel", SendType.Asynchronous)] [AllowNesting] public AsynchronousType SendAsyncPattern = AsynchronousType.APM;

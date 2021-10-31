@@ -28,7 +28,7 @@ namespace NeutronNetwork.Helpers
         {
             if (Neutron.Server._pooledIds.Count > 0)
             {
-                if (!Neutron.Server._pooledIds.TryDequeue(out id))
+                if (!Neutron.Server._pooledIds.TryPull(out id))
                     id = 0;
             }
             else

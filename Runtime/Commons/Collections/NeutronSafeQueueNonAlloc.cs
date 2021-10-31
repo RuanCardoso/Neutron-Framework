@@ -1,20 +1,24 @@
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Wrappers;
 
 namespace NeutronNetwork.Internal.Wrappers
 {
-    public class NeutronSafeQueueNonAlloc<T>
+    public class NeutronSafeQueueNonAlloc<T> : INeutronConsumer<T>
     {
         private readonly NeutronQueue<T> _queue = new NeutronQueue<T>();
         //* Objeto usado para sincronizar a inserção e remoção de objetos em multiplos threads.
         private readonly object _lock = new object();
         //* Define a capacidade máxima do queue.
         private readonly int _capacity = 0;
+
+        public NeutronSafeQueueNonAlloc() { }
+
         public NeutronSafeQueueNonAlloc(int capacity)
         {
             _capacity = capacity;
         }
 
-        public void Enqueue(T item)
+        public void Push(T item)
         {
             lock (_lock)
             {
@@ -28,16 +32,21 @@ namespace NeutronNetwork.Internal.Wrappers
             }
         }
 
-        public T Dequeue()
+        public T Pull()
         {
             lock (_lock)
             {
-                T item = _queue.Dequeue();
-                return item;
+                if (_queue.Count > 0)
+                {
+                    T item = _queue.Dequeue();
+                    return item;
+                }
+                else
+                    return default;
             }
         }
 
-        public bool TryDequeue(out T item)
+        public bool TryPull(out T item)
         {
             item = default;
             lock (_lock)
@@ -52,8 +61,13 @@ namespace NeutronNetwork.Internal.Wrappers
             }
         }
 
-        public int Count {
-            get {
+        public void Dispose()
+        { }
+
+        public int Count
+        {
+            get
+            {
                 lock (_lock)
                 {
                     int count = _queue.Count;

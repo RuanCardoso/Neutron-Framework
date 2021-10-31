@@ -32,7 +32,7 @@ namespace NeutronNetwork.Helpers
                 && Neutron.Server.PlayersById.TryRemove(player.Id, out NeutronPlayer _);
             if (tryRemove)
             {
-                Neutron.Server._pooledIds.Enqueue(player.Id);
+                Neutron.Server._pooledIds.Push(player.Id);
                 string addr = player.StateObject.TcpRemoteEndPoint.Address.ToString();
                 if (Neutron.Server.RegisteredConnectionsByIp.TryGetValue(addr, out int value))
                     Neutron.Server.RegisteredConnectionsByIp[addr] = --value;

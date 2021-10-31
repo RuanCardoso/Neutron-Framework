@@ -29,7 +29,7 @@ namespace NeutronNetwork
         /// <param name="enumerator">* A co-rotina a ser agendada.</param>
         public static void ScheduleTask(IEnumerator enumerator)
         {
-            _tasks.Enqueue(() => Schedule.StartCoroutine(enumerator));
+            _tasks.Push(() => Schedule.StartCoroutine(enumerator));
         }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace NeutronNetwork
         /// <param name="action">* A ação a ser agendada.</param>
         public static void ScheduleTask(Action action)
         {
-            _tasks.Enqueue(action);
+            _tasks.Push(action);
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace NeutronNetwork
         /// <param name="func">* A função a ser agendada.</param>
         public static void ScheduleTask<T>(Func<T> func, Action<T> onResult)
         {
-            _tasks.Enqueue(() => onResult(func()));
+            _tasks.Push(() => onResult(func()));
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace NeutronNetwork
         public static Task ScheduleTaskAsync(IEnumerator enumerator)
         {
             TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 Schedule.StartCoroutine(enumerator);
                 taskCompletionSource.TrySetResult(true);
@@ -71,7 +71,7 @@ namespace NeutronNetwork
         /// <param name="enumerator">* A co-rotina a ser agendada.</param>
         public static Task TryScheduleTaskAsync(TaskCompletionSource<bool> task, IEnumerator enumerator)
         {
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 Schedule.StartCoroutine(enumerator);
             });
@@ -84,7 +84,7 @@ namespace NeutronNetwork
         /// <param name="enumerator">* A co-rotina a ser agendada.</param>
         public static Task<T> TryScheduleTaskAsync<T>(TaskCompletionSource<T> task, IEnumerator enumerator)
         {
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 Schedule.StartCoroutine(enumerator);
             });
@@ -98,7 +98,7 @@ namespace NeutronNetwork
         public static Task ScheduleTaskAsync(Action action)
         {
             TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 action();
                 taskCompletionSource.TrySetResult(true);
@@ -113,7 +113,7 @@ namespace NeutronNetwork
         public static Task TryScheduleTaskAsync(Action<TaskCompletionSource<bool>> action)
         {
             TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 action(taskCompletionSource);
             });
@@ -127,7 +127,7 @@ namespace NeutronNetwork
         public static Task<T> TryScheduleTaskAsync<T>(Action<TaskCompletionSource<T>> action)
         {
             TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 action(taskCompletionSource);
             });
@@ -141,7 +141,7 @@ namespace NeutronNetwork
         public static Task<T> ScheduleTaskAsync<T>(Func<T> func)
         {
             TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 taskCompletionSource.TrySetResult(func());
             });
@@ -155,7 +155,7 @@ namespace NeutronNetwork
         public static Task<T> TryScheduleTaskAsync<T>(Func<TaskCompletionSource<T>, T> func)
         {
             TaskCompletionSource<T> taskCompletionSource = new TaskCompletionSource<T>();
-            _tasks.Enqueue(() =>
+            _tasks.Push(() =>
             {
                 func(taskCompletionSource);
             });
@@ -168,7 +168,7 @@ namespace NeutronNetwork
             // {
             while (_tasks.Count > 0)
             {
-                if (_tasks.TryDequeue(out Action action))
+                if (_tasks.TryPull(out Action action))
                     action();
             }
             // }

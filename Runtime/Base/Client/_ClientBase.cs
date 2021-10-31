@@ -585,13 +585,15 @@ namespace NeutronNetwork.Client
                         player.Channel = channel;
                         player.Channel.Add(player);
                         player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                        if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Channel)
+                        if (isMine)
                         {
-                            MakeMatchmakingManager(player, neutron);
-                            if (player.Matchmaking.PhysicsManager == null)
-                                player.Matchmaking.PhysicsManager = PhysicsManager;
-                            if (isMine)
+                            if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Channel)
+                            {
+                                MakeMatchmakingManager(player, neutron);
+                                if (player.Matchmaking.PhysicsManager == null)
+                                    player.Matchmaking.PhysicsManager = PhysicsManager;
                                 NeutronSceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
+                            }
                         }
                         player.Matchmaking.Owner = Players[remoteChannel.Owner.Id];
                     }
@@ -620,13 +622,15 @@ namespace NeutronNetwork.Client
                         player.Room = room;
                         player.Room.Add(player);
                         player.Matchmaking = MatchmakingHelper.Matchmaking(player);
-                        if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Room)
+                        if (isMine)
                         {
-                            MakeMatchmakingManager(player, neutron);
-                            if (player.Matchmaking.PhysicsManager == null)
-                                player.Matchmaking.PhysicsManager = PhysicsManager;
-                            if (isMine)
+                            if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Room)
+                            {
+                                MakeMatchmakingManager(player, neutron);
+                                if (player.Matchmaking.PhysicsManager == null)
+                                    player.Matchmaking.PhysicsManager = PhysicsManager;
                                 NeutronSceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
+                            }
                         }
                         player.Matchmaking.Owner = Players[remoteRoom.Owner.Id];
                     }

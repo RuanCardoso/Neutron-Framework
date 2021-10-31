@@ -20,30 +20,26 @@ namespace NeutronNetwork.Examples.DeltaEx
             }
         }
 
+        private double lastSend;
         protected override void OnNeutronUpdate()
         {
             base.OnNeutronUpdate();
             {
                 if (HasAuthority)
                 {
-                    for (int i = 0; i < f; i++)
+                    if (LocalTime > 0)
                     {
-                        var writer = Begin_iRPC(1, _stream, out var _);
-                        using (NeutronStream deltaStream = Neutron.PooledNetworkStreams.Pull())
+                        for (int i = 0; i < f; i++)
                         {
-                            var deltaWriter = deltaStream.Writer;
-                            deltaWriter.Write(128);
-                            deltaWriter.Write(100);
-                            deltaWriter.Write(1000);
-                            deltaWriter.Write(10000);
-
-                            //_originalData = deltaWriter.ToArray();
-                            byte[] delta = Delta.Create(_originalData, _targetData);
-                            //_targetData = _originalData;
-                            writer.WriteNext(delta);
+                            var writer = Begin_iRPC(1, _stream, out var _);
+                            writer.Write(11210);
+                            writer.Write(11210);
+                            writer.Write(11210);
+                            writer.Write(11210);
                             writer.Write();
                             End_iRPC(1, _stream);
                         }
+                        lastSend = LocalTime;
                     }
                 }
             }
@@ -58,19 +54,7 @@ namespace NeutronNetwork.Examples.DeltaEx
         [iRPC(1)]
         private void RpcTest(NeutronStream.IReader reader, NeutronPlayer player)
         {
-            byte[] buffer = reader.ReadNext();
-            using (NeutronStream deltaStream = Neutron.PooledNetworkStreams.Pull())
-            {
-                //byte[] applied = Delta.Apply(_originalData, buffer);
-                //var deltaReader = deltaStream.Reader;
-                //deltaReader.SetBuffer(applied);
-                if (IsClient)
-                    LogHelper.Error($"{IsServer} -> received");
-                // Debug.LogError(deltaReader.ReadInt());
-                // Debug.LogError(deltaReader.ReadInt());
-                // Debug.LogError(deltaReader.ReadInt());
-                // Debug.LogError(deltaReader.ReadInt());
-            }
+            LogHelper.Error("??????");
         }
     }
 }

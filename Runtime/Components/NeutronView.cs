@@ -124,7 +124,7 @@ namespace NeutronNetwork
                 if (!(matchmaking.Views.Count <= short.MaxValue))
                     return LogHelper.Error($"You have reached the object limit for this matchmaking.");
                 if (!matchmaking.Views.TryAdd(_viewId, this))
-                    return LogHelper.Error($"An object with the same id already exists: Id -> [{matchmaking.Name} - {_viewId}] -> Server: {IsServer} -> Count {matchmaking.Views.Count}");
+                    return LogHelper.Error($"An object with the same id already exists: [{name}] :Id -> {player.Id} - [{matchmaking.Name} - {_viewId}] -> Server: {IsServer} -> Count {matchmaking.Views.Count}");
                 // Invoca os metódos virtual e define como pronto para uso.
                 Invoke();
             }

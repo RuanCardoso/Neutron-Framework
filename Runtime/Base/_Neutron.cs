@@ -313,23 +313,11 @@ namespace NeutronNetwork
                     }, this);
 
                     Stream networkStream = SocketHelper.GetStream(TcpClient); //* Gets the network stream.
-                    switch (Constants.ReceiveThread)
+                    ThreadPool.QueueUserWorkItem((e) =>
                     {
-                        case ThreadType.Neutron:
-                            {
-                                //* If the receive thread is a neutron thread, it will be created.
-                                ThreadPool.QueueUserWorkItem((e) =>
-                                {
-                                    OnReceivingData(networkStream, Protocol.Tcp);
-                                    OnReceivingData(networkStream, Protocol.Udp);
-                                });
-                                break;
-                            }
-                        case ThreadType.Unity:
-                            OnReceivingData(networkStream, Protocol.Tcp);
-                            OnReceivingData(networkStream, Protocol.Udp);
-                            break;
-                    }
+                        OnReceivingData(networkStream, Protocol.Tcp);
+                        OnReceivingData(networkStream, Protocol.Udp);
+                    });
 
                     Thread packetProcessingStackTh = new Thread((e) => PacketProcessingStack())
                     {
@@ -440,20 +428,7 @@ namespace NeutronNetwork
                 try
                 {
                     NeutronPacket packet = _dataForProcessing.Take(token); //* Gets the packet and blocks the thread.
-                    switch (Constants.PacketThread)
-                    {
-                        case ThreadType.Neutron:
-                            RunPacket(packet.Owner, packet.Buffer); //* Runs the packet.
-                            break;
-                        case ThreadType.Unity:
-                            {
-                                NeutronSchedule.ScheduleTask(() =>
-                                {
-                                    RunPacket(packet.Owner, packet.Buffer); //* Runs the packet in the unity thread.
-                                });
-                            }
-                            break;
-                    }
+                    RunPacket(packet.Owner, packet.Buffer); //* Runs the packet.
                     packet.Recycle(); //* Recycles the packet.
                 }
                 catch (ObjectDisposedException) { continue; }

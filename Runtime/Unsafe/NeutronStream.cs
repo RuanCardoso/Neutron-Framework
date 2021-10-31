@@ -929,7 +929,7 @@ namespace NeutronNetwork
             public void Read(int size, byte[] buffer = null)
             {
 #if UNITY_EDITOR
-                if (_autoDispose)
+                if (_autoDispose && Helper.GetSettings().GlobalSettings.Performance != ThreadType.Unity)
                 {
                     var th = ThreadHelper.GetThread();
                     if (th.ManagedThreadId == NeutronModule.UnityThreadId)
