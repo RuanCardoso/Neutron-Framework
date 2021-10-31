@@ -64,8 +64,8 @@ namespace NeutronNetwork.Examples.DeltaEx
                 //byte[] applied = Delta.Apply(_originalData, buffer);
                 //var deltaReader = deltaStream.Reader;
                 //deltaReader.SetBuffer(applied);
-                //if (IsClient)
-                //    LogHelper.Error($"{IsServer} -> received");
+                if (IsClient)
+                    LogHelper.Error($"{IsServer} -> received");
                 // Debug.LogError(deltaReader.ReadInt());
                 // Debug.LogError(deltaReader.ReadInt());
                 // Debug.LogError(deltaReader.ReadInt());

@@ -268,7 +268,7 @@ MonoBehaviour:
     _targetTo: 0
     _cacheMode: 0
     _protocol: 1
-  f: 200
+  f: 400
 --- !u!114 &670107470
 MonoBehaviour:
   m_ObjectHideFlags: 0

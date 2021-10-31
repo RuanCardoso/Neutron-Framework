@@ -571,7 +571,14 @@ namespace NeutronNetwork.Server
                                     if (Helper.GetSettings().GlobalSettings.AppId == appId)
                                         HandshakeHandler(owner, time, authentication); //* Handshake the player.
                                     else
+                                    {
                                         owner.Error(Packet.Handshake, "Update your game version, it does not match the current server version.");
+                                        Task.Run(async () =>
+                                        {
+                                            await Task.Delay(150); //* Submit the disconnect after receiving the error message.
+                                            DisconnectHandler(owner); //* Disconnect the player.
+                                        });
+                                    }
                                 }
                                 else if (!LogHelper.Error("Failed to verify handshake!"))
                                     DisconnectHandler(owner); //* Disconnect the player.
