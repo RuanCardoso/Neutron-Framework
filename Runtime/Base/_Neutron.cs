@@ -44,12 +44,12 @@ namespace NeutronNetwork
         /// <param name="player">The player that will be used by Neutron.</param></param>
         /// <param name="isConnected">Indicates if Neutron is already connected.</param></param>
         /// <param name="instance">The instance of Neutron.</param></param>
-        public Neutron(NeutronPlayer player, bool isConnected, Neutron instance)
+        public Neutron(NeutronPlayer player, bool isConnected)
         {
             LocalPlayer = player;
             IsConnected = isConnected;
 #if UNITY_SERVER && !UNITY_EDITOR
-            Client = instance;
+            Client = Server.Instance;
 #endif
         }
         #endregion

@@ -8,6 +8,7 @@ namespace NeutronNetwork
     [CreateAssetMenu(menuName = "Neutron/Settings", fileName = "Neutron Settings")]
     public class Settings : ScriptableObject
     {
+        [InfoBox("Performance in Unity Editor is low!", EInfoBoxType.Warning)]
         public NeutronGlobalSettings GlobalSettings = new NeutronGlobalSettings();
         [HorizontalLine] public NeutronClientSettings ClientSettings;
         [HorizontalLine] public NeutronServerSettings ServerSettings;
@@ -26,6 +27,16 @@ namespace NeutronNetwork
 #if UNITY_EDITOR
             if (string.IsNullOrEmpty(GlobalSettings.AppId))
                 NewGuid();
+#endif
+        }
+
+        private void OnValidate()
+        {
+#if UNITY_EDITOR
+            for (int i = 0; i < GlobalSettings.Addresses.Length; i++)
+            {
+                GlobalSettings.Addresses[i] = GlobalSettings.Addresses[i].Replace(" ", "");
+            }
 #endif
         }
     }

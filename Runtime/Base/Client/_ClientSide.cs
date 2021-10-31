@@ -29,10 +29,12 @@ public abstract class ClientSide : GlobalBehaviour
     /// </summary>
     protected void Connect(int index = 0, int timeout = 3, Authentication authentication = null)
     {
+#if !UNITY_SERVER || UNITY_EDITOR
         Neutron neutron = Neutron.Client ?? Neutron.Create();
         if (!neutron.IsConnected)
             Register(neutron);
         neutron.Connect(index, timeout, authentication);
+#endif
     }
 
     //* Registra os eventos da instância.

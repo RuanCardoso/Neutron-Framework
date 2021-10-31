@@ -53,6 +53,7 @@ namespace NeutronNetwork.Helpers
             //matchManager.hideFlags = HideFlags.HideInHierarchy;
             var neutronView = matchManager.AddComponent<NeutronView>();
             neutronView.AutoDestroy = false;
+            neutronView.Id = short.MaxValue;
             //* Inicializa o iRpc Actions baseado no tipo.
             NeutronBehaviour[] actions = Neutron.Server.Actions;
 
@@ -73,7 +74,9 @@ namespace NeutronNetwork.Helpers
                         GameObject.Destroy(component);
                 }
             }
-            neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Dynamic, neutron);
+            else
+                LogHelper.Error("nulled actions");
+            neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Scene, neutron);
             return matchManager;
         }
 

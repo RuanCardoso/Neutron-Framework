@@ -51,7 +51,7 @@ namespace NeutronNetwork.Internal
         public int Id
         {
             get => _id;
-            protected set => _id = value;
+            set => _id = value;
         }
 
         /// <summary>

@@ -78,6 +78,9 @@ namespace NeutronNetwork
 #else
             Physics2D.autoSimulation = false;
 #endif
+#if UNITY_SERVER && !UNITY_EDITOR
+            Debug.unityLogger.logEnabled = false;
+#endif
         }
 
         private void Update()

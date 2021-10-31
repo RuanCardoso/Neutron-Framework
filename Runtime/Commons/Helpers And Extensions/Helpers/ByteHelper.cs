@@ -31,7 +31,7 @@ namespace NeutronNetwork.Helpers
                             {
                                 dstream.Write(data, 0, data.Length);
                             }
-                            return output.ToArray();
+                            return output.ToArray(); //* Copy array.
                         }
                     }
 
@@ -164,7 +164,6 @@ namespace NeutronNetwork.Helpers
             }
             catch (Exception ex)
             {
-                LogHelper.Error("Deserialization exception!");
                 LogHelper.Stacktrace(ex);
                 return default;
             }

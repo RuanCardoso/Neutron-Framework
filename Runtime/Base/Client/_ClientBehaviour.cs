@@ -1,7 +1,6 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
-using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Packets;
 using System.Net;
@@ -20,25 +19,33 @@ namespace NeutronNetwork.Client
     public class ClientBehaviour
     {
         #region Socket
-        protected TcpClient TcpClient {
+        protected TcpClient TcpClient
+        {
             get;
             private set;
         }
-        protected UdpClient UdpClient {
+
+        protected UdpClient UdpClient
+        {
             get;
             private set;
         }
-        protected NonAllocEndPoint UdpEndPoint {
+
+        protected NonAllocEndPoint UdpEndPoint
+        {
             get;
             set;
         }
-        protected CancellationTokenSource TokenSource {
+
+        protected CancellationTokenSource TokenSource
+        {
             get;
         } = new CancellationTokenSource();
         #endregion
 
         #region Collections
-        public NeutronSafeDictionary<int, NeutronPlayer> Players {
+        public NeutronSafeDictionary<int, NeutronPlayer> Players
+        {
             get;
         } = new NeutronSafeDictionary<int, NeutronPlayer>();
 
@@ -46,11 +53,13 @@ namespace NeutronNetwork.Client
         #endregion
 
         #region Matchmaking
-        protected NeutronChannel NeutronChannel {
+        protected NeutronChannel NeutronChannel
+        {
             get;
         } = new NeutronChannel();
 
-        protected NeutronRoom NeutronRoom {
+        protected NeutronRoom NeutronRoom
+        {
             get;
         } = new NeutronRoom();
         #endregion

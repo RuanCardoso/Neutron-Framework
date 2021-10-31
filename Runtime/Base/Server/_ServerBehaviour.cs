@@ -91,6 +91,7 @@ namespace NeutronNetwork.Server
         {
             get => _actions;
         }
+
         public bool AutoStart => _autoStart;
         #endregion
 
@@ -109,6 +110,10 @@ namespace NeutronNetwork.Server
                 if (PlayerGlobalController == null)
                     throw new NeutronException("Player controller not defined!");
             }
+        }
+
+        private void GetActions()
+        {
             _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
         }
 
@@ -146,42 +151,50 @@ namespace NeutronNetwork.Server
 
         protected void StartSocket()
         {
+            if (!IsReady)
+            {
 #if UNITY_2018_4_OR_NEWER
+                //* Its Ok
 #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
-            Controllers();
-            LoadScenes();
+                Controllers();
+                LoadScenes();
 #endif
 #if UNITY_SERVER && !UNITY_EDITOR
         Console.Clear();
+        Console.Title = "Neutron Server";
 #endif
 #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
-            if (NeutronModule.Settings != null)
-            {
-                try
+                if (NeutronModule.Settings != null)
                 {
-                    TcpListener = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronModule.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
-                    TcpListener.Start(NeutronModule.Settings.ServerSettings.BackLog);
-                    //* Marca o servidor como pronto para inicialização.
-                    IsReady = true;
+                    try
+                    {
+                        TcpListener = new TcpListener(new IPEndPoint(IPAddress.Any, NeutronModule.Settings.GlobalSettings.Port)); // Server IP Address and Port. Note: Providers like Amazon, Google, Azure, etc ... require that the ports be released on the VPS firewall and In Server Management, servers that have routers, require the same process.
+                        TcpListener.Start(NeutronModule.Settings.ServerSettings.BackLog);
+                        //* Marca o servidor como pronto para inicialização.
+                        IsReady = true;
+                    }
+                    catch (SocketException ex)
+                    {
+                        if (ex.ErrorCode == 10048)
+                            LogHelper.Info("The local server has been disabled because another instance is running on the same machine.");
+                        else
+                            throw new Exception(ex.Message);
+                    }
                 }
-                catch (SocketException ex)
-                {
-                    if (ex.ErrorCode == 10048)
-                        LogHelper.Info("This server instance has been disabled, because another instance is in use.");
-                    else
-                        throw new Exception(ex.Message);
-                }
-            }
-            else
-                LogHelper.Error("Settings is missing!");
+                else
+                    LogHelper.Error("Settings is missing!");
 #endif
 #else
                 LogHelper.Error("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
 #endif
+            }
+            else
+                IsReady = LogHelper.Error("The server has already been initialized!");
         }
 
         protected virtual void Awake()
         {
+            GetActions();
 #if !UNITY_SERVER || UNITY_EDITOR
             if (_autoStart)
                 StartSocket();

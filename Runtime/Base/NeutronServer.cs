@@ -106,7 +106,7 @@ namespace NeutronNetwork.Server
         {
             Player = PlayerHelper.MakeTheServerPlayer(); //* Create the ref player.
 
-            Instance = new Neutron(Player, true, Instance); //* Create the ref instance.
+            Instance = new Neutron(Player, true); //* Create the ref instance.
             Instance.Initialize(Instance); //* Initialize the instance.
 
             #region Provider
@@ -121,6 +121,7 @@ namespace NeutronNetwork.Server
            //*
 #endif
             LogHelper.Info("The server is ready, all protocols(TCP, UDP, RUDP) have been initialized.\r\n");
+            LogHelper.Info($"Server address: {SocketHelper.GetLocalIPAddress()}\r\n");
             #endregion
 
             #region Threads
@@ -403,7 +404,7 @@ namespace NeutronNetwork.Server
                                     NeutronStatistics.ServerUDP.AddOutgoing(hBuffer.Length); //* Add the outgoing bytes to the statistics.
                                 }
                                 else
-                                    LogHelper.Error($"{player.Id} Udp Endpoint is null!");
+                                    LogHelper.Error($"{player.StateObject.TcpRemoteEndPoint} Cannot receive UDP data. trying... if you are running on WSL2, change the ip from \"localhost\" to the IP address of WSL2 on the client.");
                             }
                             break;
                     }
@@ -731,19 +732,20 @@ namespace NeutronNetwork.Server
         public void StartServer()
         {
             StartSocket(); //* Start the socket.
-            if (IsReady)
-            {
-                if (!AutoStart)
-                    StartThreads(); //* Start the threads.
-                else
-                    LogHelper.Error("The server has already been initialized!");
-            }
+            if (IsReady && !AutoStart)
+                StartThreads(); //* Start the threads.
         }
 
         private void Start()
         {
             if (IsReady && AutoStart)
                 StartThreads(); //* Start the threads.
+            else if (IsReady && !AutoStart)
+            {
+#if UNITY_SERVER && !UNITY_EDITOR
+                StartThreads(); //* Start the threads.
+#endif
+            }
         }
 
         private void OnApplicationQuit()
@@ -765,3 +767,5 @@ namespace NeutronNetwork.Server
         #endregion
     }
 }
+
+//* ip addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'

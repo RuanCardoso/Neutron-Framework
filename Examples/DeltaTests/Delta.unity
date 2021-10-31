@@ -259,7 +259,7 @@ MonoBehaviour:
     _originalInstance: {fileID: 670107469}
     _targetTo: 0
     _cacheMode: 0
-    _protocol: 0
+    _protocol: 1
   - Title: Mov
     _rpcId: 3
     _name: Mov
@@ -267,7 +267,8 @@ MonoBehaviour:
     _originalInstance: {fileID: 670107469}
     _targetTo: 0
     _cacheMode: 0
-    _protocol: 0
+    _protocol: 1
+  f: 200
 --- !u!114 &670107470
 MonoBehaviour:
   m_ObjectHideFlags: 0

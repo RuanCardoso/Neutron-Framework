@@ -44,7 +44,7 @@ namespace NeutronNetwork
         /// <summary>
         ///* The level of authority of the object.
         /// </summary>
-        [SerializeField] [HorizontalLineDown] private AuthorityMode _authority = AuthorityMode.Mine;
+        [SerializeField] [HorizontalLineDown] [InfoBox("\"HasAuthority\" returns this property.")] private AuthorityMode _authority = AuthorityMode.Mine;
         [HideInInspector]
         [SerializeField] private bool _hasOnAutoSynchronization, _hasIRPC;
         #endregion
@@ -126,41 +126,19 @@ namespace NeutronNetwork
                 switch (Authority)
                 {
                     case AuthorityMode.Mine:
-                        {
-                            return IsMine; //* If the authority is mine, return true.
-                        }
+                        return IsMine; //* If the authority is mine, return true.
+                    case AuthorityMode.Client:
+                        return IsClient; //* If the authority is server, return true.
                     case AuthorityMode.Server:
-                        {
-                            return IsServer; //* If the authority is server, return true.
-                        }
+                        return IsServer; //* If the authority is server, return true.
                     case AuthorityMode.Master:
-                        {
-                            return IsMasterClient; //* If the authority is master client, return true.
-                        }
-                    case AuthorityMode.MineAndServer:
-                        {
-                            return IsMine || IsServer; //* If the authority is mine or server, return true.
-                        }
-                    case AuthorityMode.MineAndMaster:
-                        {
-                            return IsMine || IsMasterClient; //* If the authority is mine or master client, return true.
-                        }
-                    case AuthorityMode.ServerAndMaster:
-                        {
-                            return IsServer || IsMasterClient; //* If the authority is server or master client, return true.
-                        }
+                        return IsMasterClient; //* If the authority is master client, return true.
                     case AuthorityMode.All:
-                        {
-                            return true; //* If the authority is all, return true.
-                        }
+                        return true; //* If the authority is all, return true.
                     case AuthorityMode.Custom:
-                        {
-                            return IsCustom; //* If the authority is custom, return the result of <see cref="OnCustomAuthority"/>.
-                        }
+                        return IsCustom; //* If the authority is custom, return the result of <see cref="OnCustomAuthority"/>.
                     case AuthorityMode.Handled:
-                        {
-                            return _authorityHandledBy != null && _authorityHandledBy.HasAuthority; //* If the authority is handled, return the result of <see cref="_authorityHandledBy"/>.
-                        }
+                        return _authorityHandledBy != null && _authorityHandledBy.HasAuthority; //* If the authority is handled, return the result of <see cref="_authorityHandledBy"/>.
                     default:
                         return LogHelper.Error("Authority not implemented!");
                 }

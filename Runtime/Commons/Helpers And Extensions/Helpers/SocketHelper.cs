@@ -252,6 +252,17 @@ namespace NeutronNetwork.Helpers
             return (await Dns.GetHostAddressesAsync(host))[0];
         }
 
+        public static string GetLocalIPAddress()
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    return ip.ToString();
+            }
+            throw new Exception("No network adapters with an IPv4 address in the system!");
+        }
+
         public static Stream GetStream(TcpClient tcpClient)
         {
             Stream networkStream = tcpClient.GetStream();

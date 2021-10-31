@@ -203,8 +203,17 @@ namespace NeutronNetwork.Internal.Packets
     [Network]
     public enum RegisterMode : byte
     {
+        /// <summary>
+        ///* Spawna o jogador(Player) controlador, pertence a quem o criou..
+        /// </summary>
         Player,
+        /// <summary>
+        ///* Spawna um objeto que pertence ao jogador que o criou...
+        /// </summary>
         Dynamic,
+        /// <summary>
+        ///* Um objeto de cena que pode pertencer ao servidor ou não.
+        /// </summary>
         Scene
     }
     #endregion
@@ -293,6 +302,10 @@ namespace NeutronNetwork.Internal.Packets
         /// </summary>
         Custom,
         /// <summary>
+        ///* Somente o cliente tem a autoridade sobre o objeto.
+        /// </summary>
+        Client,
+        /// <summary>
         ///* Somente o servidor tem a autoridade sobre o objeto.
         /// </summary>
         Server,
@@ -304,18 +317,6 @@ namespace NeutronNetwork.Internal.Packets
         ///* Somente o dono da sala tem a autoridade sobre o objeto.
         /// </summary>
         Master,
-        /// <summary>
-        ///* Somente o servidor e o dono do objeto tem a autoridade sobre o objeto.
-        /// </summary>
-        MineAndServer,
-        /// <summary>
-        ///* Somente o dono da sala e o dono do objeto tem a autoridade sobre o objeto.
-        /// </summary>
-        MineAndMaster,
-        /// <summary>
-        ///* Somente o dono da sala e o servidor tem a autoridade sobre o objeto.
-        /// </summary>
-        ServerAndMaster,
         /// <summary>
         ///* Todos os jogadores tem a autoridade sobre o objeto.
         /// </summary>

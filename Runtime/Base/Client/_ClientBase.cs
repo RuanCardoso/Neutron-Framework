@@ -85,7 +85,7 @@ namespace NeutronNetwork.Client
         }
 
         //* Server instance.......
-        private Neutron Instance => Neutron.Server.Instance;
+        private Neutron Server => Neutron.Server.Instance;
         #endregion
 
         #region Internal Events
@@ -296,7 +296,7 @@ namespace NeutronNetwork.Client
                         LogHelper.Warn("Ignore this: iRpc with this Id not found.");
                 }
                 else
-                    LogHelper.Warn("Ignore this: iRpc: Object not found.");
+                    LogHelper.Warn($"Ignore this: iRpc: Object not found. -> {key}");
             }
 
             switch (registerMode)
@@ -424,7 +424,7 @@ namespace NeutronNetwork.Client
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
         public void EndPlayer(NeutronStream parameters, byte id, NeutronPlayer player)
         {
-            Instance.End_gRPC(id, parameters, Protocol.Tcp, player);
+            Server.End_gRPC(id, parameters, Protocol.Tcp, player);
         }
 
         /// <summary>
@@ -477,7 +477,7 @@ namespace NeutronNetwork.Client
         /// <param name="parameters">* Os parâmetros que serão enviados com sua chamada.</param>
         public void EndObject(NeutronStream parameters, byte id, NeutronPlayer player)
         {
-            Instance.End_gRPC(id, parameters, Protocol.Tcp, player);
+            Server.End_gRPC(id, parameters, Protocol.Tcp, player);
         }
 
         /// <summary>
