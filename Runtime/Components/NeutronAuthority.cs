@@ -1,3 +1,4 @@
+using NeutronNetwork.Naughty.Attributes;
 using System.Linq;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ namespace NeutronNetwork.Components
     [AddComponentMenu("Neutron/Neutron Authority")]
     public class NeutronAuthority : NeutronBehaviour
     {
-        public bool _root;
+        [OnValueChanged("Set")] public bool _root;
         protected override void Reset()
         {
             base.Reset();
