@@ -18,29 +18,36 @@ namespace NeutronNetwork.Components
         public static NeutronEventNoReturn<NeutronPlayer, bool, Scene, MatchmakingMode, INeutronMatchmaking, Neutron> OnSceneObjectRegister = delegate { };
 
         [SerializeField] [ReadOnly] private NeutronView _neutronView;
-        [SerializeField] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
-        [SerializeField] private string _mapkey = "Map";
-        [SerializeField] private string _mapName = "testMap";
+        [SerializeField] [HorizontalLine] private bool _hasMap = false;
+        [SerializeField] [ShowIf("_hasMap")] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
+        [SerializeField] [ShowIf("_hasMap")] private string _mapKey = "Map";
+        [SerializeField] [ShowIf("_hasMap")] private string _mapName = "testMap";
         [SerializeField] private bool _hideInHierarchy = true;
-        [SerializeField] [ReadOnly] private bool _isOriginalObject = true;
+        [SerializeField] [HorizontalLine] [ReadOnly] private bool _isOriginalObject = true;
 
+#pragma warning disable IDE0051
         private void Awake()
+#pragma warning restore IDE0051 
         {
             if (_isOriginalObject)
             {
-                OnSceneObjectRegister += OnNeutronRegister;
                 gameObject.SetActive(false);
-                //gameObject.hideFlags = HideFlags.HideInHierarchy;
+                OnSceneObjectRegister += OnNeutronRegister;
+                gameObject.hideFlags = _hideInHierarchy ? HideFlags.HideInHierarchy : HideFlags.None;
             }
         }
 
+#pragma warning disable IDE0051
         private void Start()
+#pragma warning restore IDE0051 
         {
             if (!_isOriginalObject)
                 OnSceneObjectRegister -= OnNeutronRegister;
         }
 
+#pragma warning disable IDE0051
         private void Reset()
+#pragma warning restore IDE0051
         {
 #if UNITY_EDITOR
             _neutronView = transform.root.GetComponent<NeutronView>();
@@ -53,17 +60,22 @@ namespace NeutronNetwork.Components
                 return;
 
             #region Prevent Being Instantiated
-            if (!(mode == _matchmakingMode))
-                return;
-            if (matchmaking.Get.ContainsKey(_mapkey))
+            if (_hasMap)
             {
-                string mapName = matchmaking.Get[_mapkey].ToObject<string>();
-                if (!(mapName == _mapName))
+                if (!(mode == _matchmakingMode))
                     return;
-                else { /*continue;*/ }
+
+                if (matchmaking.Get.ContainsKey(_mapKey))
+                {
+                    string mapName = matchmaking.Get[_mapKey].ToObject<string>();
+                    if (!(mapName == _mapName))
+                        return;
+                    else { /*continue;*/ }
+                }
+                else
+                    LogHelper.Info($"This scene object({_mapName} - {matchmaking.Name}) is not linked to a map, it will be instantiated in all scenes of the specified matchmaking.");
             }
-            else
-                LogHelper.Info($"This scene object({_mapName} - {matchmaking.Name}) is not linked to a map, it will be instantiated in all scenes of the specified matchmaking.");
+
             switch (_neutronView.Side)
             {
                 case Side.Both:

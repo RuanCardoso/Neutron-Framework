@@ -323,6 +323,10 @@ namespace NeutronNetwork.Internal.Packets
         ///* Todos os jogadores tem a autoridade sobre o objeto.
         /// </summary>
         All,
+        /// <summary>
+        ///* Desativa a autoridade para testes offline.
+        /// </summary>
+        None,
     }
 
     public enum SyncOnOff : int

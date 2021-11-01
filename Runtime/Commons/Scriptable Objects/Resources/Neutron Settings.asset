@@ -16,12 +16,12 @@ MonoBehaviour:
     Addresses:
     - localhost
     Port: 1418
-    AppId: 6536534b-cbbf-459b-a6a4-9f7f7012c1ef
-    FPS: 60
+    AppId: 10ee52e7-8fd7-4b94-ba8e-8cb702f30ac5
+    FPS: 128
     MaxPlayers: 300
-    StreamPoolCapacity: 65535
-    PacketPoolCapacity: 65535
-    Performance: 0
+    StreamPoolCapacity: 1200
+    PacketPoolCapacity: 1200
+    Performance: 1
     Serialization: 1
     Compression: 0
     NoDelay: 1
@@ -51,5 +51,5 @@ MonoBehaviour:
       BufferedStreamSize: 8192
     Udp:
       MaxUdpPacketSize: 512
-      UdpReceiveBufferSize: 65535
-      UdpSendBufferSize: 65535
+      UdpReceiveBufferSize: 8192
+      UdpSendBufferSize: 8192

@@ -40,11 +40,17 @@ namespace NeutronNetwork
         ///* Define if the authority is handled by other object.
         /// </summary>
         /// <returns></returns>
+#pragma warning disable IDE0044
         [SerializeField] [ShowIf("_authority", AuthorityMode.Handled)] private NeutronBehaviour _authorityHandledBy;
+#pragma warning restore IDE0044
+        /// <summary>
+        ///* All scripts work as if the object registered in the network.
+        /// </summary>
+        [SerializeField] protected bool _offlineMode = false;
         /// <summary>
         ///* The level of authority of the object.
         /// </summary>
-        [SerializeField] [HorizontalLineDown] [InfoBox("\"HasAuthority\" returns this property.")] private AuthorityMode _authority = AuthorityMode.Mine;
+        [SerializeField] [HorizontalLineDown] [InfoBox("\"HasAuthority\" returns this property.")] [HideIf("_offlineMode")] private AuthorityMode _authority = AuthorityMode.Mine;
         [HideInInspector]
         [SerializeField] private bool _hasOnAutoSynchronization, _hasIRPC;
         #endregion
@@ -58,7 +64,9 @@ namespace NeutronNetwork
         ///* Store the auto synchronization options.
         /// </summary>
         /// <returns></returns>
+#pragma warning disable IDE0044
         [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
+#pragma warning restore IDE0044
         #endregion
 
         #region Properties
@@ -115,7 +123,17 @@ namespace NeutronNetwork
         protected bool IsCustom => IsRegistered && OnCustomAuthority();
 
         /// <summary>
-        ///* Simplified version of <see cref="IsMine"/> or <see cref="IsCustom"/> or <see cref="IsServer"/> or <see cref="IsClient"/> or <see cref="IsMasterClient"/> or <see cref="_authorityHandledBy"/> and others...<br/>
+        ///* Returns if the authority is handled by other object.
+        /// </summary>
+        protected bool IsHandled => IsRegistered && (_authorityHandledBy != null && _authorityHandledBy.HasAuthority);
+
+        /// <summary>
+        ///* All players has authority over this bject.
+        /// </summary>
+        protected bool IsFree => IsRegistered;
+
+        /// <summary>
+        ///* Simplified version of <see cref="IsMine"/> or <see cref="IsCustom"/> or <see cref="IsServer"/> or <see cref="IsClient"/> or <see cref="IsMasterClient"/> or <see cref="IsHandled"/> and others...<br/>
         ///* Returns based on the authority mode defined in the inspector.
         /// </summary>
         /// <value></value>
@@ -134,11 +152,13 @@ namespace NeutronNetwork
                     case AuthorityMode.Master:
                         return IsMasterClient; //* If the authority is master client, return true.
                     case AuthorityMode.All:
-                        return true; //* If the authority is all, return true.
+                        return IsFree; //* If the authority is all, return true.
                     case AuthorityMode.Custom:
                         return IsCustom; //* If the authority is custom, return the result of <see cref="OnCustomAuthority"/>.
                     case AuthorityMode.Handled:
-                        return _authorityHandledBy != null && _authorityHandledBy.HasAuthority; //* If the authority is handled, return the result of <see cref="_authorityHandledBy"/>.
+                        return IsHandled; //* If the authority is handled, return the result of <see cref="_authorityHandledBy"/>.
+                    case AuthorityMode.None:
+                        return true;
                     default:
                         return LogHelper.Error("Authority not implemented!");
                 }
@@ -277,19 +297,19 @@ namespace NeutronNetwork
         #region Mono Behaviour
         protected virtual void Update()
         {
-            if (IsRegistered)
+            if (IsRegistered || _offlineMode)
                 OnNeutronUpdate();
         }
 
         protected virtual void FixedUpdate()
         {
-            if (IsRegistered)
+            if (IsRegistered || _offlineMode)
                 OnNeutronFixedUpdate();
         }
 
         protected virtual void LateUpdate()
         {
-            if (IsRegistered)
+            if (IsRegistered || _offlineMode)
                 OnNeutronLateUpdate();
         }
 
@@ -305,6 +325,8 @@ namespace NeutronNetwork
         {
 #if UNITY_EDITOR
             LoadOptions();
+            if (_offlineMode)
+                _authority = AuthorityMode.None;
 #endif
         }
 

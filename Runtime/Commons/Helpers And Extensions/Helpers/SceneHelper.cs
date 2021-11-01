@@ -74,8 +74,7 @@ namespace NeutronNetwork.Helpers
                         GameObject.Destroy(component);
                 }
             }
-            else
-                LogHelper.Error("nulled actions");
+            else { /*Continue*/ }
             neutronView.OnNeutronRegister(owner, isServer, RegisterMode.Scene, neutron);
             return matchManager;
         }

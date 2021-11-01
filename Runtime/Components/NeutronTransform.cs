@@ -20,28 +20,36 @@ namespace NeutronNetwork.Components
         private readonly object _bufferLock = new object();
 
         [Header("Compression")]
+#pragma warning disable IDE0044
         [SerializeField] private bool _compressQuaternion = true;
         [SerializeField] [ShowIf("_compressQuaternion")] private float _floatMultiplicationPrecision = 10000f;
-
+#pragma warning restore IDE0044
 
         [Header("Transform")]
+#pragma warning disable IDE0044
         [SerializeField] private bool _syncPosition = true;
         [SerializeField] private bool _syncRotation = true;
-        [InfoBox("Is it necessary to synchronize the scale? to save bandwidth, send the scale only when changing it through an rpc.")]
         [SerializeField] private bool _syncScale;
+#pragma warning restore IDE0044
 
         [Header("Properties")]
+#pragma warning disable IDE0044
         [SerializeField] private float _teleportMaxDistance = 15f;
+#pragma warning restore IDE0044
 
         [Header("Smooth")]
+#pragma warning disable IDE0044
         [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _packetsPerSecond = 60;
+#pragma warning restore IDE0044
 
         [Header("Buffer")]
         [SerializeField] [ReadOnly] private double _interpolationTime;
+#pragma warning disable IDE0044
         [SerializeField] private int _bufferMaxCount = 6;
         [SerializeField] private float _bufferTime = 0f;
         [SerializeField] private int _catchupThreshold = 4;
         [SerializeField] [Range(0, 1)] private float _catchupMultiplier = 0.10f;
+#pragma warning restore IDE0044
 
         private double _lastSyncedTime;
         protected override void Reset()
@@ -152,6 +160,14 @@ namespace NeutronNetwork.Components
 
             lock (_bufferLock)
                 SnapshotInterpolation.InsertIfNewEnough(snapshot, _buffer);
+        }
+
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+            {
+                _offlineMode = false;
+            }
         }
     }
 }
