@@ -39,7 +39,7 @@ namespace NeutronNetwork.Components
 
         [Header("Smooth")]
 #pragma warning disable IDE0044
-        [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _packetsPerSecond = 60;
+        [SerializeField] [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)] private int _packetsPerSecond = 60;
 #pragma warning restore IDE0044
 
         [Header("Buffer")]
@@ -67,10 +67,13 @@ namespace NeutronNetwork.Components
         public override void OnNeutronStart()
         {
             base.OnNeutronStart();
-            { }
+            {
+                if (HasAuthority)
+                    _lastSyncedTime = LocalTime;
+            }
         }
 
-        protected override void OnNeutronLateUpdate()
+        protected override void OnNeutronUpdate()
         {
             base.OnNeutronUpdate();
             {

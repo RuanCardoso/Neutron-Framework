@@ -72,7 +72,7 @@ namespace NeutronNetwork.Client
             {
                 for (int i = 0; i < NeutronModule.Settings.GlobalSettings.MaxPlayers; i++)
                 {
-                    int id = (NeutronConstantsSettings.GENERATE_PLAYER_ID + i) + 1;
+                    int id = (NeutronConstants.GENERATE_PLAYER_ID + i) + 1;
                     if (Players.TryAdd(id, new NeutronPlayer()
                     {
                         Id = id,

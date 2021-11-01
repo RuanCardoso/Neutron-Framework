@@ -101,7 +101,7 @@ namespace NeutronNetwork
 
         private void SetFramerate()
         {
-            _framerate = Settings.GlobalSettings.FPS;
+            _framerate = Settings.GlobalSettings.Fps;
             if (_framerate > 0)
             {
                 QualitySettings.vSyncCount = 0;

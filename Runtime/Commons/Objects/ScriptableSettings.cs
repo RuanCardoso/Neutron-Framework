@@ -13,8 +13,8 @@ namespace NeutronNetwork.Constants
         public string[] Addresses = { "localhost" };
         public int Port = 1418;
         [ReadOnly] [AllowNesting] public string AppId;
-        [Range(1, 256)] public int FPS = 128;
-        [Range(1, Int16.MaxValue)] public int MaxPlayers = 300;
+        [Range(1, NeutronConstants.MAX_FPS)] public int Fps = 60;
+        [Range(1, short.MaxValue)] public int MaxPlayers = 300;
         [Range(1, 65535)] public int StreamPoolCapacity = 1200;
         [Range(1, 65535)] public int PacketPoolCapacity = 1200;
         public ThreadType Performance = ThreadType.Neutron;
@@ -28,7 +28,7 @@ namespace NeutronNetwork.Constants
     public class NeutronServerSettings
     {
         public int BackLog = 10;
-        public bool FiltersLog = true;
+        public bool FiltersLog;
     }
 
     [Serializable]
@@ -46,22 +46,6 @@ namespace NeutronNetwork.Constants
         public int MaxConnectionsPerIp = 2;
         [Range(1, 150)]
         public int MaxLatency = 150; // ms
-        //---------------------------------------------------
-        public const int GENERATE_PLAYER_ID = 0;
-        public const int TIME_DECIMAL_PLACES = 3;
-        public const int MIN_SEND_RATE = 1;
-        public const int MAX_SEND_RATE = 128;
-        #endregion
-
-        #region Single's
-        public const float ONE_PER_SECOND = 1F;
-        #endregion
-
-        #region Double's
-        [Range(0, 5)]
-        public double TimeDesyncTolerance = 1D;
-        [Range(0, 1)]
-        public double TimeResyncTolerance = 0.001D;
         #endregion
 
         #region Others

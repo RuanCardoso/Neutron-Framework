@@ -12,7 +12,7 @@ namespace NeutronNetwork.Components
 
         [Header("Smooth")]
 #pragma warning disable IDE0044
-        [SerializeField] [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)] private int _packetsPerSecond = 50;
+        [SerializeField] [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)] private int _packetsPerSecond = 50;
 #pragma warning restore IDE0044
 
         private Rigidbody _rb;

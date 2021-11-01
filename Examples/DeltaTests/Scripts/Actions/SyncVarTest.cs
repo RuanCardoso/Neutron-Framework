@@ -1,8 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using NeutronNetwork;
-using UnityEngine;
-
 namespace NeutronNetwork.Examples.DeltaEx
 {
     public class SyncVarTest : SyncVarBehaviour

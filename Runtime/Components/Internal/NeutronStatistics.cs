@@ -69,7 +69,7 @@ namespace NeutronNetwork.Internal.Components
             EnableProfilerOnServer = _enableProfilerOnServer;
             while (true)
             {
-                yield return new WaitForSeconds(NeutronConstantsSettings.ONE_PER_SECOND);
+                yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND);
                 OnChangedStatistics?.Invoke(m_Profilers);
                 foreach (var l_Profiler in m_Profilers)
                     l_Profiler.Reset();

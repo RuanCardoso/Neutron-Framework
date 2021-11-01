@@ -16,17 +16,20 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Properties
-        public TargetTo TargetTo {
+        public TargetTo TargetTo
+        {
             get => _targetTo;
             set => _targetTo = value;
         }
 
-        public MatchmakingTo MatchmakingTo {
+        public MatchmakingTo MatchmakingTo
+        {
             get => _matchmakingTo;
             set => _matchmakingTo = value;
         }
 
-        public Protocol Protocol {
+        public Protocol Protocol
+        {
             get => _protocol;
             set => _protocol = value;
         }
@@ -60,37 +63,44 @@ namespace NeutronNetwork.Internal
         #endregion
 
         #region Properties
-        public byte RpcId {
+        public byte RpcId
+        {
             get => _rpcId;
             set => _rpcId = value;
         }
 
-        public string Name {
+        public string Name
+        {
             get => _name;
             set => _name = value;
         }
 
-        public NeutronBehaviour Instance {
+        public NeutronBehaviour Instance
+        {
             get => _instance;
             set => _instance = value;
         }
 
-        public NeutronBehaviour OriginalInstance {
+        public NeutronBehaviour OriginalInstance
+        {
             get => _originalInstance;
             set => _originalInstance = value;
         }
 
-        public TargetTo TargetTo {
+        public TargetTo TargetTo
+        {
             get => _targetTo;
             set => _targetTo = value;
         }
 
-        public CacheMode CacheMode {
+        public CacheMode CacheMode
+        {
             get => _cacheMode;
             set => _cacheMode = value;
         }
 
-        public Protocol Protocol {
+        public Protocol Protocol
+        {
             get => _protocol;
             set => _protocol = value;
         }
@@ -122,20 +132,23 @@ namespace NeutronNetwork.Internal
         [SerializeField] private bool _fixedSize;
         [SerializeField] private Protocol _protocol;
         [SerializeField]
-        [Range(NeutronConstantsSettings.MIN_SEND_RATE, NeutronConstantsSettings.MAX_SEND_RATE)]
+        [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)]
         private int _packetsPerSecond = 1; //* Quantidade de sincronizações por segundo.
 
-        public Protocol Protocol {
+        public Protocol Protocol
+        {
             get => _protocol;
             set => _protocol = value;
         }
 
-        public int PacketsPerSecond {
+        public int PacketsPerSecond
+        {
             get => _packetsPerSecond;
             set => _packetsPerSecond = value;
         }
 
-        public bool FixedSize {
+        public bool FixedSize
+        {
             get => _fixedSize;
             set => _fixedSize = value;
         }

@@ -33,7 +33,7 @@ namespace NeutronNetwork.Helpers
             }
             else
                 id = 0;
-            return id > NeutronConstantsSettings.GENERATE_PLAYER_ID;
+            return id > NeutronConstants.GENERATE_PLAYER_ID;
         }
 
         public static NeutronPlayer MakeTheServerPlayer()

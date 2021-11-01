@@ -121,7 +121,7 @@ namespace NeutronNetwork.Server
 
             #region Provider
             for (int i = 0; i < NeutronModule.Settings.GlobalSettings.MaxPlayers; i++)
-                _pooledIds.Push((NeutronConstantsSettings.GENERATE_PLAYER_ID + i) + 1); //* Add all player ids to the list.
+                _pooledIds.Push((NeutronConstants.GENERATE_PLAYER_ID + i) + 1); //* Add all player ids to the list.
             #endregion
 
             Initialized = true; //* Mark the server as initialized.

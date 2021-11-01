@@ -290,7 +290,7 @@ namespace NeutronNetwork
                                 This.OnAutoSynchronization(packetStream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Send the auto-sync packet.
                         }
                     }
-                    _autoSyncTimeDelay = NeutronConstantsSettings.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond; //* Set the auto-sync delay per second.
+                    _autoSyncTimeDelay = NeutronConstants.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond; //* Set the auto-sync delay per second.
                 }
             }
         }
