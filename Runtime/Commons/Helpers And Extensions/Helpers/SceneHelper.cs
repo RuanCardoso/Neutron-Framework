@@ -1,6 +1,5 @@
-using System;
 using NeutronNetwork.Internal.Packets;
-using NeutronNetwork.Server.Internal;
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,25 +7,13 @@ namespace NeutronNetwork.Helpers
 {
     public static class SceneHelper
     {
-        public static PhysicsManager CreateContainer(string name, LocalPhysicsMode physics = LocalPhysicsMode.None)
+        public static Scene CreateContainer(string name, LocalPhysicsMode physics = LocalPhysicsMode.None)
         {
             Scene fScene = SceneManager.GetSceneByName(name);
             if (!fScene.IsValid())
-            {
-                Scene newScene = SceneManager.CreateScene(name, new CreateSceneParameters(physics));
-                //* Cria um gerenciador de f�sica.
-                GameObject parent = new GameObject("Physics Manager");
-                parent.hideFlags = HideFlags.HideInHierarchy;
-                PhysicsManager manager = parent.AddComponent<PhysicsManager>();
-                manager.Scene = newScene;
-                manager.PhysicsScene = newScene.GetPhysicsScene();
-                manager.PhysicsScene2D = newScene.GetPhysicsScene2D();
-                //* Move o gerenciador de f�sica para a sua cena em quest�o.
-                MoveToContainer(parent, newScene.name);
-                return manager;
-            }
+                return SceneManager.CreateScene(name, new CreateSceneParameters(physics));
             else
-                return null;
+                return default;
         }
 
         public static void MoveToContainer(GameObject obj, string name)

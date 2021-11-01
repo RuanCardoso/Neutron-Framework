@@ -2,6 +2,7 @@ using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Server.Internal;
 using Newtonsoft.Json.Linq;
+using UnityEngine.SceneManagement;
 
 namespace NeutronNetwork.Internal.Interfaces
 {
@@ -15,7 +16,7 @@ namespace NeutronNetwork.Internal.Interfaces
         NeutronPlayer Owner { get; set; }
         NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views { get; }
         JObject Get { get; }
-        PhysicsManager PhysicsManager { get; set; }
+        Scene Scene { get; set; }
         #endregion
 
         #region Methods

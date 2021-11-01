@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 ///* Criado por: Ruan Cardoso(Brasil)
@@ -42,7 +43,7 @@ namespace NeutronNetwork.Client
         /// <summary>
         ///* Obtém o gerenciador de física.
         /// </summary>
-        public PhysicsManager PhysicsManager
+        public Scene Scene
         {
             get;
             protected set;
@@ -590,9 +591,9 @@ namespace NeutronNetwork.Client
                             if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Channel)
                             {
                                 MakeMatchmakingManager(player, neutron);
-                                if (player.Matchmaking.PhysicsManager == null)
-                                    player.Matchmaking.PhysicsManager = PhysicsManager;
-                                NeutronSceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Channel, player.Channel, neutron);
+                                if (player.Matchmaking.Scene == null)
+                                    player.Matchmaking.Scene = Scene;
+                                NeutronSceneObject.OnSceneObjectRegister(player.Channel.Owner, IsServer, Scene, MatchmakingMode.Channel, player.Channel, neutron);
                             }
                         }
                         player.Matchmaking.Owner = Players[remoteChannel.Owner.Id];
@@ -627,9 +628,9 @@ namespace NeutronNetwork.Client
                             if (Neutron.Server.MatchmakingMode == MatchmakingMode.All || Neutron.Server.MatchmakingMode == MatchmakingMode.Room)
                             {
                                 MakeMatchmakingManager(player, neutron);
-                                if (player.Matchmaking.PhysicsManager == null)
-                                    player.Matchmaking.PhysicsManager = PhysicsManager;
-                                NeutronSceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, PhysicsManager.Scene, MatchmakingMode.Room, player.Room, neutron);
+                                if (player.Matchmaking.Scene == null)
+                                    player.Matchmaking.Scene = Scene;
+                                NeutronSceneObject.OnSceneObjectRegister(player.Room.Owner, IsServer, Scene, MatchmakingMode.Room, player.Room, neutron);
                             }
                         }
                         player.Matchmaking.Owner = Players[remoteRoom.Owner.Id];

@@ -1323,8 +1323,8 @@ namespace NeutronNetwork
                 return neutron;
             }
 #endif
-            if (neutron.PhysicsManager == null && Server != null)
-                neutron.PhysicsManager = SceneHelper.CreateContainer(neutron._sceneName, physics: Server.LocalPhysicsMode); //* Create the default container to hold all the objects of client.
+            if (neutron.Scene == default && Server != null)
+                neutron.Scene = SceneHelper.CreateContainer(neutron._sceneName, physics: Server.LocalPhysicsMode); //* Create the default container to hold all the objects of client.
             if (clientMode == ClientMode.Player)
             {
                 if (Client == null)

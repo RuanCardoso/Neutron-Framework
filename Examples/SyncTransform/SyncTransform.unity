@@ -141,7 +141,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &27858451
 Transform:
   m_ObjectHideFlags: 0
@@ -150,7 +150,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 27858450}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.54, y: 0.21999979, z: -6.26}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -447,8 +447,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1227431728}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -4.54, y: -0.9599998, z: 5.7900004}
+  m_LocalScale: {x: 3.1668, y: 3.1668, z: 3.1668}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1802345221}
@@ -848,6 +848,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de99fdb0fee4e864db3203fc54408f1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _autoSimulation: 0
 --- !u!1 &1802345220
 GameObject:
   m_ObjectHideFlags: 0
@@ -872,7 +873,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1802345220}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.11341047, y: -1.5078192, z: -0.39718723}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1048,6 +1049,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 1802345221}
     m_Modifications:
+    - target: {fileID: -7367200008805497933, guid: 913822aca466f154898df1edc10cc49b, type: 3}
+      propertyPath: m_CollisionDetection
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: -4081531874842965678, guid: 913822aca466f154898df1edc10cc49b, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -1070,7 +1075,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1532988436517951673, guid: 913822aca466f154898df1edc10cc49b, type: 3}
       propertyPath: _offlineMode
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2468563362786346040, guid: 913822aca466f154898df1edc10cc49b, type: 3}
       propertyPath: m_Name

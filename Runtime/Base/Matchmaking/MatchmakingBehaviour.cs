@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace NeutronNetwork.Internal
 {
@@ -51,7 +52,8 @@ namespace NeutronNetwork.Internal
         ///* Define o nome do atual Matchmaking.
         /// </summary>
         [Network("Serialized")]
-        public string Name {
+        public string Name
+        {
             get => _name;
             set => _name = value;
         }
@@ -60,7 +62,8 @@ namespace NeutronNetwork.Internal
         ///* Retorna a quantidade atual de jogadores do atual Matchmaking.
         /// </summary>
         [Network("Serialized")]
-        public int PlayerCount {
+        public int PlayerCount
+        {
             get => _playerCount;
         }
 
@@ -68,7 +71,8 @@ namespace NeutronNetwork.Internal
         ///* Define a quantidade máxima de jogadores do atual Matchmaking.
         /// </summary>
         [Network("Serialized")]
-        public int MaxPlayers {
+        public int MaxPlayers
+        {
             get => _maxPlayers;
             set => _maxPlayers = value;
         }
@@ -77,9 +81,11 @@ namespace NeutronNetwork.Internal
         ///* Define as propridades do atual Matchmaking.
         /// </summary>
         [Network("Serialized")]
-        public string Properties {
+        public string Properties
+        {
             get => _properties;
-            set {
+            set
+            {
                 _properties = value;
                 try
                 {
@@ -96,7 +102,8 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* O jogador dono do atual Matchmaking.
         /// </summary>
-        public NeutronPlayer Owner {
+        public NeutronPlayer Owner
+        {
             get;
             set;
         }
@@ -104,14 +111,16 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* Armazena os objetos de rede do matchmaking.
         /// </summary>
-        public NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views {
+        public NeutronSafeDictionary<(int, int, RegisterMode), NeutronView> Views
+        {
             get;
         } = new NeutronSafeDictionary<(int, int, RegisterMode), NeutronView>();
 
         /// <summary>
         ///* As propriedades do atual Matchmaking.
         /// </summary>
-        public JObject Get {
+        public JObject Get
+        {
             get;
             private set;
         } = new JObject();
@@ -119,21 +128,24 @@ namespace NeutronNetwork.Internal
         /// <summary>
         ///* O cache de pacotes do atual Matchmaking.
         /// </summary>
-        private Dictionary<(int, int, int), NeutronCache> CachedPackets {
+        private Dictionary<(int, int, int), NeutronCache> CachedPackets
+        {
             get;
         } = new Dictionary<(int, int, int), NeutronCache>();
 
         /// <summary>
         ///* A lista de jogadores do atual Matchmaking.
         /// </summary>
-        private PlayerDictionary PlayerDictionary {
+        private PlayerDictionary PlayerDictionary
+        {
             get => _players;
         }
 
         /// <summary>
         ///* Obtém o gerenciador de física do Matchmaking.
         /// </summary>
-        public PhysicsManager PhysicsManager {
+        public Scene Scene
+        {
             get;
             set;
         }

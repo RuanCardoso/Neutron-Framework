@@ -25,9 +25,9 @@ namespace NeutronNetwork
         public static Synchronization Synchronization
         {
             get;
-
             private set;
         }
+
         public static Encoding Encoding
         {
             get;
@@ -57,6 +57,9 @@ namespace NeutronNetwork
 
         #region Fields
         private int _framerate;
+#pragma warning disable IDE0044
+        [SerializeField] private bool _autoSimulation = false;
+#pragma warning restore IDE0044
         #endregion
 
         private void Awake()
@@ -72,11 +75,11 @@ namespace NeutronNetwork
         {
             SetFramerate();
             //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
-            Physics.autoSimulation = false;
+            Physics.autoSimulation = _autoSimulation;
 #if UNITY_2020_1_OR_NEWER
-            Physics2D.simulationMode = SimulationMode2D.Script;
+            Physics2D.simulationMode = !_autoSimulation ? SimulationMode2D.Script : SimulationMode2D.FixedUpdate;
 #else
-            Physics2D.autoSimulation = false;
+            Physics2D.autoSimulation = _autoSimulation;
 #endif
 #if UNITY_SERVER && !UNITY_EDITOR
             Debug.unityLogger.logEnabled = false;
