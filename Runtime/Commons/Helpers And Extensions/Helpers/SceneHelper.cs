@@ -37,7 +37,7 @@ namespace NeutronNetwork.Helpers
         {
             //* Inicializa um Matchmaking Manager e o registra na rede.
             GameObject matchManager = new GameObject("Match Manager");
-            //matchManager.hideFlags = HideFlags.HideInHierarchy;
+            matchManager.hideFlags = HideFlags.HideInHierarchy;
             var neutronView = matchManager.AddComponent<NeutronView>();
             neutronView.AutoDestroy = false;
             neutronView.Id = short.MaxValue;

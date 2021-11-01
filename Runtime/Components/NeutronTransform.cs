@@ -45,7 +45,7 @@ namespace NeutronNetwork.Components
         [Header("Buffer")]
         [SerializeField] [ReadOnly] private double _interpolationTime;
 #pragma warning disable IDE0044
-        [SerializeField] private int _bufferMaxCount = 6;
+        [SerializeField] private int _bufferMaxSize = 6;
         [SerializeField] private float _bufferTime = 0f;
         [SerializeField] private int _catchupThreshold = 4;
         [SerializeField] [Range(0, 1)] private float _catchupMultiplier = 0.10f;
@@ -70,12 +70,15 @@ namespace NeutronNetwork.Components
             { }
         }
 
-        protected override void OnNeutronUpdate()
+        protected override void OnNeutronLateUpdate()
         {
             base.OnNeutronUpdate();
             {
                 if (HasAuthority)
                 {
+                    if (!_syncPosition && !_syncRotation && !_syncScale)
+                        return;
+
                     if (LocalTime >= (_lastSyncedTime + (1d / _packetsPerSecond)))
                     {
                         using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
@@ -83,6 +86,7 @@ namespace NeutronNetwork.Components
                             var writer = Begin_iRPC(1, stream, out var option);
                             if (_syncPosition)
                                 writer.Write(transform.localPosition);
+
                             if (_syncRotation)
                             {
                                 if (_compressQuaternion)
@@ -90,8 +94,10 @@ namespace NeutronNetwork.Components
                                 else
                                     writer.Write(transform.localRotation);
                             }
+
                             if (_syncScale)
                                 writer.Write(transform.localScale);
+
                             writer.Write(LocalTime); //* timestamp
                             writer.Write();
                             End_iRPC(1, stream);
@@ -104,7 +110,7 @@ namespace NeutronNetwork.Components
                     lock (_bufferLock)
                     {
                         //* Corrige a posi��o, se o buffer estiver grande, logo o processamento est� atrasado, limpa e continua....
-                        if (_buffer.Count > _bufferMaxCount)
+                        if (_buffer.Count > _bufferMaxSize)
                             Clear();
                         if (SnapshotInterpolation.Compute(LocalTime, Time.deltaTime, ref _interpolationTime, _bufferTime, _buffer, _catchupThreshold, _catchupMultiplier, _interpolate, out NetworkTransformSnapshot computed))
                             Interpolate(computed);
@@ -127,7 +133,7 @@ namespace NeutronNetwork.Components
         {
             NeutronSchedule.ScheduleTask(() =>
             {
-                if (!(Vector3.Distance(transform.position, position) > _teleportMaxDistance))
+                if (!(Vector3.Distance(transform.localPosition, position) > _teleportMaxDistance))
                     return;
 
                 transform.localPosition = position;
@@ -150,7 +156,8 @@ namespace NeutronNetwork.Components
             var scale = _syncScale ? reader.ReadVector3() : Vector3.zero;
             var timestamp = reader.ReadDouble();
 
-            OnTeleport(position);
+            if (_syncPosition)
+                OnTeleport(position);
 
             NetworkTransformSnapshot snapshot = new NetworkTransformSnapshot(
                 timestamp,

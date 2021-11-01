@@ -233,11 +233,12 @@ namespace NeutronNetwork.Server
                         if (SocketHelper.AddPlayer(player))
                         {
                             Interlocked.Increment(ref _playerCount); //* Increment the player count.
+
                             #region View
                             NeutronSchedule.ScheduleTask(() =>
                             {
                                 GameObject playerGlobalController = GameObject.Instantiate(PlayerGlobalController.gameObject); //* Create the player global controller.
-                                PlayerGlobalController.hideFlags = HideFlags.HideInHierarchy; //* Hide the player global controller.
+                                playerGlobalController.hideFlags = HideFlags.HideInHierarchy; //* Hide the player global controller.
                                 playerGlobalController.name = $"Player Global Controller[{player.Id}]"; //* Set the name of the player global controller.
                                 foreach (Component component in playerGlobalController.GetComponents<Component>())
                                 {

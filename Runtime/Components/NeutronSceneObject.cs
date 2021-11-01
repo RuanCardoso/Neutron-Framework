@@ -108,7 +108,6 @@ namespace NeutronNetwork.Components
             #region Duplicate and Register
             NeutronSceneObject sceneObject = Instantiate(gameObject).GetComponent<NeutronSceneObject>();
             sceneObject._isOriginalObject = false;
-            sceneObject.gameObject.SetActive(true);
             sceneObject.gameObject.hideFlags = _hideInHierarchy ? HideFlags.HideInHierarchy : HideFlags.None;
             sceneObject._neutronView = sceneObject.transform.root.GetComponent<NeutronView>();
             if (sceneObject._neutronView != null)
@@ -120,6 +119,7 @@ namespace NeutronNetwork.Components
             }
             else
                 LogHelper.Error("NeutronView not found in scene object!");
+            sceneObject.gameObject.SetActive(true);
             #endregion
         }
     }

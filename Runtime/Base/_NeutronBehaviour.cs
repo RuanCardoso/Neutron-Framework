@@ -1,4 +1,5 @@
 ﻿using NeutronNetwork.Attributes;
+using NeutronNetwork.Components;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
@@ -67,6 +68,10 @@ namespace NeutronNetwork
 #pragma warning disable IDE0044
         [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
 #pragma warning restore IDE0044
+        /// <summary>
+        ///* Authority controller for the local object.
+        /// </summary>
+        [SerializeField] [HideInInspector] protected NeutronAuthority NeutronAuthority;
         #endregion
 
         #region Properties
@@ -324,10 +329,39 @@ namespace NeutronNetwork
         protected virtual void OnValidate()
         {
 #if UNITY_EDITOR
+            if (NeutronAuthority == null)
+            {
+                var neutronAuthorities = transform.root.GetComponentsInChildren<NeutronAuthority>().Where(x => x._root).ToArray();
+                if (neutronAuthorities.Length > 0)
+                {
+                    var internAuthorities = transform.root.GetComponentsInChildren<NeutronAuthority>();
+                    if (internAuthorities.Length > 1)
+                        LogHelper.Error("Only one authority controller can exist when root mode is active.");
+                    else
+                    {
+                        NeutronAuthority = neutronAuthorities[0];
+                        if (NeutronAuthority != null && GetType().Name != "NeutronAuthority")
+                            HandledBy(NeutronAuthority);
+                    }
+                }
+                else
+                {
+                    NeutronAuthority = transform.GetComponent<NeutronAuthority>();
+                    if (NeutronAuthority != null && GetType().Name != "NeutronAuthority")
+                        HandledBy(NeutronAuthority);
+                }
+            }
+
             LoadOptions();
             if (_offlineMode)
                 _authority = AuthorityMode.None;
 #endif
+        }
+
+        public void HandledBy(NeutronBehaviour neutronBehaviour)
+        {
+            _authority = AuthorityMode.Handled;
+            _authorityHandledBy = neutronBehaviour;
         }
 
         private void LoadOptions()

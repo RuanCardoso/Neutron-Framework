@@ -1,8 +1,9 @@
+using NeutronNetwork.Components;
 using UnityEngine;
 
 namespace NeutronNetwork.Examples
 {
-    [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(NeutronRigidbody))]
     public class MoveCube : NeutronBehaviour
     {
         private Rigidbody _rb;
