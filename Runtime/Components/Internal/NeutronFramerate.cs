@@ -6,7 +6,7 @@ namespace NeutronNetwork
     {
         #region Fields -> Inspector
         [SerializeField] private bool _drawOnGui = true;
-        [SerializeField] private int _updateRate = 4;
+        [SerializeField] private int _updateRate = 1;
         #endregion
 
         #region Fields
@@ -29,7 +29,7 @@ namespace NeutronNetwork
 
         private void Update()
         {
-            _deltaTime += Time.unscaledDeltaTime;
+            _deltaTime += Time.deltaTime;
             _frameCount++;
 
             if (_deltaTime > 1f / _updateRate)

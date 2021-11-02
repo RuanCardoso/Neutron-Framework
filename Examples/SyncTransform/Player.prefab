@@ -153,7 +153,7 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 0
   _teleportMaxDistance: 15
-  _packetsPerSecond: 60
+  _packetsPerSecond: 256
   _interpolationTime: 0
   _bufferMaxSize: 6
   _bufferTime: 0
