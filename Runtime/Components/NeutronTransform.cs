@@ -73,6 +73,16 @@ namespace NeutronNetwork.Components
             }
         }
 
+        protected override void Update()
+        {
+            base.Update();
+            {
+
+            }
+        }
+
+        float t;
+        int frames;
         protected override void OnNeutronUpdate()
         {
             base.OnNeutronUpdate();
@@ -82,7 +92,7 @@ namespace NeutronNetwork.Components
                     if (!_syncPosition && !_syncRotation && !_syncScale)
                         return;
 
-                    if (LocalTime >= (_lastSyncedTime + (1d / _packetsPerSecond)))
+                    //if (LocalTime >= (_lastSyncedTime + (1d / _packetsPerSecond)))
                     {
                         using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                         {

@@ -11,7 +11,8 @@ namespace NeutronNetwork.Internal.Components
     {
         [SerializeField]
         private bool _enableProfilerOnServer;
-        public static bool EnableProfilerOnServer {
+        public static bool EnableProfilerOnServer
+        {
             get;
             private set;
         }
@@ -62,9 +63,9 @@ namespace NeutronNetwork.Internal.Components
 #if UNITY_SERVER && !UNITY_EDITOR
         private void Awake() => OnChangedStatistics += OnStatistics;
 #endif
-        private void Start() => StartCoroutine(Clear());
+        private void Start() => StartCoroutine(UpdateAndReset());
 
-        private IEnumerator Clear()
+        private IEnumerator UpdateAndReset()
         {
             EnableProfilerOnServer = _enableProfilerOnServer;
             while (true)

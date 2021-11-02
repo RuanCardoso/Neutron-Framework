@@ -4,8 +4,12 @@ namespace NeutronNetwork
 {
     public class NeutronFramerate : MonoBehaviour
     {
-        #region Fields
+        #region Fields -> Inspector
+        [SerializeField] private bool _drawOnGui = true;
         [SerializeField] private int _updateRate = 4;
+        #endregion
+
+        #region Fields
         private int _frameCount = 0;
         private float _deltaTime = 0f;
         #endregion
@@ -35,6 +39,15 @@ namespace NeutronNetwork
 
                 _deltaTime = 0f;
                 _frameCount = 0;
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (_drawOnGui)
+            {
+                GUI.Box(new Rect(Screen.width - 100, 0, 100, 20), $"Fps: {NeutronFramerate.Fps}");
+                GUI.Box(new Rect(Screen.width - 100, 25, 100, 20), $"Ms: {NeutronFramerate.Ms}");
             }
         }
     }
