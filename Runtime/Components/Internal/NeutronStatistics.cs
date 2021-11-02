@@ -1,6 +1,7 @@
 ﻿using NeutronNetwork.Constants;
 using NeutronNetwork.Editor;
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Server;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -9,13 +10,9 @@ namespace NeutronNetwork.Internal.Components
 {
     public class NeutronStatistics : MonoBehaviour
     {
-        [SerializeField]
-        private bool _enableProfilerOnServer;
-        public static bool EnableProfilerOnServer
-        {
-            get;
-            private set;
-        }
+        [SerializeField] private bool _enableProfilerOnServerGUI = true;
+        [SerializeField] private bool _enableProfilerOnServerConsole = false;
+        [SerializeField] private bool _enableProfilerOnClient = true;
         private readonly InOutData[] m_Profilers = new[] { ClientTCP, ClientUDP, ServerTCP, ServerUDP };
 
         #region Client
@@ -33,41 +30,45 @@ namespace NeutronNetwork.Internal.Components
         #endregion
 
         #region Client Data On Server
-        private int m_ClientBytesOutgoingTCP;
-        private int m_ClientBytesIncomingTCP;
+        private int _clientBytesOutgoingTCP;
+        private int _clientBytesIncomingTCP;
 
-        private int m_ClientBytesOutgoingUDP;
-        private int m_ClientBytesIncomingUDP;
+        private int _clientBytesOutgoingUDP;
+        private int _clientBytesIncomingUDP;
 
-        private int m_ClientPacketsOutgoingTCP;
-        private int m_ClientPacketsIncomingTCP;
+        private int _clientPacketsOutgoingTCP;
+        private int _clientPacketsIncomingTCP;
 
-        private int m_ClientPacketsOutgoingUDP;
-        private int m_ClientPacketsIncomingUDP;
+        private int _clientPacketsOutgoingUDP;
+        private int _clientPacketsIncomingUDP;
         #endregion
 
         #region Server Data On Server
-        private int m_ServerBytesOutgoingTCP;
-        private int m_ServerBytesIncomingTCP;
+        private int _serverBytesOutgoingTCP;
+        private int _serverBytesIncomingTCP;
 
-        private int m_ServerBytesOutgoingUDP;
-        private int m_ServerBytesIncomingUDP;
+        private int _serverBytesOutgoingUDP;
+        private int _serverBytesIncomingUDP;
 
-        private int m_ServerPacketsOutgoingTCP;
-        private int m_ServerPacketsIncomingTCP;
+        private int _serverPacketsOutgoingTCP;
+        private int _serverPacketsIncomingTCP;
 
-        private int m_ServerPacketsOutgoingUDP;
-        private int m_ServerPacketsIncomingUDP;
+        private int _serverPacketsOutgoingUDP;
+        private int _serverPacketsIncomingUDP;
         #endregion
 
-#if UNITY_SERVER && !UNITY_EDITOR
+        #region Tcp/Udp
+        private int _tcpHeaderSize = 40;
+        private int _udpHeaderSize = 28;
+        #endregion
+
+        [SerializeField] private bool _hasProtocolHeaderIncluded = true;
+
         private void Awake() => OnChangedStatistics += OnStatistics;
-#endif
         private void Start() => StartCoroutine(UpdateAndReset());
 
         private IEnumerator UpdateAndReset()
         {
-            EnableProfilerOnServer = _enableProfilerOnServer;
             while (true)
             {
                 yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND);
@@ -77,82 +78,101 @@ namespace NeutronNetwork.Internal.Components
             }
         }
 
-        private void OnUpdate()
+        private void OnGUI()
         {
-            if (EnableProfilerOnServer)
+            int padding = 1, height = 55, width = 300;
+#if !UNITY_SERVER && !UNITY_EDITOR
+            if (_enableProfilerOnClient)
             {
-                //#region Header
-                //LogHelper.Info("\r\nTCP[Client]");
-                //#endregion
+                string tcpIn = $"In: {Helper.SizeSuffix(_clientBytesIncomingTCP + (_clientBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesIncomingTCP + (_clientBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsIncomingTCP}";
+                string tcpOut = $"Out: {Helper.SizeSuffix(_clientBytesOutgoingTCP + (_clientBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesOutgoingTCP + (_clientBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsOutgoingTCP}";
+                GUI.Box(new Rect(padding, Screen.height - height - padding, width, height), $"TCP[Client]\n{tcpIn}\n{tcpOut}");
+                string udpIn = $"In: {Helper.SizeSuffix(_clientBytesIncomingUDP + (_clientBytesIncomingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesIncomingUDP + (_clientBytesIncomingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsIncomingUDP}";
+                string udpOut = $"Out: {Helper.SizeSuffix(_clientBytesOutgoingUDP + (_clientBytesOutgoingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesOutgoingUDP + (_clientBytesOutgoingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsOutgoingUDP}";
+                GUI.Box(new Rect(padding, Screen.height - (height * 2) - (5 + padding), width, height), $"UDP[Client]\n{udpIn}\n{udpOut}");
+            }
+#endif
 
-                //LogHelper.Info($"In: {Helper.SizeSuffix(m_ClientBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingTCP, 2, 4)}] - Pkt/s: {m_ClientPacketsIncomingTCP}");
-                //LogHelper.Info($"Out: {Helper.SizeSuffix(m_ClientBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingTCP, 2, 4)}] - Pkt/s: {m_ClientPacketsOutgoingTCP}");
+#if !UNITY_SERVER && !UNITY_EDITOR && UNITY_NEUTRON_LAN
+            if (_enableProfilerOnServerGUI && NeutronServer.Initialized)
+            {
+                string tcpIn = $"In: {Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingTCP}";
+                string tcpOut = $"Out: {Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingTCP}";
+                GUI.Box(new Rect(padding + width + 5, Screen.height - height - padding, width, height), $"TCP[Server]\n{tcpIn}\n{tcpOut}");
+                string udpIn = $"In: {Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingUDP}";
+                string udpOut = $"Out: {Helper.SizeSuffix(_serverBytesOutgoingUDP + (_serverBytesOutgoingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingUDP + (_serverBytesOutgoingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingUDP}";
+                GUI.Box(new Rect(padding + width + 5, Screen.height - (height * 2) - (5 + padding), width, height), $"UDP[Server]\n{udpIn}\n{udpOut}");
+            }
+#endif
+        }
 
-                //#region Header
-                //LogHelper.Info("\r\nUDP[Client]");
-                //#endregion
-
-                //LogHelper.Info($"In: {Helper.SizeSuffix(m_ClientBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ClientBytesIncomingUDP, 2, 4)}] - Pkt/s: {m_ClientPacketsIncomingUDP}");
-                //LogHelper.Info($"Out: {Helper.SizeSuffix(m_ClientBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ClientBytesOutgoingUDP, 2, 4)}] - Pkt/s: {m_ClientPacketsOutgoingUDP}");
-
-                #region Header
+        private void UpdateInServerConsole()
+        {
+#if UNITY_SERVER && !UNITY_EDITOR
+            if (_enableProfilerOnServerConsole)
+            {
+            #region Header
                 LogHelper.Info("\r\nTCP[Server]");
-                #endregion
+            #endregion
 
-                LogHelper.Info($"In: {Helper.SizeSuffix(m_ServerBytesIncomingTCP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingTCP, 2, 4)}] - Pkt/s: {m_ServerPacketsIncomingTCP}");
-                LogHelper.Info($"Out: {Helper.SizeSuffix(m_ServerBytesOutgoingTCP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingTCP, 2, 4)}] - Pkt/s: {m_ServerPacketsOutgoingTCP}");
+                LogHelper.Info($"In: {Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingTCP}");
+                LogHelper.Info($"Out: {Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingTCP}");
 
                 string separator = string.Empty;
                 for (int i = 0; i < Console.WindowWidth; i++)
                     separator += "*";
                 LogHelper.Info($"\r\n{separator}");
 
-                #region Header
+            #region Header
                 LogHelper.Info("UDP[Server]");
-                #endregion
+            #endregion
 
-                LogHelper.Info($"In: {Helper.SizeSuffix(m_ServerBytesIncomingUDP)} | [{Helper.SizeSuffix(m_ServerBytesIncomingUDP, 2, 4)}] - Pkt/s: {m_ServerPacketsIncomingUDP}");
-                LogHelper.Info($"Out: {Helper.SizeSuffix(m_ServerBytesOutgoingUDP)} | [{Helper.SizeSuffix(m_ServerBytesOutgoingUDP, 2, 4)}] - Pkt/s: {m_ServerPacketsOutgoingUDP}");
+                LogHelper.Info($"In: {Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingUDP}");
+                LogHelper.Info($"Out: {Helper.SizeSuffix(_serverBytesOutgoingUDP + (_serverBytesOutgoingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingUDP + (_serverBytesOutgoingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingUDP}");
             }
+#endif
         }
 
         private void OnStatistics(InOutData[] nProfilers)
         {
-            if (EnableProfilerOnServer)
+            nProfilers[0].Get(out int ClientBytesOutgoingTCP, out int ClientBytesIncomingTCP, out int ClientPacketsOutgoingTCP, out int ClientPacketsIncomingTCP);
             {
-                nProfilers[0].Get(out int ClientBytesOutgoingTCP, out int ClientBytesIncomingTCP, out int ClientPacketsOutgoingTCP, out int ClientPacketsIncomingTCP);
-                {
-                    m_ClientBytesIncomingTCP = ClientBytesIncomingTCP;
-                    m_ClientBytesOutgoingTCP = ClientBytesOutgoingTCP;
-                    m_ClientPacketsIncomingTCP = ClientPacketsIncomingTCP;
-                    m_ClientPacketsOutgoingTCP = ClientPacketsOutgoingTCP;
-                }
-
-                nProfilers[1].Get(out int ClientBytesOutgoingUDP, out int ClientBytesIncomingUDP, out int ClientPacketsOutgoingUDP, out int ClientPacketsIncomingUDP);
-                {
-                    m_ClientBytesIncomingUDP = ClientBytesIncomingUDP;
-                    m_ClientBytesOutgoingUDP = ClientBytesOutgoingUDP;
-                    m_ClientPacketsIncomingUDP = ClientPacketsIncomingUDP;
-                    m_ClientPacketsOutgoingUDP = ClientPacketsOutgoingUDP;
-                }
-
-                nProfilers[2].Get(out int ServerBytesOutgoingTCP, out int ServerBytesIncomingTCP, out int ServerPacketsOutgoingTCP, out int ServerPacketsIncomingTCP);
-                {
-                    m_ServerBytesIncomingTCP = ServerBytesIncomingTCP;
-                    m_ServerBytesOutgoingTCP = ServerBytesOutgoingTCP;
-                    m_ServerPacketsIncomingTCP = ServerPacketsIncomingTCP;
-                    m_ServerPacketsOutgoingTCP = ServerPacketsOutgoingTCP;
-                }
-
-                nProfilers[3].Get(out int ServerBytesOutgoingUDP, out int ServerBytesIncomingUDP, out int ServerPacketsOutgoingUDP, out int ServerPacketsIncomingUDP);
-                {
-                    m_ServerBytesIncomingUDP = ServerBytesIncomingUDP;
-                    m_ServerBytesOutgoingUDP = ServerBytesOutgoingUDP;
-                    m_ServerPacketsIncomingUDP = ServerPacketsIncomingUDP;
-                    m_ServerPacketsOutgoingUDP = ServerPacketsOutgoingUDP;
-                }
-                OnUpdate();
+                _clientBytesIncomingTCP = ClientBytesIncomingTCP;
+                _clientBytesOutgoingTCP = ClientBytesOutgoingTCP;
+                _clientPacketsIncomingTCP = ClientPacketsIncomingTCP;
+                _clientPacketsOutgoingTCP = ClientPacketsOutgoingTCP;
             }
+
+            nProfilers[1].Get(out int ClientBytesOutgoingUDP, out int ClientBytesIncomingUDP, out int ClientPacketsOutgoingUDP, out int ClientPacketsIncomingUDP);
+            {
+                _clientBytesIncomingUDP = ClientBytesIncomingUDP;
+                _clientBytesOutgoingUDP = ClientBytesOutgoingUDP;
+                _clientPacketsIncomingUDP = ClientPacketsIncomingUDP;
+                _clientPacketsOutgoingUDP = ClientPacketsOutgoingUDP;
+            }
+
+            nProfilers[2].Get(out int ServerBytesOutgoingTCP, out int ServerBytesIncomingTCP, out int ServerPacketsOutgoingTCP, out int ServerPacketsIncomingTCP);
+            {
+                _serverBytesIncomingTCP = ServerBytesIncomingTCP;
+                _serverBytesOutgoingTCP = ServerBytesOutgoingTCP;
+                _serverPacketsIncomingTCP = ServerPacketsIncomingTCP;
+                _serverPacketsOutgoingTCP = ServerPacketsOutgoingTCP;
+            }
+
+            nProfilers[3].Get(out int ServerBytesOutgoingUDP, out int ServerBytesIncomingUDP, out int ServerPacketsOutgoingUDP, out int ServerPacketsIncomingUDP);
+            {
+                _serverBytesIncomingUDP = ServerBytesIncomingUDP;
+                _serverBytesOutgoingUDP = ServerBytesOutgoingUDP;
+                _serverPacketsIncomingUDP = ServerPacketsIncomingUDP;
+                _serverPacketsOutgoingUDP = ServerPacketsOutgoingUDP;
+            }
+            UpdateInServerConsole();
+        }
+
+        private void Update()
+        {
+            _tcpHeaderSize = _hasProtocolHeaderIncluded ? 40 : 0;
+            _udpHeaderSize = _hasProtocolHeaderIncluded ? 28 : 0;
         }
 
         private void OnApplicationQuit()

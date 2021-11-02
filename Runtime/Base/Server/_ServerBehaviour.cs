@@ -182,10 +182,10 @@ namespace NeutronNetwork.Server
                     }
                 }
                 else
-                    LogHelper.Error("Settings is missing!");
+                    IsReady = LogHelper.Error("Settings is missing!");
 #endif
 #else
-                LogHelper.Error("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
+                    IsReady = LogHelper.Error("This version of Unity is not compatible with this asset, please use a version equal to or greater than 2018.4.");
 #endif
             }
             else
