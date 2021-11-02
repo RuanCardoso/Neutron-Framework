@@ -832,19 +832,16 @@ namespace NeutronNetwork.Server
         private void OnApplicationQuit()
 #pragma warning restore IDE0051
         {
-            using (TokenSource)
+            Task.Run(() =>
             {
-                if (Initialized)
-                {
-                    Initialized = false; //* Set the initialized to false.
-                    TokenSource.Cancel(); //* stop all threads.
-                    foreach (NeutronPlayer player in PlayersById.Values)
-                        player.Dispose(); //* Dispose all players.
-                    _acceptedClients.Dispose();
-                    _dataForProcessing.Dispose();
-                    TcpListener.Stop();
-                }
-            }
+                TokenSource.Cancel(); //* stop all threads.
+                foreach (NeutronPlayer player in PlayersById.Values)
+                    player.Dispose(); //* Dispose all players.
+                TcpListener.Stop(); //* Stop the server.
+                _acceptedClients.Dispose();
+                _dataForProcessing.Dispose();
+                Initialized = false; //* Set the initialized to false.
+            });
         }
         #endregion
     }

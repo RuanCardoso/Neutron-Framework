@@ -43,7 +43,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o identificador do jogador.
         /// </summary>
-        public int Id {
+        public int Id
+        {
             get => _id;
             set => _id = value;
         }
@@ -51,7 +52,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o nome de seu jogador;
         /// </summary>
-        public string Nickname {
+        public string Nickname
+        {
             get => _nickname;
             set => _nickname = value;
         }
@@ -59,7 +61,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o atual canal do jogador.
         /// </summary>
-        public NeutronChannel Channel {
+        public NeutronChannel Channel
+        {
             get => _channel;
             set => _channel = value;
         }
@@ -67,7 +70,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna a atual sala do jogador.
         /// </summary>
-        public NeutronRoom Room {
+        public NeutronRoom Room
+        {
             get => _room;
             set => _room = value;
         }
@@ -75,9 +79,11 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna as propriedades do jogador em Json;
         /// </summary>
-        public string Properties {
+        public string Properties
+        {
             get => _properties;
-            set {
+            set
+            {
                 _properties = value;
                 try
                 {
@@ -91,7 +97,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna o ID do banco de dados do jogador, disponível somente no servidor.
         /// </summary>
-        public int DatabaseID {
+        public int DatabaseID
+        {
             get => _databaseId;
             set => _databaseId = value;
         }
@@ -99,21 +106,24 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna se este jogador é o jogador que representa o servidor.
         /// </summary>
-        public bool IsServerPlayer {
+        public bool IsServerPlayer
+        {
             get => Id == 0;
         }
 
         /// <summary>
         ///* Retorna se este jogador é o dono do Matchmaking atual.
         /// </summary>
-        public bool IsMaster {
+        public bool IsMaster
+        {
             get => Matchmaking.Owner.Equals(this);
         }
 
         /// <summary>
         ///* Retorna o estado da sua conexão com o servidor.
         /// </summary>
-        public bool IsConnected {
+        public bool IsConnected
+        {
             get;
             set;
         }
@@ -121,7 +131,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Retorna seu identificador de rede(Player).
         /// </summary>
-        public NeutronView NeutronView {
+        public NeutronView NeutronView
+        {
             get;
             set;
         }
@@ -129,7 +140,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Propriedades personalizadas do jogador.
         /// </summary>
-        public JObject Get {
+        public JObject Get
+        {
             get;
             private set;
         } = new JObject();
@@ -137,7 +149,8 @@ namespace NeutronNetwork
         /// <summary>
         ///* Propriedades personalizadas do jogador, disponível somente ao lado do servidor.
         /// </summary>
-        public Dictionary<string, object> Prefs {
+        public Dictionary<string, object> Prefs
+        {
             get;
         } = new Dictionary<string, object>();
 
@@ -145,39 +158,47 @@ namespace NeutronNetwork
         ///* Seu atual Matchmaking, Sala ou Channel.<br/>
         ///* Retorna o último tipo de Matchmaking ingressado.
         /// </summary>
-        public INeutronMatchmaking Matchmaking {
+        public INeutronMatchmaking Matchmaking
+        {
             get;
             set;
         }
         #endregion
 
         #region Properties -> Network
-        public TcpClient TcpClient {
+        public TcpClient TcpClient
+        {
             get;
         }
 
-        public UdpClient UdpClient {
+        public UdpClient UdpClient
+        {
             get;
         }
 
-        public Stream NetworkStream {
+        public Stream NetworkStream
+        {
             get;
         }
 
-        public CancellationTokenSource TokenSource {
+        public CancellationTokenSource TokenSource
+        {
             get;
         }
 
-        public StateObject StateObject {
+        public StateObject StateObject
+        {
             get;
         } = new StateObject();
 
-        public NeutronEventNoReturn OnDestroy {
+        public NeutronEventNoReturn OnDestroy
+        {
             get;
             set;
         }
 
-        public short SceneObjectId {
+        public short SceneObjectId
+        {
             get;
             set;
         }
@@ -246,11 +267,9 @@ namespace NeutronNetwork
 
         public void Dispose()
         {
-            NetworkStream.Dispose();
             using (TokenSource)
-            {
                 TokenSource.Cancel();
-            }
+            NetworkStream.Dispose();
             TcpClient.Dispose();
             UdpClient.Dispose();
         }
