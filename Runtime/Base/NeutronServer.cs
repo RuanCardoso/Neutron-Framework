@@ -110,8 +110,8 @@ namespace NeutronNetwork.Server
         private void StartThreads()
         {
             #region Initialize Collections
-            _acceptedClients = !IsUnityThread ? new NeutronBlockingQueue<TcpClient>() : new NeutronSafeQueueNonAlloc<TcpClient>();
-            _dataForProcessing = !IsUnityThread ? new NeutronBlockingQueue<NeutronPacket>() : new NeutronSafeQueueNonAlloc<NeutronPacket>();
+            _acceptedClients = !IsUnityThread ? (INeutronConsumer<TcpClient>)new NeutronBlockingQueue<TcpClient>() : (INeutronConsumer<TcpClient>)new NeutronSafeQueueNonAlloc<TcpClient>();
+            _dataForProcessing = !IsUnityThread ? (INeutronConsumer<NeutronPacket>)new NeutronBlockingQueue<NeutronPacket>() : (INeutronConsumer<NeutronPacket>)new NeutronSafeQueueNonAlloc<NeutronPacket>();
             #endregion
 
             Player = PlayerHelper.MakeTheServerPlayer(); //* Create the ref player.

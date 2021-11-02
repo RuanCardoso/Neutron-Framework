@@ -767,13 +767,13 @@ namespace NeutronNetwork
                             void SetState(NeutronPlayer[] otherPlayers)
                             {
                                 //* Sets the state of the player.
-                                foreach (var player in otherPlayers)
+                                foreach (var pPlayer in otherPlayers)
                                 {
-                                    if (player.Equals(This.LocalPlayer))
+                                    if (pPlayer.Equals(This.LocalPlayer))
                                         continue; //* Skips the local player.
 
-                                    var currentPlayer = Players[player.Id];
-                                    currentPlayer.Apply(player); //* Applies the state of the player.
+                                    var currentPlayer = Players[pPlayer.Id];
+                                    currentPlayer.Apply(pPlayer); //* Applies the state of the player.
 
                                     if (!currentPlayer.IsConnected)
                                     {

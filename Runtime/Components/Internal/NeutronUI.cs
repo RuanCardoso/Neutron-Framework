@@ -63,10 +63,15 @@ namespace NeutronNetwork.UI
             return components.ToArray();
         }
 
+        [Obsolete]
         private void GetComponents()
         {
             _components.Clear();
+#if UNITY_2020_1_OR_NEWER
             var arrayOfCanvas = FindObjectsOfType<Canvas>(true);
+#else
+            var arrayOfCanvas = FindObjectsOfTypeAll(typeof(Canvas)) as Canvas[];
+#endif
             foreach (var canvas in arrayOfCanvas)
             {
                 var components = canvas.GetComponentsInChildren<Component>(true);
@@ -101,7 +106,10 @@ namespace NeutronNetwork.UI
             }
         }
 
+        [Obsolete]
+#pragma warning disable IDE0051
         private void Start()
+#pragma warning restore IDE0051
         {
             GetComponents();
             //* Obtém os componentes da Ui na nova scene carregada.
