@@ -387,8 +387,14 @@ namespace NeutronNetwork.Internal.Packets
 
     public enum ThreadType : int
     {
-        [InspectorName("Low(Unity Thread)")] Unity,
-        [InspectorName("Ultra(Neutron Thread)")] Neutron,
+#if UNITY_2019_2_OR_NEWER
+        [InspectorName("Low(Unity Thread)")]
+#endif
+        Unity,
+#if UNITY_2019_2_OR_NEWER
+        [InspectorName("Ultra(Neutron Thread)")] 
+#endif
+        Neutron,
     }
 
     public enum ReceiveType : int

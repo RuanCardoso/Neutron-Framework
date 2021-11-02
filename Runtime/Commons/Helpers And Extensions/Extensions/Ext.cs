@@ -88,6 +88,14 @@ namespace NeutronNetwork.Extensions
                 return (component.ToString() != null && component.ToString() != "null");
             else return false;
         }
+
+        public static bool TryGetComponent<T>(this UnityEngine.Component monoBehaviour, out T component)
+        {
+            component = monoBehaviour.GetComponent<T>();
+            if (component != null)
+                return (component.ToString() != null && component.ToString() != "null");
+            else return false;
+        }
 #endif
     }
 }
