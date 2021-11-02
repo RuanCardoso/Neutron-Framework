@@ -23,7 +23,7 @@ MonoBehaviour:
     PacketPoolCapacity: 1200
     Performance: 1
     Serialization: 1
-    Compression: 0
+    Compression: 3
     NoDelay: 1
     PerfomanceMode: 0
   ClientSettings:
