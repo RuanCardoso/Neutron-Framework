@@ -3,8 +3,10 @@ using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using System;
+using System.Collections;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 using static NeutronNetwork.Extensions.CipherExt;
 
@@ -56,7 +58,6 @@ namespace NeutronNetwork
         #endregion
 
         #region Fields
-        private int _framerate;
 #pragma warning disable IDE0044
         [SerializeField] private bool _autoSimulation = false;
 #pragma warning restore IDE0044
@@ -73,7 +74,7 @@ namespace NeutronNetwork
         [Obsolete]
         private void Start()
         {
-            SetFramerate();
+            SetRateFrequency();
             //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
             Physics.autoSimulation = _autoSimulation;
 #if UNITY_2020_1_OR_NEWER
@@ -86,28 +87,7 @@ namespace NeutronNetwork
 #endif
         }
 
-        private void Update()
-        {
-#if UNITY_EDITOR
-            if (Settings.GlobalSettings.PerfomanceMode)
-                UnityEditor.Selection.activeGameObject = null;
-#endif
-        }
-
-        private void OnEnable()
-        {
-            DontDestroyOnLoad(transform.root);
-        }
-
-        private void SetFramerate()
-        {
-            _framerate = Settings.GlobalSettings.Fps;
-            if (_framerate > 0)
-            {
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = _framerate;
-            }
-        }
+        private void OnEnable() => DontDestroyOnLoad(transform.root);
 
         private void InitializePools()
         {
@@ -117,6 +97,29 @@ namespace NeutronNetwork
                 Neutron.PooledNetworkStreams.Push(new NeutronStream(true));
             for (int i = 0; i < Settings.GlobalSettings.PacketPoolCapacity; i++)
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
+        }
+
+        private void SetRateFrequency()
+        {
+            QualitySettings.vSyncCount = 0;
+            currentFrameTime = Time.realtimeSinceStartup;
+            StartCoroutine(WaitForNextFrame(Settings.GlobalSettings.Fps));
+        }
+
+        private float currentFrameTime;
+        private IEnumerator WaitForNextFrame(float rate)
+        {
+            while (true)
+            {
+                yield return new WaitForEndOfFrame();
+                currentFrameTime += 1.0f / rate;
+                var t = Time.realtimeSinceStartup;
+                var sleepTime = currentFrameTime - t - 0.01f;
+                if (sleepTime > 0)
+                    Thread.Sleep((int)(sleepTime * 1000));
+                while (t < currentFrameTime)
+                    t = Time.realtimeSinceStartup;
+            }
         }
 
         private void LoadSettings()
@@ -186,16 +189,6 @@ namespace NeutronNetwork
                 }
             }
         }
-
-#if UNITY_EDITOR
-        public static Settings EditorLoadSettings()
-        {
-            var settings = Resources.Load<Settings>("Neutron Settings");
-            if (settings == null)
-                LogHelper.Error("Settings missing!");
-            return settings;
-        }
-#endif
 
         public static void SetPassword(string password) => PassPhrase = password;
     }

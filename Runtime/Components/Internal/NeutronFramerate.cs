@@ -46,7 +46,7 @@ namespace NeutronNetwork
         {
             if (_drawOnGui)
             {
-                int padding = 1, height = 20, width = 100;
+                int padding = 1, height = 22, width = 100;
                 GUI.Box(new Rect(Screen.width - width - padding, padding, width, height), $"Fps: {Fps}");
                 GUI.Box(new Rect(Screen.width - width - padding, height + 5 + padding, width, height), $"Ms: {Ms}");
             }

@@ -12,14 +12,6 @@ public class NeutronEditor : EditorWindow
 {
     private static Process _clumsy;
 
-    //[MenuItem("Neutron/Play(Performance Mode)", priority = -50)]
-    private static void Play()
-    {
-        NeutronModule.EditorLoadSettings().GlobalSettings.PerfomanceMode = true;
-        ///////////////////////////////////////////////////////////////////////////
-        EditorApplication.isPlaying = !EditorApplication.isPlaying;
-    }
-
     [MenuItem("Neutron/Settings/File/Neutron &F11")]
     private static void OpenSettings()
     {

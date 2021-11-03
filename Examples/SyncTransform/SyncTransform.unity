@@ -780,7 +780,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _drawOnGui: 1
-  _updateRate: 4
+  _updateRate: 1
 --- !u!114 &1772651489
 MonoBehaviour:
   m_ObjectHideFlags: 0
