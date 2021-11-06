@@ -133,7 +133,7 @@ namespace NeutronNetwork.Internal
         [SerializeField] private Protocol _protocol;
         [SerializeField]
         [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)]
-        private int _packetsPerSecond = 1; //* Quantidade de sincronizações por segundo.
+        private float _sendRate = 0.1f; //* Quantidade de sincronizações por segundo.
 
         public Protocol Protocol
         {
@@ -141,10 +141,10 @@ namespace NeutronNetwork.Internal
             set => _protocol = value;
         }
 
-        public int PacketsPerSecond
+        public float SendRate
         {
-            get => _packetsPerSecond;
-            set => _packetsPerSecond = value;
+            get => _sendRate;
+            set => _sendRate = value;
         }
 
         public bool FixedSize

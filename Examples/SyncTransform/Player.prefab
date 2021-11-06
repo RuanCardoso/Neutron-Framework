@@ -13,11 +13,8 @@ GameObject:
   - component: {fileID: 7224697719722065492}
   - component: {fileID: 141724396900658856}
   - component: {fileID: -5211992311598903834}
-  - component: {fileID: -287435154869929444}
-  - component: {fileID: 4833214510478399615}
-  - component: {fileID: -2064466605988846245}
-  - component: {fileID: 680512477915903826}
-  - component: {fileID: 4739508134925086460}
+  - component: {fileID: 5761704194135424091}
+  - component: {fileID: -1248872774781597597}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -115,7 +112,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!114 &-287435154869929444
+--- !u!114 &5761704194135424091
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -124,124 +121,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 2468563362786346040}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a7247db4746bd74181235993cb8348a, type: 3}
+  m_Script: {fileID: 11500000, guid: da9a5e2c31fdb964dbdbc9d177ab9e8e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _id: 1
-  _authorityHandledBy: {fileID: 680512477915903826}
-  _offlineMode: 0
-  _authority: 0
-  _hasOnAutoSynchronization: 0
-  _hasIRPC: 1
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 0
-    _packetsPerSecond: 1
-  NeutronAuthority: {fileID: 680512477915903826}
-  _iRpcOptions:
-  - Title: SyncSnapshot
-    _rpcId: 1
-    _name: SyncSnapshot
-    _instance: {fileID: -287435154869929444}
-    _originalInstance: {fileID: -287435154869929444}
-    _targetTo: 2
-    _cacheMode: 0
-    _protocol: 1
-  _compressQuaternion: 1
-  _floatMultiplicationPrecision: 10000
-  _syncPosition: 1
-  _syncRotation: 1
-  _syncScale: 0
-  _teleportMaxDistance: 15
-  _packetsPerSecond: 60
-  _interpolationTime: 0
-  _bufferMaxSize: 6
-  _bufferTime: 0
-  _catchupThreshold: 4
-  _catchupMultiplier: 0.1
---- !u!114 &4833214510478399615
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c366da1bc87e43b4cac37040ce7b4d0b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 2
-  _authorityHandledBy: {fileID: 680512477915903826}
-  _offlineMode: 0
-  _authority: 0
-  _hasOnAutoSynchronization: 0
-  _hasIRPC: 1
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 0
-    _packetsPerSecond: 1
-  NeutronAuthority: {fileID: 680512477915903826}
-  _iRpcOptions:
-  - Title: SyncRigidbody
-    _rpcId: 1
-    _name: SyncRigidbody
-    _instance: {fileID: 4833214510478399615}
-    _originalInstance: {fileID: 4833214510478399615}
-    _targetTo: 2
-    _cacheMode: 0
-    _protocol: 1
-  _packetsPerSecond: 50
---- !u!114 &-2064466605988846245
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e60fb122f505424449116965d5bd93e1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 3
-  _authorityHandledBy: {fileID: 680512477915903826}
-  _offlineMode: 0
-  _authority: 0
-  _hasOnAutoSynchronization: 0
-  _hasIRPC: 0
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 0
-    _packetsPerSecond: 1
-  NeutronAuthority: {fileID: 680512477915903826}
-  _iRpcOptions: []
---- !u!114 &680512477915903826
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b2662b374d6d0ab4abf5442852cb2cb2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 4
   _authorityHandledBy: {fileID: 0}
   _offlineMode: 0
   _authority: 4
-  _hasOnAutoSynchronization: 0
+  _hasOnAutoSynchronization: 1
   _hasIRPC: 0
   _onAutoSynchronizationOptions:
     _fixedSize: 0
-    _protocol: 0
-    _packetsPerSecond: 1
-  NeutronAuthority: {fileID: 680512477915903826}
+    _protocol: 1
+    _sendRate: 0.1
+  NeutronAuthority: {fileID: 0}
   _iRpcOptions: []
-  _root: 0
---- !u!114 &4739508134925086460
+  _points: 0
+  _kils: 0
+  listOfInts: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
+--- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

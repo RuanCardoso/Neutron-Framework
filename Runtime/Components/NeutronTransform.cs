@@ -40,7 +40,7 @@ namespace NeutronNetwork.Components
 
         [Header("Smooth")]
 #pragma warning disable IDE0044
-        [SerializeField] [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)] private int _packetsPerSecond = 60;
+        [SerializeField] [Range(NeutronConstants.MIN_SEND_RATE, NeutronConstants.MAX_SEND_RATE)] private float _sendRate = 0.1f;
 #pragma warning restore IDE0044
 
         [Header("Buffer")]
@@ -67,7 +67,7 @@ namespace NeutronNetwork.Components
 
         public override void OnNeutronStart()
         {
-            LogHelper.Info(Math.Truncate((1d / _packetsPerSecond) * 100d) / 100d);
+            LogHelper.Info(Math.Truncate((1d / _sendRate) * 100d) / 100d);
             base.OnNeutronStart();
             {
                 if (HasAuthority)
@@ -78,7 +78,7 @@ namespace NeutronNetwork.Components
         private void Start()
         {
             currentFrameTime = Time.deltaTime;
-            StartCoroutine(WaitForNextFrame());
+            //StartCoroutine(WaitForNextFrame());
             StartCoroutine(WaitForNextFrame2());
         }
 
@@ -124,7 +124,7 @@ namespace NeutronNetwork.Components
                     }
                     currentFrameTime = 0;
                 //}
-                yield return new WaitForSecondsRealtime(1f / _packetsPerSecond);
+                yield return new WaitForSecondsRealtime(1f / _sendRate);
             }
         }
 
@@ -154,87 +154,88 @@ namespace NeutronNetwork.Components
                 //    }
                 //}
 
-                    //    delayt += 1f * Time.deltaTime;
-                    //    if (delayt >= 1f / _packetsPerSecond)
-                    //    {
-                    //        packets++;
-                    //        using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
-                    //        {
-                    //            var writer = Begin_iRPC(1, stream, out var option);
-                    //            if (_syncPosition)
-                    //                writer.Write(transform.localPosition);
+                delayt += 1f * Time.deltaTime;
+                LogHelper.Error(1f / (60 - _sendRate));
+                if (delayt > 1f / (60 - _sendRate))
+                {
+                    packets++;
+                    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                    {
+                        var writer = Begin_iRPC(1, stream, out var option);
+                        if (_syncPosition)
+                            writer.Write(transform.localPosition);
 
-                    //            if (_syncRotation)
-                    //            {
-                    //                if (_compressQuaternion)
-                    //                    writer.WriteCompressed(transform.localRotation, _floatMultiplicationPrecision);
-                    //                else
-                    //                    writer.Write(transform.localRotation);
-                    //            }
+                        if (_syncRotation)
+                        {
+                            if (_compressQuaternion)
+                                writer.WriteCompressed(transform.localRotation, _floatMultiplicationPrecision);
+                            else
+                                writer.Write(transform.localRotation);
+                        }
 
-                    //            if (_syncScale)
-                    //                writer.Write(transform.localScale);
+                        if (_syncScale)
+                            writer.Write(transform.localScale);
 
-                    //            writer.Write(LocalTime); //* timestamp
-                    //            writer.Write();
-                    //            End_iRPC(1, stream);
-                    //        }
-                    //        delayt = 0;
-                    //    }
-
-
-                    //frames++;
-                    //if (!_syncPosition && !_syncRotation && !_syncScale)
-                    //    return;
-
-                    //t += Time.deltaTime;
-                    //if (t > 1f)
-                    //{
-                    //    LogHelper.Error(Mathf.Round(frames / t));
-                    //    frames = 0;
-                    //    t = 0;
-                    //}
-
-                    ////if (LocalTime >= (_lastSyncedTime + (1d / _packetsPerSecond)))
-                    //double d = (double)frames / (double)_packetsPerSecond;
-                    //if (d == 0)
-                    //{
-                    //    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
-                    //    {
-                    //        var writer = Begin_iRPC(1, stream, out var option);
-                    //        if (_syncPosition)
-                    //            writer.Write(transform.localPosition);
-
-                    //        if (_syncRotation)
-                    //        {
-                    //            if (_compressQuaternion)
-                    //                writer.WriteCompressed(transform.localRotation, _floatMultiplicationPrecision);
-                    //            else
-                    //                writer.Write(transform.localRotation);
-                    //        }
-
-                    //        if (_syncScale)
-                    //            writer.Write(transform.localScale);
-
-                    //        writer.Write(LocalTime); //* timestamp
-                    //        writer.Write();
-                    //        End_iRPC(1, stream);
-                    //    }
-                    //    _lastSyncedTime = LocalTime;
-                    //}
-                    //}
-                    //else
-                    //{
-                    //    lock (_bufferLock)
-                    //    {
-                    //        //* Corrige a posi��o, se o buffer estiver grande, logo o processamento est� atrasado, limpa e continua....
-                    //        if (_buffer.Count > _bufferMaxSize)
-                    //            Clear();
-                    //        if (SnapshotInterpolation.Compute(LocalTime, Time.deltaTime, ref _interpolationTime, _bufferTime, _buffer, _catchupThreshold, _catchupMultiplier, _interpolate, out NetworkTransformSnapshot computed))
-                    //            Interpolate(computed);
-                    //    }
-                    //}
+                        writer.Write(LocalTime); //* timestamp
+                        writer.Write();
+                        End_iRPC(1, stream);
+                    }
+                    delayt = 0;
                 }
+
+
+                //frames++;
+                //if (!_syncPosition && !_syncRotation && !_syncScale)
+                //    return;
+
+                //t += Time.deltaTime;
+                //if (t > 1f)
+                //{
+                //    LogHelper.Error(Mathf.Round(frames / t));
+                //    frames = 0;
+                //    t = 0;
+                //}
+
+                ////if (LocalTime >= (_lastSyncedTime + (1d / _packetsPerSecond)))
+                //double d = (double)frames / (double)_packetsPerSecond;
+                //if (d == 0)
+                //{
+                //    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                //    {
+                //        var writer = Begin_iRPC(1, stream, out var option);
+                //        if (_syncPosition)
+                //            writer.Write(transform.localPosition);
+
+                //        if (_syncRotation)
+                //        {
+                //            if (_compressQuaternion)
+                //                writer.WriteCompressed(transform.localRotation, _floatMultiplicationPrecision);
+                //            else
+                //                writer.Write(transform.localRotation);
+                //        }
+
+                //        if (_syncScale)
+                //            writer.Write(transform.localScale);
+
+                //        writer.Write(LocalTime); //* timestamp
+                //        writer.Write();
+                //        End_iRPC(1, stream);
+                //    }
+                //    _lastSyncedTime = LocalTime;
+                //}
+                //}
+                //else
+                //{
+                //    lock (_bufferLock)
+                //    {
+                //        //* Corrige a posi��o, se o buffer estiver grande, logo o processamento est� atrasado, limpa e continua....
+                //        if (_buffer.Count > _bufferMaxSize)
+                //            Clear();
+                //        if (SnapshotInterpolation.Compute(LocalTime, Time.deltaTime, ref _interpolationTime, _bufferTime, _buffer, _catchupThreshold, _catchupMultiplier, _interpolate, out NetworkTransformSnapshot computed))
+                //            Interpolate(computed);
+                //    }
+                //}
+            }
         }
 
         private void Interpolate(NetworkTransformSnapshot interpolated)

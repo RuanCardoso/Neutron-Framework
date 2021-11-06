@@ -180,6 +180,21 @@ namespace NeutronNetwork.Helpers
                 return null;
         }
 
+        public static MemberInfo GetMember(string name, object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        {
+            return instance.GetType().GetMember(name, flags)[0];
+        }
+
+        public static MemberInfo[] GetMembers(Type type, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        {
+            return type.GetMembers(flags);
+        }
+
+        public static MemberInfo[] GetMembers(object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        {
+            return instance.GetType().GetMembers(flags);
+        }
+
         public static MethodInfo GetMethod(string name, object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
         {
             return instance.GetType().GetMethod(name, flags);
@@ -195,6 +210,11 @@ namespace NeutronNetwork.Helpers
             return instance.GetType().GetField(name, flags);
         }
 
+        public static FieldInfo[] GetFields(Type type, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        {
+            return type.GetFields(flags);
+        }
+
         public static FieldInfo[] GetFields(object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
         {
             return instance.GetType().GetFields(flags);
@@ -203,6 +223,11 @@ namespace NeutronNetwork.Helpers
         public static PropertyInfo GetProperty(string name, object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
         {
             return instance.GetType().GetProperty(name, flags);
+        }
+
+        public static PropertyInfo[] GetProperties(Type type, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        {
+            return type.GetProperties(flags);
         }
 
         public static PropertyInfo[] GetProperties(object instance, BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)

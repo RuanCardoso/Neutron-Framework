@@ -360,7 +360,6 @@ GameObject:
   m_Component:
   - component: {fileID: 789965234}
   - component: {fileID: 789965235}
-  - component: {fileID: 789965237}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -389,7 +388,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 789965233}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3aa38b9c48867424ab7e0cabd1f459f3, type: 3}
   m_Name: 
@@ -403,30 +402,11 @@ MonoBehaviour:
   _onAutoSynchronizationOptions:
     _fixedSize: 0
     _protocol: 0
-    _packetsPerSecond: 256
+    _sendRate: 0.1
   NeutronAuthority: {fileID: 0}
   _iRpcOptions: []
   health: 100
   level: 1
---- !u!95 &789965237
-Animator:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 789965233}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: bc4322553ad75dc43ab4edf430db6a52, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!1 &889001299
 GameObject:
   m_ObjectHideFlags: 0
@@ -805,7 +785,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de99fdb0fee4e864db3203fc54408f1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _autoSimulation: 1
+  _autoSimulation: 0
 --- !u!1 &1946717632
 GameObject:
   m_ObjectHideFlags: 0

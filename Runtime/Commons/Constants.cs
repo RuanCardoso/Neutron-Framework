@@ -27,8 +27,8 @@ namespace NeutronNetwork.Constants
         public const int GENERATE_PLAYER_ID = 0;
         public const int TIME_DECIMAL_PLACES = 3;
         public const int MAX_FPS = 256;
-        public const int MIN_SEND_RATE = 1;
-        public const int MAX_SEND_RATE = MAX_FPS;
+        public const float MIN_SEND_RATE = 0f;
+        public const float MAX_SEND_RATE = 1f;
         public const float ONE_PER_SECOND = 1F;
     }
 }

@@ -63,7 +63,9 @@ namespace NeutronNetwork
 #pragma warning restore IDE0044
         #endregion
 
+#pragma warning disable IDE0051
         private void Awake()
+#pragma warning restore IDE0051
         {
             UnityThreadId = ThreadHelper.GetThreadID();
             LoadSettings();
@@ -72,7 +74,9 @@ namespace NeutronNetwork
         }
 
         [Obsolete]
+#pragma warning disable IDE0051
         private void Start()
+#pragma warning restore IDE0051
         {
             SetRateFrequency();
             //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
@@ -87,7 +91,9 @@ namespace NeutronNetwork
 #endif
         }
 
+#pragma warning disable IDE0051
         private void OnEnable() => DontDestroyOnLoad(transform.root);
+#pragma warning restore IDE0051
 
         private void InitializePools()
         {

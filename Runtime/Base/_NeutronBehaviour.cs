@@ -66,7 +66,7 @@ namespace NeutronNetwork
         /// </summary>
         /// <returns></returns>
 #pragma warning disable IDE0044
-        [SerializeField] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
+        [SerializeField] [Label("Auto Sync")] [HorizontalLineDown] [ShowIf("_hasOnAutoSynchronization")] private AutoSyncOptions _onAutoSynchronizationOptions = new AutoSyncOptions();
 #pragma warning restore IDE0044
         /// <summary>
         ///* Authority controller for the local object.
@@ -267,11 +267,11 @@ namespace NeutronNetwork
         {
             if (_hasOnAutoSynchronization)
             {
-                _autoSyncTimeDelay -= Time.deltaTime; //* Decrease the auto-sync delay.
-                if (_autoSyncTimeDelay <= 0)
+                _autoSyncTimeDelay += Time.deltaTime; //* Decrease the auto-sync delay.
+                if (_autoSyncTimeDelay >= _onAutoSynchronizationOptions.SendRate)
                 {
                     NeutronStream packetStream = GetPacketStream();
-                    if (_hasOnAutoSynchronization && AutoSyncAuthority)
+                    if (AutoSyncAuthority)
                     {
                         if (!_onAutoSynchronizationOptions.FixedSize)
                         {
@@ -290,7 +290,7 @@ namespace NeutronNetwork
                                 This.OnAutoSynchronization(packetStream, NeutronView, Id, _onAutoSynchronizationOptions.Protocol, IsServer); //* Send the auto-sync packet.
                         }
                     }
-                    _autoSyncTimeDelay = NeutronConstants.ONE_PER_SECOND / _onAutoSynchronizationOptions.PacketsPerSecond; //* Set the auto-sync delay per second.
+                    _autoSyncTimeDelay = 0; //* Set the auto-sync delay per second.
                 }
             }
         }
