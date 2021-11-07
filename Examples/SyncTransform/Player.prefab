@@ -132,13 +132,21 @@ MonoBehaviour:
   _hasIRPC: 0
   _onAutoSynchronizationOptions:
     _fixedSize: 0
-    _protocol: 1
+    _protocol: 0
     _sendRate: 0.1
   NeutronAuthority: {fileID: 0}
   _iRpcOptions: []
-  _points: 0
-  _kils: 0
-  listOfInts: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
+  _oldSerializedJson: 
+  IsOn: 1
+  ByteId: 0
+  SignedByteId: 0
+  KeyChar: 0
+  Money: 0
+  Health: 0
+  Points: 0
+  UPoints: 0
+  LongTime: 0
+  ULongTime: 0
 --- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0
