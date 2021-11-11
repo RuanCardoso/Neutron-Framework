@@ -137,16 +137,11 @@ MonoBehaviour:
   NeutronAuthority: {fileID: 0}
   _iRpcOptions: []
   _oldSerializedJson: 
-  IsOn: 1
-  ByteId: 0
-  SignedByteId: 0
-  KeyChar: 0
-  Money: 0
-  Health: 0
-  Points: 0
-  UPoints: 0
-  LongTime: 0
-  ULongTime: 0
+  _sendOnlyDiff: 1
+  a: 0
+  position: {x: 10, y: 20, z: 30}
+  rotation: {x: 0, y: 0, z: 0, w: 0}
+  color: {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0
