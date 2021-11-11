@@ -97,10 +97,7 @@ namespace NeutronNetwork
             foreach (var field in _fields)
             {
                 FieldInfo fieldInfo = field.Item2;
-                if (fieldInfo.IsPrivate)
-                    LogHelper.Warn($"The field {fieldInfo.Name} it will not be serialized because it is private.");
-                else
-                    SetToken(fieldInfo.Name, fieldInfo.GetValue(this)); //* Set the token to the field.
+                SetToken(fieldInfo.Name, fieldInfo.GetValue(this)); //* Set the token to the field.
             }
 
             foreach (var property in _properties)
@@ -230,6 +227,8 @@ namespace NeutronNetwork
             {
                 SyncVarAttribute attr = field.Item1;
                 FieldInfo fieldInfo = field.Item2;
+                if (fieldInfo.IsPrivate)
+                    LogHelper.Warn($"The field {fieldInfo.Name} it will not be serialized because it is private.");
                 Hook(attr.Hook, fieldInfo.Name, fieldInfo.FieldType.Name);
             }
 
