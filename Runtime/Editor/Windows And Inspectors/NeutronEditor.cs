@@ -34,6 +34,17 @@ public class NeutronEditor : EditorWindow
         }
     }
 
+    [MenuItem("Neutron/Settings/File/Converters")]
+    private static void OpenConverters()
+    {
+        Object asset = Resources.Load("Neutron Converters");
+        if (asset != null)
+        {
+            if (AssetDatabase.OpenAsset(asset))
+                EditorGUIUtility.PingObject(asset);
+        }
+    }
+
     [MenuItem("Neutron/Settings/Setup/Controllers", priority = 0)]
     private static void Setup()
     {
