@@ -1,6 +1,5 @@
 {
     "name": "Neutron",
-    "rootNamespace": "",
     "references": [
         "NaughtyAttributes.Core",
         "Unity.TextMeshPro"

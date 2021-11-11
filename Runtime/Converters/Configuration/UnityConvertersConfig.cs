@@ -9,8 +9,8 @@ namespace Newtonsoft.Json.UnityConverters.Configuration
     [Serializable]
     public sealed class UnityConvertersConfig : ScriptableObject
     {
-        internal const string PATH = "Assets/Resources/Newtonsoft.Json-for-Unity.Converters.asset";
-        internal const string PATH_FOR_RESOURCES_LOAD = "Newtonsoft.Json-for-Unity.Converters";
+        internal const string PATH = "Assets/Resources/Neutron Converters.asset";
+        internal const string PATH_FOR_RESOURCES_LOAD = "Neutron Converters";
 
         public bool useUnityContractResolver = true;
 

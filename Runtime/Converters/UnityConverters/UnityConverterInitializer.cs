@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using NeutronNetwork.Internal;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.UnityConverters.Configuration;
 using Newtonsoft.Json.UnityConverters.Helpers;
@@ -77,6 +78,7 @@ namespace Newtonsoft.Json.UnityConverters
 #pragma warning restore IDE0051 // Remove unused private members
         {
             UpdateDefaultSettings();
+            CreateJsonSettingsWithFreslyLoadedConfigForNeutron();
         }
 
         private static void UpdateDefaultSettings()
@@ -120,7 +122,8 @@ namespace Newtonsoft.Json.UnityConverters
                 config = ScriptableObject.CreateInstance<UnityConvertersConfig>();
             }
 
-            var settings = new JsonSerializerSettings {
+            var settings = new JsonSerializerSettings
+            {
                 Converters = CreateConverters(config),
             };
 
@@ -130,6 +133,15 @@ namespace Newtonsoft.Json.UnityConverters
             }
 
             return settings;
+        }
+
+        private static void CreateJsonSettingsWithFreslyLoadedConfigForNeutron()
+        {
+            var config = Resources.Load<UnityConvertersConfig>(UnityConvertersConfig.PATH_FOR_RESOURCES_LOAD);
+            if (!config)
+                throw new NeutronException("Converters not found!");
+            JsonContracts.JsonSerializerSettings.Converters = CreateConverters(config);
+            JsonContracts.JsonSerializer = JsonSerializer.Create(JsonContracts.JsonSerializerSettings);
         }
 
         /// <summary>

@@ -266,7 +266,6 @@ namespace NeutronNetwork
                 _diffMemberInfos.RemoveAll(); //* Remove all the fields and properties.
                 JToken oldToken = JToken.Parse(_oldSerializedJson); //* Parse the old json value.
                 JToken currentToken = JToken.Parse(_memberInfos.ToString(Formatting.Indented)); //* Parse the current json value.
-                LogHelper.Error(_memberInfos.ToString(Formatting.Indented));
                 if (!JToken.DeepEquals(oldToken, currentToken))
                 {
                     //* If the old and current json values are different, send the current json value.
@@ -387,7 +386,6 @@ namespace NeutronNetwork
                                         break;
                                     default:
                                         {
-                                            LogHelper.Error("Unknow ????");
                                             if (_hooksUnknowTypes.TryGetValue(pair.Key, out SyncVarMethodHook syncVarMethodHook))
                                             {
                                                 MethodInfo methodInfo = syncVarMethodHook.MethodInfo;

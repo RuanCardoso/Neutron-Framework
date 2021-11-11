@@ -1,45 +1,89 @@
-﻿using NeutronNetwork.Helpers;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using UnityEngine;
 
 namespace NeutronNetwork.Internal
 {
     public static class JsonContracts
     {
-        static readonly SyncVarContractResolver _contractResolver = new SyncVarContractResolver();
-        public static readonly JsonSerializer JsonSerializer = new JsonSerializer()
+        public static JsonSerializer JsonSerializer; //* setted in UnityConvertersConfig....
+        public static JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings()
         {
             ObjectCreationHandling = ObjectCreationHandling.Replace, //* Replace the object if it already exists.
-            ContractResolver = _contractResolver, //* Use the SyncVarResolver to serialize the SyncVars.
+            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
             Formatting = Formatting.Indented,
-
+            Converters = { }, //* added in UnityConvertersConfig....
+            ContractResolver = _syncVarContractResolver,
         };
 
-        public static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings()
-        {
-            ObjectCreationHandling = ObjectCreationHandling.Replace, //* Replace the object if it already exists.
-            ContractResolver = _contractResolver, //* Use the SyncVarResolver to serialize the SyncVars.
-            Formatting = Formatting.Indented,
-        };
-
-        public static readonly JsonLoadSettings jsonLoadSettings = new JsonLoadSettings()
+        public static readonly JsonLoadSettings JsonLoadSettings = new JsonLoadSettings()
         {
 
         };
+
+        private static readonly SyncVarContractResolver _syncVarContractResolver = new SyncVarContractResolver();
     }
 
     public class SyncVarContractResolver : DefaultContractResolver
     {
         protected override List<MemberInfo> GetSerializableMembers(Type objectType)
         {
-            //* Get all the fields and properties with SyncVarAttribute.
-            return ReflectionHelper.GetMembers(objectType)
-                .Where(mi => mi.GetCustomAttribute<SyncVarAttribute>() != null).ToList();  //* Return the fields and properties with the SyncVarAttr.
+            return objectType.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                 .Cast<MemberInfo>()
+                 .Concat(objectType.GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy))
+                 .Where(o => o.GetCustomAttribute<SyncVarAttribute>() != null).ToList();
+        }
+
+        protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
+        {
+            JsonProperty jsonProperty = base.CreateProperty(member, memberSerialization);
+
+            if (member.GetCustomAttribute<SyncVarAttribute>() != null)
+            {
+                jsonProperty.Ignored = false;
+                jsonProperty.Writable = CanWriteMemberWithSerializeField(member);
+                jsonProperty.Readable = CanReadMemberWithSerializeField(member);
+                jsonProperty.HasMemberAttribute = true;
+            }
+
+            return jsonProperty;
+        }
+
+        protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
+        {
+            IList<JsonProperty> lists = base.CreateProperties(type, memberSerialization);
+
+            return lists;
+        }
+
+        protected override JsonObjectContract CreateObjectContract(Type objectType)
+        {
+            JsonObjectContract jsonObjectContract = base.CreateObjectContract(objectType);
+
+            if (typeof(ScriptableObject).IsAssignableFrom(objectType))
+            {
+                jsonObjectContract.DefaultCreator = () =>
+                {
+                    return ScriptableObject.CreateInstance(objectType);
+                };
+            }
+
+            return jsonObjectContract;
+        }
+
+        private static bool CanReadMemberWithSerializeField(MemberInfo member)
+        {
+            return !(member is PropertyInfo property) || property.CanRead;
+        }
+
+        private static bool CanWriteMemberWithSerializeField(MemberInfo member)
+        {
+            return !(member is PropertyInfo property) || property.CanWrite;
         }
     }
 }

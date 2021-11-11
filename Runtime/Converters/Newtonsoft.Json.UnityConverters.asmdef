@@ -1,6 +1,8 @@
 {
     "name": "Newtonsoft.Json.UnityConverters",
-    "references": [],
+    "references": [
+        "Neutron"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
