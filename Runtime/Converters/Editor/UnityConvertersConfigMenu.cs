@@ -7,8 +7,7 @@ namespace Newtonsoft.Json.UnityConverters.Editor
 {
     public static class UnityConvertersConfigMenu
     {
-
-        [MenuItem("Edit/Json.NET converters settings...", false, 250)]
+        //[MenuItem("Edit/Json.NET converters settings...", false, 250)]
         public static void OpenOrCreateConfig()
         {
             var config = GetOrCreateConfig();
