@@ -11,10 +11,8 @@ GameObject:
   - component: {fileID: 4762376115887667103}
   - component: {fileID: 5796989115915442577}
   - component: {fileID: 7224697719722065492}
-  - component: {fileID: 141724396900658856}
-  - component: {fileID: -5211992311598903834}
-  - component: {fileID: 5761704194135424091}
   - component: {fileID: -1248872774781597597}
+  - component: {fileID: -7378826534855046162}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -83,65 +81,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!65 &141724396900658856
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &-5211992311598903834
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  serializedVersion: 2
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 112
-  m_CollisionDetection: 0
---- !u!114 &5761704194135424091
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da9a5e2c31fdb964dbdbc9d177ab9e8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 1
-  _authorityHandledBy: {fileID: 0}
-  _offlineMode: 0
-  _authority: 4
-  _hasOnAutoSynchronization: 1
-  _hasIRPC: 0
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 1
-    _sendRate: 0.3
-  NeutronAuthority: {fileID: 0}
-  _iRpcOptions: []
-  _oldSerializedJson: 
-  _sendOnlyDiff: 1
-  valor: 0
-  listOfColors:
-  - {r: 0, g: 0, b: 0, a: 0}
-  - {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -165,3 +104,35 @@ MonoBehaviour:
     _properties: '{"Team":"Neutron"}'
     _databaseId: 0
   Components: []
+--- !u!114 &-7378826534855046162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2468563362786346040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df7569f8574565140b30032c788f438d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _id: 1
+  _authorityHandledBy: {fileID: 0}
+  _offlineMode: 0
+  _authority: 4
+  _hasOnAutoSynchronization: 0
+  _hasIRPC: 1
+  _onAutoSynchronizationOptions:
+    _fixedSize: 0
+    _protocol: 0
+    _sendRate: 0.1
+  NeutronAuthority: {fileID: 0}
+  _iRpcOptions:
+  - Title: RpcStress
+    _rpcId: 10
+    _name: RpcStress
+    _instance: {fileID: -7378826534855046162}
+    _originalInstance: {fileID: -7378826534855046162}
+    _targetTo: 0
+    _cacheMode: 0
+    _protocol: 1

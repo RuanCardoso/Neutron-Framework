@@ -1,8 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace NeutronNetwork.Examples.SyncTransform
+namespace NeutronNetwork.Examples.RpcStress
 {
-    public class SyncTransformClientSide : ClientSide
+    public class RpcStressClientSide : ClientSide
     {
         [SerializeField] private GameObject _player;
         protected override void Start()
