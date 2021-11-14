@@ -21,7 +21,7 @@ MonoBehaviour:
     MaxPlayers: 300
     StreamPoolCapacity: 1200
     PacketPoolCapacity: 1200
-    Performance: 1
+    Performance: 0
     Serialization: 1
     Compression: 3
     NoDelay: 1

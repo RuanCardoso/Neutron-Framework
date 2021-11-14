@@ -132,16 +132,16 @@ MonoBehaviour:
   _hasIRPC: 0
   _onAutoSynchronizationOptions:
     _fixedSize: 0
-    _protocol: 0
-    _sendRate: 0.1
+    _protocol: 1
+    _sendRate: 0
   NeutronAuthority: {fileID: 0}
   _iRpcOptions: []
   _oldSerializedJson: 
   _sendOnlyDiff: 1
-  a: 0
-  position: {x: 10, y: 20, z: 30}
-  rotation: {x: 0, y: 0, z: 0, w: 0}
-  color: {r: 0, g: 0, b: 0, a: 0}
+  valor: 0
+  listOfColors:
+  - {r: 0, g: 0, b: 0, a: 0}
+  - {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0

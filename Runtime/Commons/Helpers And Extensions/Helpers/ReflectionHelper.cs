@@ -236,7 +236,7 @@ namespace NeutronNetwork.Helpers
         }
 
 #pragma warning disable IDE1006
-        public static void iRPC(byte[] buffer, RPCInvoker remoteProceduralCall, NeutronPlayer player)
+        public static bool iRPC(byte[] buffer, RPCInvoker remoteProceduralCall, NeutronPlayer player)
 #pragma warning restore IDE1006
         {
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
@@ -246,19 +246,17 @@ namespace NeutronNetwork.Helpers
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {
-                    case MethodType.Async | MethodType.Void:
-                    case MethodType.Void:
-                        remoteProceduralCall.iRPCVoid(reader, player);
-                        break;
+                    case MethodType.Async | MethodType.Bool:
+                    case MethodType.Bool:
+                        return remoteProceduralCall.iRPCBool(reader, player);
                     default:
-                        LogHelper.Error($"iRPC: Type not implemented!");
-                        break;
+                        return LogHelper.Error($"iRPC: \"{remoteProceduralCall.Type}\" type not implemented!");
                 }
             }
         }
 
 #pragma warning disable IDE1006
-        public static void gRPC(NeutronPlayer player, byte[] buffer, RPCInvoker remoteProceduralCall, bool isServer, bool isMine, Neutron instance)
+        public static bool gRPC(NeutronPlayer player, byte[] buffer, RPCInvoker remoteProceduralCall, bool isServer, bool isMine, Neutron instance)
 #pragma warning restore IDE1006
         {
             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
@@ -268,13 +266,11 @@ namespace NeutronNetwork.Helpers
                 reader.SetBuffer(buffer);
                 switch (remoteProceduralCall.Type)
                 {
-                    case MethodType.Async | MethodType.Void:
-                    case MethodType.Void:
-                        remoteProceduralCall.gRPCVoid(reader, isServer, isMine, player, instance);
-                        break;
+                    case MethodType.Async | MethodType.Bool:
+                    case MethodType.Bool:
+                        return remoteProceduralCall.gRPCBool(reader, isServer, isMine, player, instance);
                     default:
-                        LogHelper.Error($"gRPC: Type not implemented!");
-                        break;
+                        return LogHelper.Error($"gRPC: \"{remoteProceduralCall.Type}\" type not implemented!");
                 }
             }
         }

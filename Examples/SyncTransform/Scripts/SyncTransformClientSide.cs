@@ -36,7 +36,7 @@ namespace NeutronNetwork.Examples.SyncTransform
         }
 
         [gRPC(10, Packets.CacheMode.Overwrite, Packets.TargetTo.All, Packets.MatchmakingTo.Auto)]
-        private void OnCreatePlayer(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron instance)
+        private bool OnCreatePlayer(NeutronStream.IReader reader, bool isServer, bool isMine, NeutronPlayer player, Neutron instance)
         {
             if (instance.EndPlayer(reader, out var pos, out var rot))
             {
@@ -47,6 +47,7 @@ namespace NeutronNetwork.Examples.SyncTransform
             }
             else
                 LogHelper.Error("Failed to spawn player");
+            return false;
         }
     }
 }

@@ -1,11 +1,14 @@
-﻿using NeutronNetwork.Client;
+﻿using Asyncoroutine;
+using NeutronNetwork.Client;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Extensions;
 using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Attributes;
 using NeutronNetwork.Internal.Components;
+using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Internal.Packets;
+using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Packets;
 using NeutronNetwork.Server;
 using NeutronNetwork.Wrappers;
@@ -20,7 +23,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Networking;
 
 //* Created by: Ruan Cardoso(Brasil)
 //* Email: neutron050322@gmail.com
@@ -76,6 +78,7 @@ namespace NeutronNetwork
             get;
             set;
         }
+
         /// <summary>
         ///* Provides a pool of packets, use it for best performance.
         /// </summary>
@@ -85,12 +88,13 @@ namespace NeutronNetwork
             get;
             set;
         }
+
         /// <summary>
         ///* This queue will store the packets received from the server to be dequeued and processed, in a single Thread (Thread).
         /// </summary>
         /// <typeparam name="NeutronPacket"></typeparam>
         /// <returns></returns>
-        private readonly NeutronBlockingQueue<NeutronPacket> _dataForProcessing = new NeutronBlockingQueue<NeutronPacket>();
+        private INeutronConsumer<NeutronPacket> _dataForProcessing;
         #endregion
 
         #region Fields
@@ -236,7 +240,13 @@ namespace NeutronNetwork
         #endregion
 
         #region Methods -> Instance
-        private void OnUpdate() { }
+#pragma warning disable IDE0051
+        private void Update()
+#pragma warning restore IDE0051 
+        {
+            if (NeutronModule.IsUnityThread)
+                PacketProcessingStack();
+        }
         /// <summary>
         ///* Connects to the server.
         /// </summary>
@@ -313,19 +323,36 @@ namespace NeutronNetwork
                     }, this);
 
                     Stream networkStream = SocketHelper.GetStream(TcpClient); //* Gets the network stream.
-                    ThreadPool.QueueUserWorkItem((e) =>
+                    if (!NeutronModule.IsUnityThread)
                     {
-                        OnReceivingData(networkStream, Protocol.Tcp);
-                        OnReceivingData(networkStream, Protocol.Udp);
-                    });
+                        ThreadPool.QueueUserWorkItem((e) =>
+                        {
+                            OnReceivingDataLoop(networkStream, Protocol.Tcp);
+                            OnReceivingDataLoop(networkStream, Protocol.Udp);
+                        });
+                    }
+                    else
+                    {
+                        StartCoroutine(OnReceivingDataCoroutine(networkStream, Protocol.Tcp));
+                        StartCoroutine(OnReceivingDataCoroutine(networkStream, Protocol.Udp));
+                    }
 
-                    Thread packetProcessingStackTh = new Thread((e) => PacketProcessingStack())
+                    if (!NeutronModule.IsUnityThread)
                     {
-                        Priority = System.Threading.ThreadPriority.Normal,
-                        IsBackground = true,
-                        Name = "Neutron packetProcessingStackTh"
-                    };
-                    packetProcessingStackTh.Start();
+                        Thread packetProcessingStackTh = new Thread((e) =>
+                        {
+                            while (!TokenSource.Token.IsCancellationRequested)
+                            {
+                                PacketProcessingStack();
+                            }
+                        })
+                        {
+                            Priority = System.Threading.ThreadPriority.Normal,
+                            IsBackground = true,
+                            Name = "Neutron packetProcessingStackTh"
+                        };
+                        packetProcessingStackTh.Start();
+                    }
 
                     NeutronSchedule.ScheduleTask(UdpKeepAlive()); //* Schedules the udp keep alive.
                     NeutronSchedule.ScheduleTask(TcpKeepAlive()); //* Schedules the tcp keep alive.
@@ -382,7 +409,7 @@ namespace NeutronNetwork
                 NeutronPlayer player = Players[playerId]; //* Gets the player.
                 NeutronPacket neutronPacket = Helper.PollPacket(pBuffer, player, player, Protocol.Udp); //* Creates the neutron packet.
 
-                _dataForProcessing.Add(neutronPacket, TokenSource.Token); //* Adds the packet to the processing queue.
+                _dataForProcessing.Push(neutronPacket); //* Adds the packet to the processing queue.
                 NeutronStatistics.ClientUDP.AddIncoming(datagram.Length); //* Adds the received bytes to the statistics.
             }
         }
@@ -413,7 +440,9 @@ namespace NeutronNetwork
                 Buffer.BlockCopy(StateObject.Buffer, 0, StateObject.ReceivedDatagram, 0, bytesRead); //* Copies the received bytes.
                 CreateUdpPacket(); //* Creates the udp packet.
             }
-            UdpApmReceive(); //* Starts the udp receive again.
+
+            if (!NeutronModule.IsUnityThread)
+                UdpApmReceive(); //* Starts the udp receive again.
         }
 
         /// <summary>
@@ -421,31 +450,101 @@ namespace NeutronNetwork
         /// </summary>
         private void PacketProcessingStack()
         {
+            //* If the token is not cancelled, it will process the packets.
+            NeutronPacket packet = _dataForProcessing.Pull(); //* Gets the packet and blocks the thread.
+            if (packet != null)
+            {
+                RunPacket(packet.Owner, packet.Buffer); //* Runs the packet.
+                packet.Recycle(); //* Recycles the packet.
+            }
+        }
+
+        private IEnumerator OnReceivingDataCoroutine(Stream networkStream, Protocol protocol)
+        {
             CancellationToken token = TokenSource.Token; //* Gets the token.
+            byte[] hBuffer = new byte[NeutronModule.HeaderSize]; //* Sets the header buffer, store de length of the packet..etc.
+            byte[] pIBuffer = new byte[sizeof(short)]; //* Sets the owner id of the packet.
             while (!token.IsCancellationRequested)
             {
-                //* If the token is not cancelled, it will process the packets.
-                try
+                switch (protocol)
                 {
-                    NeutronPacket packet = _dataForProcessing.Take(token); //* Gets the packet and blocks the thread.
-                    RunPacket(packet.Owner, packet.Buffer); //* Runs the packet.
-                    packet.Recycle(); //* Recycles the packet.
+                    case Protocol.Tcp:
+                        {
+                            var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize, token).AsCoroutine();
+                            yield return headerTask;
+                            if (headerTask.Result)
+                            {
+                                //* If the header is read, it will be created.
+                                int size = ByteHelper.ReadSize(hBuffer); //* Gets the size of the packet and read it.
+                                if (size <= Constants.Tcp.MaxTcpPacketSize)
+                                {
+                                    //* If the size is less than the max tcp packet size, it will be created.
+                                    byte[] pBuffer = new byte[size]; //* create the buffer with the size of the packet.
+                                    var pBufferTask = SocketHelper.ReadAsyncBytes(networkStream, pBuffer, 0, size, token).AsCoroutine();
+                                    yield return pBufferTask;
+                                    if (pBufferTask.Result)
+                                    {
+                                        //* If the packet is read, it will be created.
+                                        pBuffer = pBuffer.Decompress(); //* Decompresses the packet.
+                                        var pIBufferTask = SocketHelper.ReadAsyncBytes(networkStream, pIBuffer, 0, sizeof(short), token).AsCoroutine();
+                                        yield return pIBufferTask;
+                                        if (pIBufferTask.Result)
+                                        {
+                                            //* If the owner id is read, it will be created.
+                                            int playerId = BitConverter.ToInt16(pIBuffer, 0); //* Gets the owner id.
+                                            if (playerId <= Settings.GlobalSettings.MaxPlayers && playerId >= 0)
+                                            {
+                                                //* If the owner id is valid, it will be created.
+                                                NeutronPlayer player = Players[playerId]; //* Gets the player.
+                                                NeutronPacket neutronPacket = Helper.PollPacket(pBuffer, player, player, Protocol.Tcp);
+
+                                                _dataForProcessing.Push(neutronPacket); //* Adds the packet to the processing queue.
+                                                NeutronStatistics.ClientTCP.AddIncoming(size + hBuffer.Length + pIBuffer.Length); //* Adds the received bytes to the statistics.
+                                            }
+                                            else
+                                                LogHelper.Error($"Player({playerId}) not found!!!!");
+                                        }
+                                        else
+                                            Dispose(); //* Disconnects the client.
+                                    }
+                                    else
+                                        Dispose(); //* Disconnects the client.
+                                }
+                                else
+                                    LogHelper.Error($"Packet size exceeds defined limit!! size: {size}");
+                            }
+                            else
+                                Dispose(); //* Disconnects the client.
+                        }
+                        break;
+                    case Protocol.Udp:
+                        {
+                            switch (Constants.ReceiveAsyncPattern)
+                            {
+                                //* If the receive async pattern is set to Asynchronous APM Mode, it will be used.
+                                case AsynchronousType.TAP:
+                                    {
+                                        var datagramTask = SocketHelper.ReadAsyncBytes(UdpClient, StateObject);
+                                        yield return datagramTask;
+                                        if (datagramTask.Result)
+                                            CreateUdpPacket(); //* Creates the udp packet.
+                                    }
+                                    break;
+                                default:
+                                    UdpApmReceive(); //* Starts the udp receive.
+                                    break;
+                            }
+                        }
+                        break;
                 }
-                catch (ObjectDisposedException) { continue; }
-                catch (OperationCanceledException) { continue; }
-                catch (ArgumentNullException) { continue; }
-                // catch (Exception ex)
-                // {
-                //     LogHelper.Stacktrace(ex);
-                //     continue;
-                // }
+                yield return null;
             }
         }
 
         /// <summary>
         ///* Read the tcp or udp data.
         /// </summary>
-        private async void OnReceivingData(Stream networkStream, Protocol protocol)
+        private async void OnReceivingDataLoop(Stream networkStream, Protocol protocol)
         {
             CancellationToken token = TokenSource.Token; //* Gets the token.
             try
@@ -453,7 +552,7 @@ namespace NeutronNetwork
                 bool whileOn = false; //* used to stop the while loop.
                 byte[] hBuffer = new byte[NeutronModule.HeaderSize]; //* Sets the header buffer, store de length of the packet..etc.
                 byte[] pIBuffer = new byte[sizeof(short)]; //* Sets the owner id of the packet.
-                while (!token.IsCancellationRequested && !whileOn) //* Interrompe o loop em caso de cancelamento do Token, o cancelamento ocorre em desconexões ou exceções ou em caso de Asynchronous APM Mode.
+                while (!token.IsCancellationRequested && !whileOn)
                 {
                     switch (protocol)
                     {
@@ -481,7 +580,7 @@ namespace NeutronNetwork
                                                     NeutronPlayer player = Players[playerId]; //* Gets the player.
                                                     NeutronPacket neutronPacket = Helper.PollPacket(pBuffer, player, player, Protocol.Tcp);
 
-                                                    _dataForProcessing.Add(neutronPacket, token); //* Adds the packet to the processing queue.
+                                                    _dataForProcessing.Push(neutronPacket); //* Adds the packet to the processing queue.
                                                     NeutronStatistics.ClientTCP.AddIncoming(size + hBuffer.Length + pIBuffer.Length); //* Adds the received bytes to the statistics.
                                                 }
                                                 else
@@ -1314,7 +1413,10 @@ namespace NeutronNetwork
         /// <returns></returns>
         public static Neutron Create(ClientMode clientMode = ClientMode.Player)
         {
-            Neutron neutron = new Neutron(); //* Create new instance.
+            Neutron neutron = NeutronModule.ClientObject.AddComponent<Neutron>(); //* Create new instance.
+            #region Initialize Collections
+            neutron._dataForProcessing = !NeutronModule.IsUnityThread ? (INeutronConsumer<NeutronPacket>)new NeutronBlockingQueue<NeutronPacket>() : (INeutronConsumer<NeutronPacket>)new NeutronSafeQueueNonAlloc<NeutronPacket>();
+            #endregion
             neutron.Initialize(clientMode); //* Initialize instance and register events.
 #if UNITY_SERVER && !UNITY_EDITOR //* If server and not editor.
             if (clientMode == ClientMode.Player)

@@ -16,7 +16,7 @@ using UnityEngine;
 /// </summary>
 namespace NeutronNetwork.Client
 {
-    public class ClientBehaviour
+    public class ClientBehaviour : MonoBehaviour
     {
         #region Socket
         protected TcpClient TcpClient

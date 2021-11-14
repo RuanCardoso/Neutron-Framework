@@ -202,8 +202,8 @@ namespace NeutronNetwork.Server
                         try
                         {
                             iRPCAttribute iRPCAttribute = remoteProceduralCall.iRPC;
-                            ReflectionHelper.iRPC(buffer, remoteProceduralCall, owner);
-                            Send();
+                            if (ReflectionHelper.iRPC(buffer, remoteProceduralCall, owner))
+                                Send();
                         }
                         catch (Exception ex)
                         {
@@ -263,8 +263,8 @@ namespace NeutronNetwork.Server
             if (GlobalBehaviour.gRPCs.TryGetValue(id, out RPCInvoker remoteProceduralCall))
             {
                 gRPCAttribute gRPCAttribute = remoteProceduralCall.gRPC;
-                ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance);
-                Send(gRPCAttribute.CacheMode, gRPCAttribute.TargetTo, gRPCAttribute.MatchmakingTo);
+                if (ReflectionHelper.gRPC(owner, buffer, remoteProceduralCall, true, Neutron.Server.Instance.IsMine(owner), Neutron.Server.Instance))
+                    Send(gRPCAttribute.CacheMode, gRPCAttribute.TargetTo, gRPCAttribute.MatchmakingTo);
             }
             else
                 owner.Error(Packet.gRPC, "Invalid gRPC ID, there is no attribute with this ID.", ErrorMessage.RPC_ID_NOT_FOUND);

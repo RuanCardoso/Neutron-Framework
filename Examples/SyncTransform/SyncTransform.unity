@@ -716,9 +716,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2a1827ce4e304240823755eca181b3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _enableProfilerOnServerGUI: 1
+  _enableProfilerOnServerGUI: 0
   _enableProfilerOnServerConsole: 0
-  _enableProfilerOnClient: 1
+  _enableProfilerOnClient: 0
   _hasProtocolHeaderIncluded: 1
 --- !u!114 &1772651488
 MonoBehaviour:

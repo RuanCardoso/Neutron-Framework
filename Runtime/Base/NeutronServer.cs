@@ -83,8 +83,6 @@ namespace NeutronNetwork.Server
             get;
             set;
         }
-
-        public bool IsUnityThread { get; set; }
         #endregion
 
         #region Fields -> Collections
@@ -110,8 +108,8 @@ namespace NeutronNetwork.Server
         private void StartThreads()
         {
             #region Initialize Collections
-            _acceptedClients = !IsUnityThread ? (INeutronConsumer<TcpClient>)new NeutronBlockingQueue<TcpClient>() : (INeutronConsumer<TcpClient>)new NeutronSafeQueueNonAlloc<TcpClient>();
-            _dataForProcessing = !IsUnityThread ? (INeutronConsumer<NeutronPacket>)new NeutronBlockingQueue<NeutronPacket>() : (INeutronConsumer<NeutronPacket>)new NeutronSafeQueueNonAlloc<NeutronPacket>();
+            _acceptedClients = !NeutronModule.IsUnityThread ? (INeutronConsumer<TcpClient>)new NeutronBlockingQueue<TcpClient>() : (INeutronConsumer<TcpClient>)new NeutronSafeQueueNonAlloc<TcpClient>();
+            _dataForProcessing = !NeutronModule.IsUnityThread ? (INeutronConsumer<NeutronPacket>)new NeutronBlockingQueue<NeutronPacket>() : (INeutronConsumer<NeutronPacket>)new NeutronSafeQueueNonAlloc<NeutronPacket>();
             #endregion
 
             Player = PlayerHelper.MakeTheServerPlayer(); //* Create the ref player.
@@ -136,7 +134,7 @@ namespace NeutronNetwork.Server
 
             #region Threads
             CancellationToken token = TokenSource.Token;
-            if (!IsUnityThread)
+            if (!NeutronModule.IsUnityThread)
             {
                 Thread acptTh = new Thread(async (t) =>
                 {
@@ -159,7 +157,7 @@ namespace NeutronNetwork.Server
             else
                 StartCoroutine(OnAcceptedClientCouroutine(token));
 
-            if (!IsUnityThread)
+            if (!NeutronModule.IsUnityThread)
             {
                 Thread packetProcessingStackTh = new Thread((e) =>
                 {
@@ -176,7 +174,7 @@ namespace NeutronNetwork.Server
                 packetProcessingStackTh.Start();
             }
 
-            if (!IsUnityThread)
+            if (!NeutronModule.IsUnityThread)
             {
                 Thread clientsProcessingStackTh = new Thread((e) =>
                 {
@@ -193,7 +191,7 @@ namespace NeutronNetwork.Server
                 clientsProcessingStackTh.Start();
             }
 
-            if (IsUnityThread)
+            if (NeutronModule.IsUnityThread)
             {
                 StartCoroutine(OnReceivingDataCoroutine(token, Protocol.Tcp));
                 StartCoroutine(OnReceivingDataCoroutine(token, Protocol.Udp));
@@ -279,7 +277,7 @@ namespace NeutronNetwork.Server
                             filter_udp_client.Append($"\r\n{((_playerCount > 1) ? " or " : string.Empty)}(udp.SrcPort == {tcpRemote.Port})");
                             filter_udp_server.Append($"\r\n{((_playerCount > 1) ? " or " : string.Empty)}(udp.SrcPort == {udpLocal.Port})");
 #endif
-                            if (!IsUnityThread)
+                            if (!NeutronModule.IsUnityThread)
                             {
                                 ThreadPool.QueueUserWorkItem((e) =>
                                 {
@@ -434,16 +432,19 @@ namespace NeutronNetwork.Server
             SocketHelper.BeginReadBytes(player.UdpClient, player.StateObject, (ar) =>
             {
                 EndPoint remoteEp = player.StateObject.NonAllocEndPoint; //* Get the remote end point, prevent GC pressure/allocations.
+
                 int bytesRead = SocketHelper.EndReadBytes(player.UdpClient, ref remoteEp, ar); //* End the read.
                 if (!player.StateObject.UdpIsReady())
                     player.StateObject.UdpRemoteEndPoint = (IPEndPoint)remoteEp; //* Set the remote end point.
+
                 if (bytesRead > 0)
                 {
                     player.StateObject.ReceivedDatagram = new byte[bytesRead]; //* Create the datagram.
                     Buffer.BlockCopy(player.StateObject.Buffer, 0, player.StateObject.ReceivedDatagram, 0, bytesRead); //* Copy the received bytes to the datagram.
                     CreateUdpPacket(player); //* Create the packet.
                 }
-                if (!IsUnityThread)
+
+                if (!NeutronModule.IsUnityThread)
                     UdpApmReceive(player); //* Receive again.
             });
         }
@@ -805,7 +806,6 @@ namespace NeutronNetwork.Server
         private void Start()
 #pragma warning restore IDE0051
         {
-            IsUnityThread = Helper.GetSettings().GlobalSettings.Performance == ThreadType.Unity;
             if (IsReady && AutoStart)
                 StartThreads(); //* Start the threads.
             else if (IsReady && !AutoStart)
@@ -821,7 +821,7 @@ namespace NeutronNetwork.Server
         private void Update()
 #pragma warning restore IDE0051
         {
-            if (IsUnityThread)
+            if (NeutronModule.IsUnityThread)
             {
                 ClientsProcessingStack();
                 PacketProcessingStack();

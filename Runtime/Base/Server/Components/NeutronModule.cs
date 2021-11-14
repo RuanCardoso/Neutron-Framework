@@ -3,9 +3,7 @@ using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using System;
-using System.Collections;
 using System.Text;
-using System.Threading;
 using UnityEngine;
 using static NeutronNetwork.Extensions.CipherExt;
 
@@ -46,6 +44,24 @@ namespace NeutronNetwork
             get;
             private set;
         }
+
+        public static bool IsUnityThread
+        {
+            get;
+            private set;
+        }
+
+        public static GameObject ClientObject
+        {
+            get;
+            private set;
+        }
+
+        public static GameObject ServerObject
+        {
+            get;
+            private set;
+        }
         #endregion
 
         #region Properties -> Events
@@ -77,7 +93,6 @@ namespace NeutronNetwork
         private void Start()
 #pragma warning restore IDE0051
         {
-            SetRateFrequency();
             //* A física não deve ser auto-simulada, neutron usa física separada por cena, e as simula manualmente.
             Physics.autoSimulation = _autoSimulation;
 #if UNITY_2020_1_OR_NEWER
@@ -88,6 +103,9 @@ namespace NeutronNetwork
 #if UNITY_SERVER && !UNITY_EDITOR
             Debug.unityLogger.logEnabled = false;
 #endif
+            GameObject controllers = GameObject.Find("Controllers");
+            ClientObject = controllers.transform.Find("Client").gameObject;
+            ServerObject = controllers.transform.Find("Server").gameObject;
         }
 
 #pragma warning disable IDE0051
@@ -104,29 +122,6 @@ namespace NeutronNetwork
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
         }
 
-        private void SetRateFrequency()
-        {
-            QualitySettings.vSyncCount = 0;
-            currentFrameTime = Time.realtimeSinceStartup;
-            StartCoroutine(WaitForNextFrame(Settings.GlobalSettings.Fps));
-        }
-
-        private float currentFrameTime;
-        private IEnumerator WaitForNextFrame(float rate)
-        {
-            while (true)
-            {
-                yield return new WaitForEndOfFrame();
-                currentFrameTime += 1.0f / rate;
-                var t = Time.realtimeSinceStartup;
-                var sleepTime = currentFrameTime - t - 0.01f;
-                if (sleepTime > 0)
-                    Thread.Sleep((int)(sleepTime * 1000));
-                while (t < currentFrameTime)
-                    t = Time.realtimeSinceStartup;
-            }
-        }
-
         private void LoadSettings()
         {
             if (Settings == null)
@@ -135,11 +130,13 @@ namespace NeutronNetwork
                 if (Settings == null)
                 {
                     if (!LogHelper.Error("Settings missing!"))
-                        Destroy(gameObject);
+                        Destroy(transform.root);
                 }
                 else
                 {
                     OnLoadSettings?.Invoke(Settings);
+                    IsUnityThread = Settings.GlobalSettings.Performance == ThreadType.Unity;
+
                     switch (Settings.NetworkSettings.Encoding)
                     {
                         case EncodingType.ASCII:
@@ -177,6 +174,7 @@ namespace NeutronNetwork
                             HeaderSize = sizeof(int);
                             break;
                     }
+
                     StateObject.Size = Helper.GetConstants().Udp.MaxUdpPacketSize;
                 }
             }
