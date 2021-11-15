@@ -10,7 +10,7 @@ namespace NeutronNetwork.Examples.RpcStress
             {
                 if (HasAuthority)
                 {
-                    if (Input.GetKeyUp(KeyCode.Return))
+                    if (Input.GetKeyDown(KeyCode.Return))
                     {
                         for (int i = 0; i < 100; i++)
                         {
