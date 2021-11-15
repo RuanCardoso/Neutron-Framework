@@ -464,8 +464,8 @@ namespace NeutronNetwork.Server
                         {
                             case Protocol.Tcp:
                                 {
-                                    var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize);
-                                    yield return new WaitUntil(() => headerTask.IsCompleted);
+                                    var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize).AsCoroutine();
+                                    yield return headerTask;
                                     if (headerTask.Result)
                                     {
                                         //* Read the header.
