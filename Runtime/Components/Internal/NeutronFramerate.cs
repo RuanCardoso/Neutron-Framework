@@ -54,6 +54,7 @@ namespace NeutronNetwork
                     StartCoroutine(WaitForNextFrameHigh(NeutronModule.Settings.GlobalSettings.Fps));
                     break;
             }
+            useGUILayout = _drawOnGui;
         }
 
         private void Update()

@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 7224697719722065492}
   - component: {fileID: 141724396900658856}
   - component: {fileID: -5211992311598903834}
-  - component: {fileID: 5761704194135424091}
   - component: {fileID: -1248872774781597597}
   m_Layer: 0
   m_Name: Player
@@ -32,6 +31,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -55,10 +55,12 @@ MeshRenderer:
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -83,6 +85,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &141724396900658856
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -112,36 +115,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!114 &5761704194135424091
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2468563362786346040}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da9a5e2c31fdb964dbdbc9d177ab9e8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _id: 1
-  _authorityHandledBy: {fileID: 0}
-  _offlineMode: 0
-  _authority: 4
-  _hasOnAutoSynchronization: 1
-  _hasIRPC: 0
-  _onAutoSynchronizationOptions:
-    _fixedSize: 0
-    _protocol: 1
-    _sendRate: 0.3
-  NeutronAuthority: {fileID: 0}
-  _iRpcOptions: []
-  _oldSerializedJson: 
-  _sendOnlyDiff: 1
-  valor: 0
-  listOfColors:
-  - {r: 0, g: 0, b: 0, a: 0}
-  - {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &-1248872774781597597
 MonoBehaviour:
   m_ObjectHideFlags: 0
