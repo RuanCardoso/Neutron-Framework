@@ -1,5 +1,6 @@
 {
     "name": "Newtonsoft.Json.UnityConverters",
+    "rootNamespace": "",
     "references": [
         "Neutron"
     ],
@@ -11,9 +12,7 @@
         "Newtonsoft.Json.dll"
     ],
     "autoReferenced": true,
-    "defineConstraints": [
-        "UNITY_2018 || UNITY_2019"
-    ],
+    "defineConstraints": [],
     "versionDefines": [
         {
             "name": "com.unity.modules.ai",
