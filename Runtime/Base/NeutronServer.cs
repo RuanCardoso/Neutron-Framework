@@ -15,6 +15,7 @@ using System.Collections;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -452,71 +453,73 @@ namespace NeutronNetwork.Server
         private IEnumerator OnReceivingDataCoroutine(CancellationToken token, Protocol protocol)
         {
             Memory<byte> hBuffer = new Memory<byte>(new byte[NeutronModule.HeaderSize]); //* Create the header buffer.
-            ReadOnlySpan<byte> rHBuffer = hBuffer.Span;
-            while (!token.IsCancellationRequested)
+            if (MemoryMarshal.TryGetArray<byte>(hBuffer, out var segment))
             {
-                foreach (NeutronPlayer player in PlayersBySocket.Values)
+                while (!token.IsCancellationRequested)
                 {
-                    Stream networkStream = player.NetworkStream;
-                    switch (protocol)
+                    foreach (NeutronPlayer player in PlayersBySocket.Values)
                     {
-                        case Protocol.Tcp:
-                            {
-                                var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize);
-                                yield return new WaitUntil(() => headerTask.IsCompleted);
-                                if (headerTask.Result)
+                        Stream networkStream = player.NetworkStream;
+                        switch (protocol)
+                        {
+                            case Protocol.Tcp:
                                 {
-                                    //* Read the header.
-                                    int size = ByteHelper.ReadSize(hBuffer.Span); //* Get the packet size.
-                                    if (size > Helper.GetConstants().Tcp.MaxTcpPacketSize || size <= 0)
+                                    var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize);
+                                    yield return new WaitUntil(() => headerTask.IsCompleted);
+                                    if (headerTask.Result)
                                     {
-                                        //* Check if the packet size is valid.
-                                        if (!LogHelper.Error($"Invalid tcp message size! size: {size}"))
-                                            DisconnectHandler(player); //* Disconnect the player.
-                                    }
-                                    else
-                                    {
-                                        byte[] packetBuffer = new byte[size]; //* Create the packet buffer with the size.
-                                        var packetTask = SocketHelper.ReadAsyncBytes(networkStream, packetBuffer, 0, size, token).AsCoroutine();
-                                        yield return packetTask;
-                                        if (packetTask.Result)
+                                        //* Read the header.
+                                        int size = ByteHelper.ReadSize(segment.Array); //* Get the packet size.
+                                        if (size > Helper.GetConstants().Tcp.MaxTcpPacketSize || size <= 0)
                                         {
-                                            //* Read the packet.
-                                            packetBuffer = packetBuffer.Decompress(); //* Decompress the packet.
-                                            NeutronPacket neutronPacket = Helper.PollPacket(packetBuffer, player, player, Protocol.Tcp); //* Create the packet.
-
-                                            _dataForProcessing.Push(neutronPacket); //* Add the packet to the queue.
-                                            NeutronStatistics.ServerTCP.AddIncoming(size + hBuffer.Length); //* Add the incoming bytes to the statistics.
+                                            //* Check if the packet size is valid.
+                                            if (!LogHelper.Error($"Invalid tcp message size! size: {size}"))
+                                                DisconnectHandler(player); //* Disconnect the player.
                                         }
                                         else
-                                            DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
+                                        {
+                                            byte[] packetBuffer = new byte[size]; //* Create the packet buffer with the size.
+                                            var packetTask = SocketHelper.ReadAsyncBytes(networkStream, packetBuffer, 0, size, token).AsCoroutine();
+                                            yield return packetTask;
+                                            if (packetTask.Result)
+                                            {
+                                                //* Read the packet.
+                                                packetBuffer = packetBuffer.Decompress(); //* Decompress the packet.
+                                                NeutronPacket neutronPacket = Helper.PollPacket(packetBuffer, player, player, Protocol.Tcp); //* Create the packet.
+
+                                                _dataForProcessing.Push(neutronPacket); //* Add the packet to the queue.
+                                                NeutronStatistics.ServerTCP.AddIncoming(size + hBuffer.Length); //* Add the incoming bytes to the statistics.
+                                            }
+                                            else
+                                                DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
+                                        }
+                                    }
+                                    else
+                                        DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
+                                }
+                                break;
+                            case Protocol.Udp:
+                                {
+                                    switch (Helper.GetConstants().ReceiveAsyncPattern)
+                                    {
+                                        case AsynchronousType.TAP:
+                                            {
+                                                var datagramTask = SocketHelper.ReadAsyncBytes(player.UdpClient, player.StateObject).AsCoroutine();
+                                                yield return datagramTask;
+                                                if (datagramTask.Result)
+                                                    CreateUdpPacket(player); //* Create the packet.
+                                            }
+                                            break;
+                                        default:
+                                            UdpApmReceive(player); //* Receive the data.
+                                            break;
                                     }
                                 }
-                                else
-                                    DisconnectHandler(player); //* Desconecta o cliente caso a leitura falhe, a leitura falhará em caso de desconexão...etc.
-                            }
-                            break;
-                        case Protocol.Udp:
-                            {
-                                switch (Helper.GetConstants().ReceiveAsyncPattern)
-                                {
-                                    case AsynchronousType.TAP:
-                                        {
-                                            var datagramTask = SocketHelper.ReadAsyncBytes(player.UdpClient, player.StateObject).AsCoroutine();
-                                            yield return datagramTask;
-                                            if (datagramTask.Result)
-                                                CreateUdpPacket(player); //* Create the packet.
-                                        }
-                                        break;
-                                    default:
-                                        UdpApmReceive(player); //* Receive the data.
-                                        break;
-                                }
-                            }
-                            break;
+                                break;
+                        }
                     }
+                    yield return null;
                 }
-                yield return null;
             }
         }
 
