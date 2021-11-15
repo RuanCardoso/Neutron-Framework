@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -18,7 +16,7 @@ namespace Asyncoroutine
             {
                 if (Task.Exception != null)
                     throw Task.Exception;
-                
+
                 return !Task.IsCompleted;
             }
         }
@@ -49,5 +47,4 @@ namespace Asyncoroutine
             Task = task;
         }
     }
-
 }

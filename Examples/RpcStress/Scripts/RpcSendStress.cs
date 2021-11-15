@@ -10,11 +10,18 @@ namespace NeutronNetwork.Examples.RpcStress
             {
                 if (HasAuthority)
                 {
-                    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                    if (Input.GetKeyDown(KeyCode.Return))
                     {
-                        var writer = Begin_iRPC(10, stream, out var options);
-                        writer.Write();
-                        End_iRPC(10, stream);
+                        for (int i = 0; i < 100; i++)
+                        {
+                            using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                            {
+                                var writer = Begin_iRPC(10, stream, out var options);
+                                writer.Write(i);
+                                writer.Write();
+                                End_iRPC(10, stream);
+                            }
+                        }
                     }
                 }
             }
@@ -23,7 +30,7 @@ namespace NeutronNetwork.Examples.RpcStress
         [iRPC(10)]
         public bool RpcStress(NeutronStream.IReader reader, NeutronPlayer player)
         {
-            Debug.LogError(IsServer);
+            Debug.LogError($"{IsServer}: {reader.ReadInt()}");
             return true;
         }
     }

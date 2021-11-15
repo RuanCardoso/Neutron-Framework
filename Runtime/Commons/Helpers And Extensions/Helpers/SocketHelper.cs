@@ -77,28 +77,45 @@ namespace NeutronNetwork.Helpers
 
         #region Tcp
         //* Ler do fluxo tcp.
-        public static Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int size, CancellationToken token) // Manter Stream, em vez de NetworkStream.
+        public static async Task<bool> ReadAsyncBytes(Stream stream, byte[] buffer, int offset, int size, CancellationToken token) // Manter Stream, em vez de NetworkStream.
         {
-            return Task.Run(async () =>
+            try
             {
-                try
+                int bytesRead;
+                while (offset < size)
                 {
-                    int bytesRead;
-                    while (offset < size) //* Execute em uma task separada, evita problemas com o UDP.
-                    {
-                        int bytesRemaining = size - offset;
-                        if ((bytesRead = await stream.ReadAsync(buffer, offset, bytesRemaining, token)) > 0)
-                            offset += bytesRead;
-                        else
-                            return false;
-                    }
-                    return offset == size;
+                    int bytesRemaining = size - offset;
+                    if ((bytesRead = await stream.ReadAsync(buffer, offset, bytesRemaining, token)) > 0)
+                        offset += bytesRead;
+                    else
+                        return false;
                 }
-                catch (Exception)
+                return offset == size;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static async ValueTask<bool> ReadAsyncBytes(Stream stream, Memory<byte> buffer, int offset, int size)
+        {
+            try
+            {
+                int bytesRead;
+                while (offset < size)
                 {
-                    return false;
+                    if ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+                        offset += bytesRead;
+                    else
+                        return false;
                 }
-            });
+                return offset == size;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         //* Escreve no socket de modo assíncrono no socket TCP.

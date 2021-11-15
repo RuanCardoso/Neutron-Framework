@@ -451,7 +451,8 @@ namespace NeutronNetwork.Server
 
         private IEnumerator OnReceivingDataCoroutine(CancellationToken token, Protocol protocol)
         {
-            byte[] hBuffer = new byte[NeutronModule.HeaderSize]; //* Create the header buffer.
+            Memory<byte> hBuffer = new Memory<byte>(new byte[NeutronModule.HeaderSize]); //* Create the header buffer.
+            ReadOnlySpan<byte> rHBuffer = hBuffer.Span;
             while (!token.IsCancellationRequested)
             {
                 foreach (NeutronPlayer player in PlayersBySocket.Values)
@@ -461,12 +462,12 @@ namespace NeutronNetwork.Server
                     {
                         case Protocol.Tcp:
                             {
-                                var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize, token).AsCoroutine();
-                                yield return headerTask;
+                                var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize);
+                                yield return new WaitUntil(() => headerTask.IsCompleted);
                                 if (headerTask.Result)
                                 {
                                     //* Read the header.
-                                    int size = ByteHelper.ReadSize(hBuffer); //* Get the packet size.
+                                    int size = ByteHelper.ReadSize(hBuffer.Span); //* Get the packet size.
                                     if (size > Helper.GetConstants().Tcp.MaxTcpPacketSize || size <= 0)
                                     {
                                         //* Check if the packet size is valid.

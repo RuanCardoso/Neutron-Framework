@@ -183,5 +183,20 @@ namespace NeutronNetwork.Helpers
                     return 0;
             }
         }
+
+        public static int ReadSize(ReadOnlySpan<byte> headerBuffer)
+        {
+            switch (Constants.HeaderSize)
+            {
+                case HeaderSizeType.Byte:
+                    return headerBuffer[0];
+                case HeaderSizeType.Short:
+                    return BitConverter.ToInt16(headerBuffer);
+                case HeaderSizeType.Int:
+                    return BitConverter.ToInt32(headerBuffer);
+                default:
+                    return 0;
+            }
+        }
     }
 }
