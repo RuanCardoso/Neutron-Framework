@@ -12,7 +12,7 @@ namespace NeutronNetwork.Examples.RpcStress
                 {
                     if (Input.GetKeyDown(KeyCode.Return))
                     {
-                        for (int i = 0; i < 5; i++)
+                        for (int i = 0; i < 100; i++)
                         {
                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                             {

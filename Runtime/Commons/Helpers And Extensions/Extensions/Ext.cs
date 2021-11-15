@@ -4,11 +4,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace NeutronNetwork.Extensions
 {
     public static class Ext
     {
+        public class ValueTaskYieldInstruction<T> : CustomYieldInstruction
+        {
+            public ValueTask<T> Task;
+            public ValueTaskYieldInstruction(ValueTask<T> task)
+            {
+                Task = task;
+            }
+
+            public T Result => Task.Result;
+            public override bool keepWaiting => !Task.IsCompleted;
+        }
+
         public static async Task<bool> RunWithTimeout(this Task task, TimeSpan timeSpan)
         {
             using (CancellationTokenSource timeoutToken = new CancellationTokenSource())
@@ -60,6 +73,11 @@ namespace NeutronNetwork.Extensions
             return token;
         }
 
+        public static ValueTaskYieldInstruction<T> AsCoroutine<T>(this ValueTask<T> task)
+        {
+            return new ValueTaskYieldInstruction<T>(task);
+        }
+
 #if !UNITY_SERVER || UNITY_EDITOR
         public static string Bold(this string str) => "<b>" + str + "</b>";
         public static string Color(this string str, string clr) => string.Format("<color={0}>{1}</color>", clr, str);
@@ -70,44 +88,6 @@ namespace NeutronNetwork.Extensions
         public static string Color(this string str, string clr) => str;
         public static string Italic(this string str) => str;
         public static string Size(this string str, int size) => str;
-#endif
-
-#if !UNITY_2019_2_OR_NEWER
-        public static bool TryGetComponent<T>(this UnityEngine.GameObject monoBehaviour, out T component)
-        {
-            component = default(T);
-            if (monoBehaviour == null)
-                return false;
-            component = monoBehaviour.GetComponent<T>();
-            if (component != null)
-                return (component.ToString() != null && component.ToString() != "null");
-            else
-                return false;
-        }
-
-        public static bool TryGetComponent<T>(this UnityEngine.Transform monoBehaviour, out T component)
-        {
-            component = default(T);
-            if (monoBehaviour == null)
-                return false;
-            component = monoBehaviour.GetComponent<T>();
-            if (component != null)
-                return (component.ToString() != null && component.ToString() != "null");
-            else
-                return false;
-        }
-
-        public static bool TryGetComponent<T>(this UnityEngine.Component monoBehaviour, out T component)
-        {
-            component = default(T);
-            if (monoBehaviour == null)
-                return false;
-            component = monoBehaviour.GetComponent<T>();
-            if (component != null)
-                return (component.ToString() != null && component.ToString() != "null");
-            else
-                return false;
-        }
 #endif
     }
 }
