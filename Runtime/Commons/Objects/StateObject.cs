@@ -11,13 +11,13 @@ namespace NeutronNetwork.Internal
             set;
         }
 
-        public byte[] Buffer
+        public byte[] ReceivedDatagram
         {
             get;
             set;
         } = new byte[Size];
 
-        public byte[] ReceivedDatagram
+        public byte[] SlicedDatagram
         {
             get;
             set;

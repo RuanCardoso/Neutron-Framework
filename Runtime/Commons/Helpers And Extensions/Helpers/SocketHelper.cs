@@ -113,7 +113,7 @@ namespace NeutronNetwork.Helpers
         public static IAsyncResult BeginReadBytes(UdpClient udpClient, StateObject stateObject, AsyncCallback callback)
         {
             Socket udpSocket = udpClient.Client;
-            return udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, null);
+            return udpSocket.BeginReceiveFrom(stateObject.ReceivedDatagram, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, null);
         }
 
         public static int EndReadBytes(UdpClient udpClient, ref EndPoint remoteEp, IAsyncResult ar)
@@ -126,7 +126,7 @@ namespace NeutronNetwork.Helpers
         public static Task<bool> ReadAsyncBytes(UdpClient udpClient, StateObject stateObject)
         {
             Socket udpSocket = udpClient.Client;
-            var task = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginReceiveFrom(stateObject.Buffer, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, obj), (ar) =>
+            var task = Task.Factory.FromAsync((callback, obj) => udpSocket.BeginReceiveFrom(stateObject.ReceivedDatagram, 0, StateObject.Size, SocketFlags.None, ref stateObject.NonAllocEndPoint, callback, obj), (ar) =>
             {
                 try
                 {
@@ -139,8 +139,8 @@ namespace NeutronNetwork.Helpers
                         stateObject.UdpRemoteEndPoint = (IPEndPoint)remoteEp;
                     if (bytesRead > 0)
                     {
-                        stateObject.ReceivedDatagram = new byte[bytesRead];
-                        Buffer.BlockCopy(stateObject.Buffer, 0, stateObject.ReceivedDatagram, 0, bytesRead);
+                        stateObject.SlicedDatagram = new byte[bytesRead];
+                        Buffer.BlockCopy(stateObject.ReceivedDatagram, 0, stateObject.SlicedDatagram, 0, bytesRead);
                     }
                     return bytesRead > 0;
                 }

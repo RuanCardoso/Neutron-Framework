@@ -15,6 +15,7 @@ using NeutronNetwork.Wrappers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -82,12 +83,20 @@ namespace NeutronNetwork
         /// <summary>
         ///* Provides a pool of packets, use it for best performance.
         /// </summary>
-        /// <value></value>
-        public static NeutronPool<NeutronPacket> PooledNetworkPackets
+        internal static NeutronPool<NeutronPacket> PooledNetworkPackets
         {
             get;
             set;
         }
+
+
+        /// <summary>
+        ///* Provides a pool of byte array, use it for best performance.
+        /// </summary>
+        internal static ArrayPool<byte> PooledByteArray
+        {
+            get;
+        } = ArrayPool<byte>.Create();
 
         /// <summary>
         ///* This queue will store the packets received from the server to be dequeued and processed, in a single Thread (Thread).
@@ -395,7 +404,7 @@ namespace NeutronNetwork
         /// </summary>
         private void CreateUdpPacket()
         {
-            byte[] datagram = StateObject.ReceivedDatagram;
+            byte[] datagram = StateObject.SlicedDatagram;
             using (NeutronStream stream = PooledNetworkStreams.Pull())
             {
                 //* If the received datagram is not empty, it will be created.
@@ -436,8 +445,8 @@ namespace NeutronNetwork
             if (bytesRead > 0)
             {
                 //* If the bytes are read, it will be created.
-                StateObject.ReceivedDatagram = new byte[bytesRead]; //* Sets the received datagram, avoid GC Alloc in the future.
-                Buffer.BlockCopy(StateObject.Buffer, 0, StateObject.ReceivedDatagram, 0, bytesRead); //* Copies the received bytes.
+                StateObject.SlicedDatagram = new byte[bytesRead]; //* Sets the received datagram, avoid GC Alloc in the future.
+                Buffer.BlockCopy(StateObject.ReceivedDatagram, 0, StateObject.SlicedDatagram, 0, bytesRead); //* Copies the received bytes.
                 CreateUdpPacket(); //* Creates the udp packet.
             }
 

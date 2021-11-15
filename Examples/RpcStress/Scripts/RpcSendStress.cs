@@ -23,6 +23,7 @@ namespace NeutronNetwork.Examples.RpcStress
         [iRPC(10)]
         public bool RpcStress(NeutronStream.IReader reader, NeutronPlayer player)
         {
+            Debug.LogError(IsServer);
             return true;
         }
     }

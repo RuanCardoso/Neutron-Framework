@@ -415,7 +415,7 @@ namespace NeutronNetwork.Server
 
         private void CreateUdpPacket(NeutronPlayer player)
         {
-            byte[] datagram = player.StateObject.ReceivedDatagram; //* Get the datagram.
+            byte[] datagram = player.StateObject.SlicedDatagram; //* Get the datagram.
             byte[] pBuffer = datagram.Decompress(); //* Decompress the packet.
 
             NeutronPacket neutronPacket = Helper.PollPacket(pBuffer, player, player, Protocol.Udp); //* Create the packet.
@@ -439,8 +439,8 @@ namespace NeutronNetwork.Server
 
                 if (bytesRead > 0)
                 {
-                    player.StateObject.ReceivedDatagram = new byte[bytesRead]; //* Create the datagram.
-                    Buffer.BlockCopy(player.StateObject.Buffer, 0, player.StateObject.ReceivedDatagram, 0, bytesRead); //* Copy the received bytes to the datagram.
+                    player.StateObject.SlicedDatagram = new byte[bytesRead]; //* Create the datagram.
+                    Buffer.BlockCopy(player.StateObject.ReceivedDatagram, 0, player.StateObject.SlicedDatagram, 0, bytesRead); //* Copy the received bytes to the datagram.
                     CreateUdpPacket(player); //* Create the packet.
                 }
 
