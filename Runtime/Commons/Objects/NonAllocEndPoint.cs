@@ -13,11 +13,13 @@ namespace NeutronNetwork.Internal
     //* Uma gambiarra para evitar alocaçoes em excesso pelo socket Udp, coé microsoft resolve isso ae pá noix.
     public class NonAllocEndPoint : IPEndPoint
     {
-        public SocketAddress SocketAddress {
+        public SocketAddress SocketAddress
+        {
             get;
             set;
         }
-        public IPEndPoint IPEndPoint {
+        public IPEndPoint IPEndPoint
+        {
             get;
             set;
         }
@@ -52,8 +54,10 @@ namespace NeutronNetwork.Internal
                 if (SocketAddress.GetHashCode() == 0)
                     throw new Exception($"0x0000001 fatal error ):");
             }
+
             if (IPEndPoint == null)
                 IPEndPoint = GetIPEndPoint();
+
             return IPEndPoint;
         }
 

@@ -464,12 +464,12 @@ namespace NeutronNetwork.Server
                         {
                             case Protocol.Tcp:
                                 {
-                                    var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize);
-                                    yield return new WaitUntil(() => headerTask.IsCompleted);
+                                    var headerTask = SocketHelper.ReadAsyncBytes(networkStream, hBuffer, 0, NeutronModule.HeaderSize).AsCoroutine();
+                                    yield return headerTask;
                                     if (headerTask.Result)
                                     {
                                         //* Read the header.
-                                        int size = ByteHelper.ReadSize(hBuffer.ToArray()); //* Get the packet size.
+                                        int size = ByteHelper.ReadSize(hBuffer.Span); //* Get the packet size.
                                         if (size > Helper.GetConstants().Tcp.MaxTcpPacketSize || size <= 0)
                                         {
                                             //* Check if the packet size is valid.
@@ -478,14 +478,15 @@ namespace NeutronNetwork.Server
                                         }
                                         else
                                         {
-                                            byte[] packetBuffer = new byte[size]; //* Create the packet buffer with the size.
-                                            var packetTask = SocketHelper.ReadAsyncBytes(networkStream, packetBuffer, 0, size, token).AsCoroutine();
+                                            Memory<byte> packetBuffer = new(new byte[size]); //* Create the packet buffer with the size.
+                                            var packetTask = SocketHelper.ReadAsyncBytes(networkStream, packetBuffer, 0, size).AsCoroutine();
                                             yield return packetTask;
                                             if (packetTask.Result)
                                             {
                                                 //* Read the packet.
-                                                packetBuffer = packetBuffer.Decompress(); //* Decompress the packet.
-                                                NeutronPacket neutronPacket = Helper.PollPacket(packetBuffer, player, player, Protocol.Tcp); //* Create the packet.
+                                                byte[] buffer = packetBuffer.ToArray();
+                                                buffer = buffer.Decompress(); //* Decompress the packet.
+                                                NeutronPacket neutronPacket = Helper.PollPacket(buffer, player, player, Protocol.Tcp); //* Create the packet.
 
                                                 _dataForProcessing.Push(neutronPacket); //* Add the packet to the queue.
                                                 NeutronStatistics.ServerTCP.AddIncoming(size + hBuffer.Length); //* Add the incoming bytes to the statistics.
