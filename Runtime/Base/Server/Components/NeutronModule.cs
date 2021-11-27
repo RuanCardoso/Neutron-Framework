@@ -3,6 +3,7 @@ using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using System;
+using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
 using static NeutronNetwork.Extensions.CipherExt;
@@ -85,7 +86,7 @@ namespace NeutronNetwork
             UnityThreadId = ThreadHelper.GetThreadID();
             LoadSettings();
             LoadSynchronizationSettings();
-            InitializePools();
+            PreAllocPool();
         }
 
         [Obsolete]
@@ -104,22 +105,29 @@ namespace NeutronNetwork
             Debug.unityLogger.logEnabled = false;
 #endif
             GameObject controllers = GameObject.Find("Controllers");
-            ClientObject = controllers.transform.Find("Client").gameObject;
-            ServerObject = controllers.transform.Find("Server").gameObject;
+            if (controllers != null)
+            {
+                ClientObject = controllers.transform.Find("Client").gameObject;
+                ServerObject = controllers.transform.Find("Server").gameObject;
+            }
         }
 
 #pragma warning disable IDE0051
         private void OnEnable() => DontDestroyOnLoad(transform.root);
 #pragma warning restore IDE0051
 
-        private void InitializePools()
+        private void PreAllocPool()
         {
             Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true), Settings.GlobalSettings.StreamPoolCapacity, false, "Neutron Streams");
             Neutron.PooledNetworkPackets = new NeutronPool<NeutronPacket>(() => new NeutronPacket(), Settings.GlobalSettings.PacketPoolCapacity, false, "Neutron Packets");
+            NeutronSocket.PooledSocketAsyncEventArgsForAccept = new NeutronPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs(), NeutronConstants.MAX_CAPACITY_FOR_EVENT_ARGS_IN_ACCEPT_POOL, false, "IOAcceptEventPool");
+
             for (int i = 0; i < Settings.GlobalSettings.StreamPoolCapacity; i++)
                 Neutron.PooledNetworkStreams.Push(new NeutronStream(true));
             for (int i = 0; i < Settings.GlobalSettings.PacketPoolCapacity; i++)
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
+            for (int i = 0; i < NeutronConstants.MAX_CAPACITY_FOR_EVENT_ARGS_IN_ACCEPT_POOL; i++)
+                NeutronSocket.PooledSocketAsyncEventArgsForAccept.Push(new SocketAsyncEventArgs());
         }
 
         private void LoadSettings()

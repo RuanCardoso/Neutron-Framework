@@ -40,20 +40,24 @@ namespace NeutronNetwork
 #pragma warning disable IDE0051
         private void Start()
         {
+            int fps = NeutronModule.Settings.GlobalSettings.Fps;
+
             if (_framerateLimitType != FramerateLimitType.None)
                 SetRateFrequency();
+
             switch (_framerateLimitType)
             {
                 case FramerateLimitType.Low:
-                    StartCoroutine(WaitForNextFrameLow(NeutronModule.Settings.GlobalSettings.Fps));
+                    StartCoroutine(WaitForNextFrameLow(fps));
                     break;
                 case FramerateLimitType.Medium:
-                    Application.targetFrameRate = NeutronModule.Settings.GlobalSettings.Fps;
+                    StartCoroutine(WaitForNextFrameMedium(fps));
                     break;
                 case FramerateLimitType.High:
-                    StartCoroutine(WaitForNextFrameHigh(NeutronModule.Settings.GlobalSettings.Fps));
+                    StartCoroutine(WaitForNextFrameHigh(fps));
                     break;
             }
+
             useGUILayout = _drawOnGui;
         }
 
@@ -118,6 +122,15 @@ namespace NeutronNetwork
                     Thread.Sleep((int)(sleepTime * 1000));
                 if (t < _currentFrameTime)
                     t = Time.realtimeSinceStartup;
+            }
+        }
+
+        private IEnumerator WaitForNextFrameMedium(int rate)
+        {
+            while (true)
+            {
+                Application.targetFrameRate = rate;
+                yield return null;
             }
         }
 

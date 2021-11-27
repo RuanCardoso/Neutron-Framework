@@ -4,43 +4,53 @@ using System;
 
 namespace NeutronNetwork
 {
-    //* Não use ConcurrentQueue, por algum motivo essa porra tem vazamento de memória no metódo Enqueue(), aloca demais, e o GC Congela a unity quando inicia a limpeza.
+    //* Nï¿½o use ConcurrentQueue, por algum motivo essa porra tem vazamento de memï¿½ria no metï¿½do Enqueue(), aloca demais, e o GC Congela a unity quando inicia a limpeza.
     public class NeutronPool<T>
     {
         //* Inicializa um queue para o pool.
         private readonly NeutronSafeQueueNonAlloc<T> _queue;
-        //* Objeto que irá gerar novas instâncias quando necessário.
+        //* Objeto que irï¿½ gerar novas instï¿½ncias quando necessï¿½rio.
         private readonly Func<T> _generator;
+
         /// <summary>
-        ///* Define se a capacidade é aumentada conforme o necessário.
+        ///* Define se a capacidade ï¿½ aumentada conforme o necessï¿½rio.
         /// </summary>
-        public bool Resizable {
+        public bool CreateNewObjectIfNotAvailable
+        {
             get;
         }
+
         /// <summary>
         ///* Nome do pool de objetos.
         /// </summary>
-        public string Name {
+        public string Name
+        {
             get;
         }
+
         /// <summary>
         ///* Quantidade de objetos no pool.
         /// </summary>
         public int Count => _queue.Count;
 
         /// <summary>
+        /// 
+        /// </summary>
+        public NeutronSafeQueueNonAlloc<T> Queue => _queue;
+
+        /// <summary>
         /// Inicializa um novo pool do tipo especificado em T.
         /// </summary>
-        public NeutronPool(Func<T> generator, int capacity, bool resizable, string name)
+        public NeutronPool(Func<T> generator, int capacity, bool createNewObjectIfNotAvailable, string name)
         {
             _generator = generator;
             _queue = new NeutronSafeQueueNonAlloc<T>(capacity);
-            Resizable = resizable;
+            CreateNewObjectIfNotAvailable = createNewObjectIfNotAvailable;
             Name = name;
         }
 
         /// <summary>
-        ///* Obtém um objeto disponível do pool de objetos.
+        ///* Obtï¿½m um objeto disponï¿½vel do pool de objetos.
         /// </summary>
         [ThreadSafe]
         public T Pull()
@@ -49,11 +59,12 @@ namespace NeutronNetwork
                 return item;
             else
             {
-                if (Resizable)
+                if (CreateNewObjectIfNotAvailable)
                     return _generator();
                 else
-                    LogHelper.Error($"{Name}: You overflowed the pool! You won't get the performance benefits of the pool, it increases capacity.");
+                    LogHelper.Error($"Memory Leak: {Name}: You overflowed the pool! You won't get the performance benefits of the pool. Increase the pool capacity, if the error happens again, you may be forgetting to return the item to the pool.");
             }
+
             return _generator();
         }
 

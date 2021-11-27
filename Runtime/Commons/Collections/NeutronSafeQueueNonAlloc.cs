@@ -61,9 +61,6 @@ namespace NeutronNetwork.Internal.Wrappers
             }
         }
 
-        public void Dispose()
-        { }
-
         public int Count
         {
             get
@@ -75,5 +72,10 @@ namespace NeutronNetwork.Internal.Wrappers
                 }
             }
         }
+
+        public NeutronQueue<T> Queue => _queue;
+
+        public void Dispose()
+        { }
     }
 }

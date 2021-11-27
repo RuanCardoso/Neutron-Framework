@@ -392,7 +392,7 @@ namespace NeutronNetwork.Internal.Packets
 #endif
         Unity,
 #if UNITY_2019_2_OR_NEWER
-        [InspectorName("Ultra(Neutron Thread)")] 
+        [InspectorName("Ultra(Neutron Thread)")]
 #endif
         Neutron,
     }
@@ -426,6 +426,12 @@ namespace NeutronNetwork.Internal.Packets
         Disabled = 0x0,
         Physics2D = 0x1,
         Physics3D = 0x2,
+    }
+
+    public enum SocketMode
+    {
+        Server,
+        Client,
     }
     #endregion
 }

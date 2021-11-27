@@ -40,7 +40,7 @@ MonoBehaviour:
     SendAsyncPattern: 1
     ReceiveAsyncPattern: 1
     Encoding: 5
-    HeaderSize: 2
+    HeaderSize: 1
     Tcp:
       MaxTcpPacketSize: 2048
       TcpReceiveBufferSize: 8192

@@ -89,7 +89,6 @@ namespace NeutronNetwork
             set;
         }
 
-
         /// <summary>
         ///* Provides a pool of byte array, use it for best performance.
         /// </summary>
