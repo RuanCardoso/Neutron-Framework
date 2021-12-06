@@ -24,8 +24,9 @@ namespace NeutronNetwork.Constants
 
     public class NeutronConstants
     {
+        public int MAX_STACK_SIZE = 1024;
         public const int MAX_CAPACITY_FOR_EVENT_ARGS_IN_ACCEPT_POOL = 3;
-        public const int MAX_CAPACITY_FOR_EVENT_ARGS_IN_RECEIVE_POOL = 65535;
+        public const int MAX_CAPACITY_FOR_EVENT_ARGS_IN_RECEIVE_POOL = 80000;
         public const int GENERATE_PLAYER_ID = 0;
         public const int TIME_DECIMAL_PLACES = 3;
         public const int MAX_FPS = 512;

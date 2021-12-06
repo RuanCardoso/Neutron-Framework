@@ -3,6 +3,7 @@ using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -59,6 +60,21 @@ namespace NeutronNetwork.Internal
         /// Store the connected clients, used to dispose the unmanaged resources.
         /// </summary>
         private List<NeutronSocket> _sockets;
+        /// <summary>
+        /// This class creates a single large buffer which can be divided up.
+        /// and assigned to SocketAsyncEventArgs objects for use with each.
+        /// socket I/O operation.
+        /// This enables bufffers to be easily reused and guards against.
+        /// fragmenting heap memory.
+        /// The operations exposed on the NeutronBuffer class are not thread safe.
+        /// </summary>
+        private NeutronBuffer _buffer;
+
+        private int _packetsReceivedPerSecond;
+
+        private Stopwatch _stopwatch = new Stopwatch();
+
+        private double lastTime;
 
         /// <summary>
         /// Returns the state of the socket.
@@ -78,6 +94,9 @@ namespace NeutronNetwork.Internal
             else if (protocol == Protocol.Udp)
                 _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); // Initialize the udp socket.
 
+            _buffer = new NeutronBuffer(56 * 300 * 300 * 2, 56); // Initialize the buffer.
+            _buffer.Init();
+
             _socket.Bind(endPoint); // Bind the socket to the endpoint.
 
             if (socketMode == SocketMode.Server && protocol == Protocol.Tcp)
@@ -94,6 +113,18 @@ namespace NeutronNetwork.Internal
 
             _socketMode = socketMode; // Set the socket mode.
             _protocol = protocol; // Set the protocol.
+ 
+            //_stopwatch.Start(); // Start the stopwatch.
+
+            // new Thread(async () =>
+            // {
+            //     while (!_sourceToken.IsCancellationRequested && _isListen)
+            //     {
+            //         await Task.Delay(1000); // Wait for 1 second.
+            //         LogHelper.Error(Interlocked.CompareExchange(ref _packetsReceivedPerSecond, 0, 0));
+            //         Interlocked.Exchange(ref _packetsReceivedPerSecond, 0);
+            //     }
+            // }).Start();
         }
 
         /// <summary>
@@ -152,7 +183,6 @@ namespace NeutronNetwork.Internal
                 return; // If the token is cancelled, return.
 
             UserToken userToken = new(); // Create a new user token.
-            userToken.AsyncEventArgsBlockingQueue = new(); // Initialize the blocking queue, it's used to process de received data.
 
             NeutronSocket neutronSocket = new()
             {
@@ -184,14 +214,20 @@ namespace NeutronNetwork.Internal
 
             userToken.PooledSocketAsyncEventArgsForReceive = new(() => new(), NeutronConstants.MAX_CAPACITY_FOR_EVENT_ARGS_IN_RECEIVE_POOL, false, "IOReceiveEventPool");
             for (int i = 0; i < NeutronConstants.MAX_CAPACITY_FOR_EVENT_ARGS_IN_RECEIVE_POOL; i++)
-                userToken.PooledSocketAsyncEventArgsForReceive.Push(new()); // Initialize the pool of socket event args for receive.
+            {
+                SocketAsyncEventArgs eventArgs = new();
+                if (_buffer.Set(eventArgs))
+                    userToken.PooledSocketAsyncEventArgsForReceive.Push(eventArgs); // Initialize the pool of socket event args for receive.
+                else
+                    eventArgs.Dispose(); // If the buffer is full, dispose the event args.
+            }
 
             SocketAsyncEventArgs receiveArgs = userToken.PooledSocketAsyncEventArgsForReceive.Pull(); // Get the socket event args.
             receiveArgs.Completed += OnIOCompleted; // Set the completed event.
             receiveArgs.UserToken = userToken; // Set the user token.
             receiveArgs.AcceptSocket = socketAsyncEventArgs.AcceptSocket; // Set the accept socket.
+            receiveArgs.AcceptSocket.ReceiveBufferSize = 64535;
 
-            receiveArgs.SetBuffer(new Memory<byte>(new byte[1024])); // Set the buffer to receive data.
 
             socketAsyncEventArgs.Completed -= OnIOCompleted; // Remove the completed event.
             socketAsyncEventArgs.AcceptSocket = null; // Set the accept socket to null.
@@ -246,11 +282,25 @@ namespace NeutronNetwork.Internal
 
                 if (socketAsyncEventArgs.BytesTransferred > 0)
                 {
+                    Interlocked.Increment(ref _packetsReceivedPerSecond);
+
+                    if (lastTime == 0)
+                    {
+                        _stopwatch.Start(); // Start the stopwatch.
+                        lastTime = _stopwatch.Elapsed.TotalSeconds;
+                    }
+
+                    if ((_stopwatch.Elapsed.TotalSeconds - lastTime) >= 5)
+                    {
+                        lastTime = _stopwatch.Elapsed.TotalSeconds;
+                        LogHelper.Error(Interlocked.CompareExchange(ref _packetsReceivedPerSecond, 0, 0));
+                        Interlocked.Exchange(ref _packetsReceivedPerSecond, 0);
+                    }
+
                     SocketAsyncEventArgs receiveArgs = userToken.PooledSocketAsyncEventArgsForReceive.Pull(); // Get the socket event args.
                     receiveArgs.Completed += OnIOCompleted; // Set the completed event.
                     receiveArgs.UserToken = userToken; // Set the user token.
                     receiveArgs.AcceptSocket = socketAsyncEventArgs.AcceptSocket; // Set the accept socket.
-                    receiveArgs.SetBuffer(new Memory<byte>(new byte[1024])); // Set the buffer to receive data.
 
                     userToken.AsyncEventArgsBlockingQueue.Add(socketAsyncEventArgs, userToken.SourceToken.Token); // Add the socket event args to the blocking queue to process the received data.
 
@@ -281,58 +331,67 @@ namespace NeutronNetwork.Internal
             try
             {
                 MemoryStream dataStream = new(); // Create a new memory stream to store the received data.
+                Memory<byte> dataMemory = new byte[512]; // The data to be processed.
+
                 int totalBytesTransferred = 0; // The total bytes transferred/received.
                 int currentOffset = 0; // The current offset in the stream.
-                byte[] data = new byte[8192]; // The data to be processed.
 
                 while (!_sourceToken.IsCancellationRequested && !userToken.SourceToken.IsCancellationRequested)
                 {
                     // Stop 'while' processing if the cancellation token is requested, to prevent high CPU usage.
-                    if (ReadExactly(dataStream, userToken, data, ref currentOffset, 4))
+                    if (ReadExactly(dataStream, userToken, dataMemory, ref currentOffset, 4))
                     {
                         // Read exactly 4 bytes(integer) from the stream, if the read is completed, process the received data.
                         // 4 bytes is the length of the message, the length of the message is the first 4 bytes(prefix) of the message/packet.
                         // 4 bytes = 32 bits = integer(int), the maximum length of the message is 2^32 - 1 bytes.
 
-                        int messageLength = BitConverter.ToInt32(data[..4]); // Slice the first 4 bytes(prefix) to get the length of the message and convert it to integer.
+                        int messageLength = BitConverter.ToInt32(dataMemory.Span[..4]); // Slice the first 4 bytes(prefix) to get the length of the message and convert it to integer.
                         messageLength += 4; // Add 4 bytes(prefix) to the length of the message, this is the real length of the packet, including the prefix....
 
                         int fLength = messageLength - 4;
-                        if (fLength > 512 || fLength <= 0)
+                        if (fLength > 5120 || fLength <= 0)
                         {
                             // If the length of the message is greater than 512 bytes, ignore the message, if size is less or equal to 0 bytes, ignore the message, because the message is empty.
                             // Dos attack, disconnect the client.
+                            throw new NeutronException($"Invalid message length! -> {fLength}");
                             break;
                         }
 
                         while ((currentOffset < messageLength) && (!_sourceToken.IsCancellationRequested && !userToken.SourceToken.IsCancellationRequested))
                         {
                             // Stop 'while' processing if the cancellation token is requested, to prevent high CPU usage.
-                            if (ReadExactly(dataStream, userToken, data, ref currentOffset, messageLength))
+                            if (ReadExactly(dataStream, userToken, dataMemory, ref currentOffset, messageLength))
                             {
                                 // Read exactly the length of the message from the stream, if the read is completed, process the received data.
 
-                                byte[] messageData = data[4..messageLength]; // Slice the data from the prefix to the length of the message to get the message/packet.
+                                ReadOnlySpan<byte> messageData = dataMemory.Span[4..messageLength]; // Slice the data from the prefix to the length of the message to get the message/packet.
                                 int bytesRemaining = totalBytesTransferred - currentOffset; // Get the remaining bytes to be read.
 
-                                LogHelper.Info("Pckt completed: ");
+                                //LogHelper.Info("Pckt completed: ");
 
                                 if (messageData.Length != fLength)
                                     throw new NeutronException("Header: Invalid range!");
 
-                                byte[] nextData = null;
+                                // using (NeutronStream stream = new NeutronStream())
+                                // {
+                                //     var reader = stream.Reader;
+                                //     reader.SetBuffer(messageData.ToArray());
+                                //     LogHelper.Error(reader.ReadInt());
+                                // }
+
+                                Span<byte> continuousData = stackalloc byte[bytesRemaining];
                                 if (bytesRemaining > 0)
-                                    nextData = dataStream.ToArray()[currentOffset..(currentOffset + bytesRemaining)]; // Get the previous data in the stream.
+                                    ReadExactly(dataStream, userToken, continuousData, 0, bytesRemaining); // Read the remaining bytes from the stream.
 
-                                dataStream.SetLength(0); // Clear the stream.
+                                dataStream.SetLength(0); // Reset the length of the stream.
 
-                                if (bytesRemaining > 0 && nextData.Length > 0)
+                                if (bytesRemaining > 0 && continuousData.Length > 0)
                                 {
-                                    if (nextData.Length != bytesRemaining)
+                                    if (continuousData.Length != bytesRemaining)
                                         throw new NeutronException("Next Data: Invalid range!");
 
                                     // copy the remaining data to the beginning of the stream.
-                                    dataStream.Write(nextData); // If there are remaining bytes to be read, write them to the stream.
+                                    dataStream.Write(continuousData); // If there are remaining bytes to be read, write them to the stream.
                                     dataStream.Position = 0; // Set the position of the stream to the beginning.
                                 }
 
@@ -368,8 +427,8 @@ namespace NeutronNetwork.Internal
             {
                 // if the bytes transferred is greater than 0, add the data to the stream.
 
-                var chunkBuffer = args.MemoryBuffer[..bytesTransferred]; // Slice the data to get the data.
-                stream.Write(chunkBuffer.ToArray(), 0, bytesTransferred); // Write the data to the stream.
+                Memory<byte> data = args.MemoryBuffer[..bytesTransferred]; // Slice the data to get the data.
+                stream.Write(data.Span[..bytesTransferred]); // Write the data to the stream.
                 stream.Position = offset; // Set the position of the stream to the current offset.
 
                 totalBytesTransferred += bytesTransferred; // Add the bytes transferred to the total bytes transferred.
@@ -384,14 +443,34 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// Part 3: Message Framing: Read exactly X bytes from the stream.
         /// </summary>
-        private bool ReadExactly(Stream stream, UserToken userToken, byte[] buffer, ref int offset, int size)
+        private bool ReadExactly(Stream stream, UserToken userToken, Memory<byte> buffer, ref int offset, int size)
         {
             while ((offset < size) && (!_sourceToken.IsCancellationRequested && !userToken.SourceToken.IsCancellationRequested))
             {
                 // Stop 'while' processing if the cancellation token is requested, to prevent high CPU usage.
 
                 int bytesLeftToRead = size - offset; // Get the bytes left to read.
-                int bytesRead = stream.Read(buffer, offset, bytesLeftToRead); // Read the data from the stream.
+                int bytesRead = stream.Read(buffer.Span[offset..(offset + bytesLeftToRead)]); // Read the data from the stream.
+                if (bytesRead > 0)
+                    offset += bytesRead; // Add the bytes read to the offset.
+                else
+                    return false; // If the bytes read is 0, the read is not completed.
+            }
+
+            return offset == size; // Return true if the read is completed.
+        }
+
+        /// <summary>
+        /// Part 3: Message Framing: Read exactly X bytes from the stream.
+        /// </summary>
+        private bool ReadExactly(Stream stream, UserToken userToken, Span<byte> buffer, int offset, int size)
+        {
+            while ((offset < size) && (!_sourceToken.IsCancellationRequested && !userToken.SourceToken.IsCancellationRequested))
+            {
+                // Stop 'while' processing if the cancellation token is requested, to prevent high CPU usage.
+
+                int bytesLeftToRead = size - offset; // Get the bytes left to read.
+                int bytesRead = stream.Read(buffer[offset..(offset + bytesLeftToRead)]); // Read the data from the stream.
                 if (bytesRead > 0)
                     offset += bytesRead; // Add the bytes read to the offset.
                 else

@@ -22,8 +22,7 @@ namespace NeutronNetwork.Internal
         internal NeutronBlockingQueue<SocketAsyncEventArgs> AsyncEventArgsBlockingQueue
         {
             get;
-            set;
-        }
+        } = new();
 
         internal CancellationTokenSource SourceToken
         {
@@ -36,7 +35,5 @@ namespace NeutronNetwork.Internal
             get;
             set;
         }
-
-        public Memory<byte> Memory { get; } = new byte[8192];
     }
 }
