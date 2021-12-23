@@ -1,4 +1,5 @@
 using NeutronNetwork.Constants;
+using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Packets;
 using System;
@@ -70,12 +71,6 @@ namespace NeutronNetwork.Internal
         /// </summary>
         private NeutronBuffer _buffer;
 
-        private int _packetsReceivedPerSecond;
-
-        private Stopwatch _stopwatch = new Stopwatch();
-
-        private double lastTime;
-
         /// <summary>
         /// Returns the state of the socket.
         /// </summary>
@@ -113,7 +108,7 @@ namespace NeutronNetwork.Internal
 
             _socketMode = socketMode; // Set the socket mode.
             _protocol = protocol; // Set the protocol.
- 
+
             //_stopwatch.Start(); // Start the stopwatch.
 
             // new Thread(async () =>
@@ -233,6 +228,9 @@ namespace NeutronNetwork.Internal
             socketAsyncEventArgs.AcceptSocket = null; // Set the accept socket to null.
             PooledSocketAsyncEventArgsForAccept.Push(socketAsyncEventArgs); // Push the socket event args to the pool.
 
+            //userToken.Stopwatch.Start(); // Start the stopwatch.
+            //userToken.TotalBytesReceived = 1; // Reset the total bytes received.
+
             StartReceive(receiveArgs); // Start the receive.
             ProcessAsyncEventArgs(userToken); // Process the async event args/received data.
         }
@@ -282,20 +280,9 @@ namespace NeutronNetwork.Internal
 
                 if (socketAsyncEventArgs.BytesTransferred > 0)
                 {
-                    Interlocked.Increment(ref _packetsReceivedPerSecond);
+                    //userToken.TotalBytesReceived += socketAsyncEventArgs.BytesTransferred; // Add the bytes received to the total bytes received.
 
-                    if (lastTime == 0)
-                    {
-                        _stopwatch.Start(); // Start the stopwatch.
-                        lastTime = _stopwatch.Elapsed.TotalSeconds;
-                    }
-
-                    if ((_stopwatch.Elapsed.TotalSeconds - lastTime) >= 5)
-                    {
-                        lastTime = _stopwatch.Elapsed.TotalSeconds;
-                        LogHelper.Error(Interlocked.CompareExchange(ref _packetsReceivedPerSecond, 0, 0));
-                        Interlocked.Exchange(ref _packetsReceivedPerSecond, 0);
-                    }
+                    //LogHelper.Error($"{Helper.SizeSuffix(userToken.TotalBytesReceived / userToken.Stopwatch.Elapsed.Seconds)}");
 
                     SocketAsyncEventArgs receiveArgs = userToken.PooledSocketAsyncEventArgsForReceive.Pull(); // Get the socket event args.
                     receiveArgs.Completed += OnIOCompleted; // Set the completed event.
@@ -308,6 +295,7 @@ namespace NeutronNetwork.Internal
 
                     return;
                 }
+
                 // when the client is disconnected.....
                 socketAsyncEventArgs.Completed -= OnIOCompleted;
                 socketAsyncEventArgs.UserToken = null;
@@ -333,8 +321,12 @@ namespace NeutronNetwork.Internal
                 MemoryStream dataStream = new(); // Create a new memory stream to store the received data.
                 Memory<byte> dataMemory = new byte[512]; // The data to be processed.
 
-                int totalBytesTransferred = 0; // The total bytes transferred/received.
+                int totalBytesReceived = 0; // The total bytes received, used to calculate the speed of the connection, that is the number of bytes received per second.
+                int totalBytesTransferred = 0; // The total bytes transferred/received, used to calculate the progress of the receive.
                 int currentOffset = 0; // The current offset in the stream.
+                int totalPacketsCompleted = 0; // The total packets received, used to calculate the speed of the connection, that is the number of packets received per second.
+
+                DateTime startTime = DateTime.Now; // Get the current time.
 
                 while (!_sourceToken.IsCancellationRequested && !userToken.SourceToken.IsCancellationRequested)
                 {
@@ -363,21 +355,30 @@ namespace NeutronNetwork.Internal
                             if (ReadExactly(dataStream, userToken, dataMemory, ref currentOffset, messageLength))
                             {
                                 // Read exactly the length of the message from the stream, if the read is completed, process the received data.
-
                                 ReadOnlySpan<byte> messageData = dataMemory.Span[4..messageLength]; // Slice the data from the prefix to the length of the message to get the message/packet.
                                 int bytesRemaining = totalBytesTransferred - currentOffset; // Get the remaining bytes to be read.
-
-                                //LogHelper.Info("Pckt completed: ");
 
                                 if (messageData.Length != fLength)
                                     throw new NeutronException("Header: Invalid range!");
 
-                                // using (NeutronStream stream = new NeutronStream())
-                                // {
-                                //     var reader = stream.Reader;
-                                //     reader.SetBuffer(messageData.ToArray());
-                                //     LogHelper.Error(reader.ReadInt());
-                                // }
+                                LogHelper.Info("Pckt completed: ");
+                                totalPacketsCompleted++; // Increase the total packets received.
+
+                                var endTime = DateTime.Now - startTime; // Get the current time.
+                                if (endTime.Seconds >= 1)
+                                {
+                                    // If the time is greater than or equal to 1 second, calculate the speed of the connection.
+
+                                    long bytesTransferredPerSecond = ((long)totalBytesReceived / endTime.Seconds); // Calculate the bytes transferred per second.
+                                    int packetsReceivedPerSecond = totalPacketsCompleted / endTime.Seconds; // Calculate the packets received per second.
+
+                                    userToken.BytesTransferredPerSecond = bytesTransferredPerSecond; // Set the bytes transferred per second.
+                                    userToken.PacketsTransferredPerSecond = packetsReceivedPerSecond; // Set the packets received per second.
+
+                                    totalBytesReceived = 0; // Reset the total bytes received.
+                                    totalPacketsCompleted = 0; // Reset the total packets received.
+                                    startTime = DateTime.Now; // Set the current time.
+                                }
 
                                 Span<byte> continuousData = stackalloc byte[bytesRemaining];
                                 if (bytesRemaining > 0)
@@ -401,11 +402,11 @@ namespace NeutronNetwork.Internal
                                 break; // Break the 'while' loop.
                             }
                             else
-                                GetRemainingData(dataStream, userToken, ref currentOffset, ref totalBytesTransferred); // Get the left data from the socket and add it to the stream.
+                                GetRemainingData(dataStream, userToken, ref currentOffset, ref totalBytesTransferred, ref totalBytesReceived); // Get the left data from the socket and add it to the stream.
                         }
                     }
                     else
-                        GetRemainingData(dataStream, userToken, ref currentOffset, ref totalBytesTransferred); // Get the left data from the socket and add it to the stream.
+                        GetRemainingData(dataStream, userToken, ref currentOffset, ref totalBytesTransferred, ref totalBytesReceived); // Get the left data from the socket and add it to the stream.
                 }
             }
             catch (OperationCanceledException) { }
@@ -418,7 +419,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// Part 2: Message framing: Get the remaining data from the socket and add it to the stream.
         /// </summary>
-        private void GetRemainingData(Stream stream, UserToken userToken, ref int offset, ref int totalBytesTransferred)
+        private void GetRemainingData(Stream stream, UserToken userToken, ref int offset, ref int totalBytesTransferred, ref int totalBytesReceived)
         {
             var args = userToken.AsyncEventArgsBlockingQueue.Take(userToken.SourceToken.Token); // Get the socket event args from the queue and block until the data is received.
             int bytesTransferred = args.BytesTransferred; // Get the bytes transferred.
@@ -432,6 +433,7 @@ namespace NeutronNetwork.Internal
                 stream.Position = offset; // Set the position of the stream to the current offset.
 
                 totalBytesTransferred += bytesTransferred; // Add the bytes transferred to the total bytes transferred.
+                totalBytesReceived += bytesTransferred; // Add the bytes transferred to the total bytes received.
             }
 
             args.Completed -= OnIOCompleted;

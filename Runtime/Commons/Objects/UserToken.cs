@@ -1,5 +1,6 @@
 using NeutronNetwork.Wrappers;
 using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -35,5 +36,8 @@ namespace NeutronNetwork.Internal
             get;
             set;
         }
+
+        public long BytesTransferredPerSecond { get; set; }
+        public long PacketsTransferredPerSecond { get; set; }
     }
 }
