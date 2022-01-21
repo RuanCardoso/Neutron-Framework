@@ -1,3 +1,5 @@
+using MarkupAttributes;
+using NeutronNetwork.Attributes;
 using NeutronNetwork.Constants;
 using NeutronNetwork.Naughty.Attributes;
 using System.Collections;
@@ -7,29 +9,46 @@ using UnityEngine;
 namespace NeutronNetwork
 {
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_DISPATCHER)]
-    public class NeutronFramerate : MonoBehaviour
+    public class NeutronFramerate : MarkupBehaviour
     {
         #region Fields -> Inspector
 #pragma warning disable IDE0044
-        [SerializeField] private bool _drawOnGui = true;
-        [SerializeField] private int _updateRate = 1;
-        [SerializeField] [ValidateInput("IsHigh", "High precision Fps limit, but... High CPU usage!", 2)] FramerateLimitType _framerateLimitType = FramerateLimitType.Medium;
+        [InfoBox("This can have some impact on the GC.", EInfoBoxType.Warning)]
+        [SerializeField] [Box("Framerate Options")] private bool _drawOnGui = true; // Draws the framerate on the screen.
+        [SerializeField] [Range(1, 10)] private int _updateRate = 1; // The update rate of the framerate.
+        [InfoBox("This can have some impact on the CPU.", EInfoBoxType.Warning)]
+        [SerializeField] FramerateLimitType _frameratePrecision = FramerateLimitType.Medium; // The precision of the framerate.
+        [SerializeField] [Range(1, NeutronConstants.MAX_FPS)] private int _fps = 60; // The target framerate.
+
+        [SerializeField] [MarkupAttributes.ShowIf(nameof(_drawOnGui))] [Box("GUI Options")] private int _padding = 1; // The padding of the GUI.
+        [SerializeField] [MarkupAttributes.ShowIf(nameof(_drawOnGui))] private int _height = 22; // The padding of the GUI.
+        [SerializeField] [MarkupAttributes.ShowIf(nameof(_drawOnGui))] private int _width = 100; // The padding of the GUI.
 #pragma warning restore IDE0044
         #endregion
 
         #region Fields
-        private int _frameCount = 0;
-        private float _deltaTime = 0f;
-        private float _currentFrameTime;
-        private readonly YieldInstruction _waitForEndOfFrame = new WaitForEndOfFrame();
+        private int _frameCount = 0; // The frame count.
+        private float _deltaTime = 0f; // The delta time.
+        private float _currentFrameTime; // The current frame time.
+        private readonly YieldInstruction _waitForEndOfFrame = new WaitForEndOfFrame(); // The wait for end of frame.
+        private readonly YieldInstruction _waitForEndOfSeconds = new WaitForSeconds(1); // The wait for end of frame.
         #endregion
 
         #region Properties
+        /// <summary>
+        /// The currrent Fps.
+        /// </summary>
+        /// <value></value>
         public static float Fps
         {
             get;
             private set;
         }
+
+        /// <summary>
+        /// The current Ms(Cpu).
+        /// </summary>
+        /// <value></value>
         public static float Ms
         {
             get;
@@ -40,34 +59,35 @@ namespace NeutronNetwork
 #pragma warning disable IDE0051
         private void Start()
         {
-            int fps = NeutronModule.Settings.GlobalSettings.Fps;
+            int fps = _fps; // Get the fps from the settings.
+            if (_frameratePrecision != FramerateLimitType.None)
+                SetRateFrequency(); // Set the rate frequency.
 
-            if (_framerateLimitType != FramerateLimitType.None)
-                SetRateFrequency();
-
-            switch (_framerateLimitType)
+            switch (_frameratePrecision)
             {
                 case FramerateLimitType.Low:
-                    StartCoroutine(WaitForNextFrameLow(fps));
+                    StartCoroutine(WaitForNextFrameLow(fps)); // Start the coroutine.
                     break;
                 case FramerateLimitType.Medium:
-                    StartCoroutine(WaitForNextFrameMedium(fps));
+                    StartCoroutine(WaitForNextFrameMedium(fps)); // Start the coroutine.
                     break;
                 case FramerateLimitType.High:
-                    StartCoroutine(WaitForNextFrameHigh(fps));
+                    StartCoroutine(WaitForNextFrameHigh(fps)); // Start the coroutine.
                     break;
             }
 
-            useGUILayout = _drawOnGui;
+            useGUILayout = _drawOnGui; // Enable or disable the use of the GUI.
         }
 
         private void Update()
         {
-            _deltaTime += Time.deltaTime;
-            _frameCount++;
+            _deltaTime += Time.deltaTime; // Add the delta time.
+            _frameCount++; // Add the frame count.
 
             if (_deltaTime > 1f / _updateRate)
             {
+                // Update the fps.
+
                 Fps = Mathf.Round(_frameCount / _deltaTime);
                 Ms = Mathf.Round(_deltaTime / _frameCount * 1000f);
 
@@ -76,17 +96,24 @@ namespace NeutronNetwork
             }
         }
 
+        GUIStyle _style;
         private void OnGUI()
         {
+            // Draw the framerate on the screen.
             if (_drawOnGui)
             {
-                int padding = 1, height = 22, width = 100;
-                GUI.Box(new Rect(Screen.width - width - padding, padding, width, height), $"Fps: {Fps}");
-                GUI.Box(new Rect(Screen.width - width - padding, height + 5 + padding, width, height), $"Ms: {Ms}");
+                _style = new GUIStyle(GUI.skin.box);
+
+                // Calculate font size based on height and width.
+                _style.fontSize = Mathf.RoundToInt(Mathf.Min(_height, _width) / 1.5f);
+
+                int padding = _padding, height = _height, width = _width; // Get the padding and height.
+                GUI.Box(new Rect(Screen.width - width - padding, padding, width, height), $"Fps: {Fps}", _style); // Draw the box.
+                GUI.Box(new Rect(Screen.width - width - padding, height + 5 + padding, width, height), $"Ms: {Ms}", _style); // Draw the box.
+
+                _style = null; // Reset the style.
             }
         }
-
-        private bool IsHigh() => _framerateLimitType != FramerateLimitType.High;
 #pragma warning restore IDE0051
 
         private void SetRateFrequency()
@@ -130,7 +157,7 @@ namespace NeutronNetwork
             while (true)
             {
                 Application.targetFrameRate = rate;
-                yield return null;
+                yield return _waitForEndOfSeconds;
             }
         }
 

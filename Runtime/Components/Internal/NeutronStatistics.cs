@@ -1,6 +1,9 @@
-﻿using NeutronNetwork.Constants;
+﻿using MarkupAttributes;
+using NeutronNetwork.Attributes;
+using NeutronNetwork.Constants;
 using NeutronNetwork.Editor;
 using NeutronNetwork.Helpers;
+using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Server;
 using System;
 using System.Collections;
@@ -8,12 +11,13 @@ using UnityEngine;
 
 namespace NeutronNetwork.Internal.Components
 {
-    public class NeutronStatistics : MonoBehaviour
+    public class NeutronStatistics : MarkupBehaviour
     {
-        [SerializeField] private bool _enableProfilerOnServerGUI = true;
-        [SerializeField] private bool _enableProfilerOnServerConsole = false;
-        [SerializeField] private bool _enableProfilerOnClient = true;
-        private readonly InOutData[] m_Profilers = new[] { ClientTCP, ClientUDP, ServerTCP, ServerUDP };
+        [InfoBox("This can have some impact on the GC.", EInfoBoxType.Warning)]
+        [SerializeField] [Box("Statistics Options")] [Tooltip("Enable statistics for Server GUI.")] private bool _GUIStatsOnServer = true;
+        [SerializeField] [Tooltip("Enable statistics for Client GUI.")] private bool _GUIStatsOnClient = true;
+        [SerializeField] [Tooltip("Enable statistics for Server console.")] private bool _consoleStats = false;
+        public static InOutData[] _inOutDatas;
 
         #region Client
         public static InOutData ClientTCP { get; } = new InOutData();
@@ -26,7 +30,7 @@ namespace NeutronNetwork.Internal.Components
         #endregion
 
         #region Events
-        public static event NeutronEventNoReturn<InOutData[]> OnChangedStatistics;
+        public static NeutronEventNoReturn<InOutData[]> OnChangedStatistics;
         #endregion
 
         #region Client Data On Server
@@ -62,19 +66,22 @@ namespace NeutronNetwork.Internal.Components
         private int _udpHeaderSize = 28;
         #endregion
 
-        [SerializeField] private bool _hasProtocolHeaderIncluded = true;
+        [SerializeField] [Tooltip("If true, it must sum the protocol header size into the final result.")] private bool _headerProtocol = true;
 
         private void Awake() => OnChangedStatistics += OnStatistics;
-        private void Start() => StartCoroutine(UpdateAndReset());
+        private void Start()
+        {
+            _inOutDatas = new[] { ClientTCP, ClientUDP, ServerTCP, ServerUDP };
+        }
 
         private IEnumerator UpdateAndReset()
         {
-            while (true)
+            while (false)
             {
                 yield return new WaitForSeconds(NeutronConstants.ONE_PER_SECOND);
-                OnChangedStatistics?.Invoke(m_Profilers);
-                foreach (var l_Profiler in m_Profilers)
-                    l_Profiler.Reset();
+                OnChangedStatistics?.Invoke(_inOutDatas);
+                foreach (var l_Profiler in _inOutDatas)
+                    l_Profiler.Set();
             }
         }
 
@@ -82,7 +89,7 @@ namespace NeutronNetwork.Internal.Components
         {
             int padding = 1, height = 55, width = 300;
 #if !UNITY_SERVER && !UNITY_EDITOR
-            if (_enableProfilerOnClient)
+            if (_GUIStatsOnClient)
             {
                 string tcpIn = $"In: {Helper.SizeSuffix(_clientBytesIncomingTCP + (_clientBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesIncomingTCP + (_clientBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsIncomingTCP}";
                 string tcpOut = $"Out: {Helper.SizeSuffix(_clientBytesOutgoingTCP + (_clientBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_clientBytesOutgoingTCP + (_clientBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_clientPacketsOutgoingTCP}";
@@ -94,7 +101,7 @@ namespace NeutronNetwork.Internal.Components
 #endif
 
 #if !UNITY_SERVER && !UNITY_EDITOR && UNITY_NEUTRON_LAN
-            if (_enableProfilerOnServerGUI && NeutronServer.Initialized)
+            if (_GUIStatsOnServer && NeutronServer.Initialized)
             {
                 string tcpIn = $"In: {Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingTCP}";
                 string tcpOut = $"Out: {Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingTCP}";
@@ -109,14 +116,14 @@ namespace NeutronNetwork.Internal.Components
         private void UpdateInServerConsole()
         {
 #if UNITY_SERVER && !UNITY_EDITOR
-            if (_enableProfilerOnServerConsole)
+            if (_consoleStats)
             {
             #region Header
-                LogHelper.Info("\r\nTCP[Server]");
+                //LogHelper.Info($"\r\nTCP[Server] - {NeutronFramerate.Fps} Fps");
             #endregion
 
-                LogHelper.Info($"In: {Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingTCP}");
-                LogHelper.Info($"Out: {Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingTCP}");
+                //LogHelper.Info($"In: {Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingTCP + (_serverBytesIncomingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingTCP}");
+                //LogHelper.Info($"Out: {Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesOutgoingTCP + (_serverBytesOutgoingTCP > 0 ? _tcpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsOutgoingTCP}");
 
                 string separator = string.Empty;
                 for (int i = 0; i < Console.WindowWidth; i++)
@@ -124,7 +131,7 @@ namespace NeutronNetwork.Internal.Components
                 LogHelper.Info($"\r\n{separator}");
 
             #region Header
-                LogHelper.Info("UDP[Server]");
+                LogHelper.Info($"UDP[Server] - {NeutronFramerate.Fps} Fps");
             #endregion
 
                 LogHelper.Info($"In: {Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0))} | [{Helper.SizeSuffix(_serverBytesIncomingUDP + (_serverBytesIncomingUDP > 0 ? _udpHeaderSize : 0), 2, 4)}] - Pkt/s: {_serverPacketsIncomingUDP}");
@@ -166,20 +173,21 @@ namespace NeutronNetwork.Internal.Components
                 _serverPacketsIncomingUDP = ServerPacketsIncomingUDP;
                 _serverPacketsOutgoingUDP = ServerPacketsOutgoingUDP;
             }
+
             UpdateInServerConsole();
         }
 
         private void Update()
         {
-            _tcpHeaderSize = _hasProtocolHeaderIncluded ? 40 : 0;
-            _udpHeaderSize = _hasProtocolHeaderIncluded ? 28 : 0;
+            _tcpHeaderSize = _headerProtocol ? 40 : 0;
+            _udpHeaderSize = _headerProtocol ? 28 : 0;
         }
 
-        private void OnApplicationQuit()
-        {
-            foreach (var l_Profiler in m_Profilers)
-                l_Profiler.Reset();
-            OnChangedStatistics?.Invoke(m_Profilers);
-        }
+        //private void OnApplicationQuit()
+        //{
+        //    foreach (var l_Profiler in _inOutDatas)
+        //        l_Profiler.Set();
+        //    OnChangedStatistics?.Invoke(_inOutDatas);
+        //}
     }
 }

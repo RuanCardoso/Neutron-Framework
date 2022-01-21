@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class SubScenesEditor : EditorWindow
 {
-    private SubSceneList _subSceneList;
+    private NeutronScenes _subSceneList;
     private SerializedObject _serializedObject;
     private SerializedProperty _propertyList;
     private Vector2 _scrollView;
@@ -22,7 +22,7 @@ public class SubScenesEditor : EditorWindow
 
     private void OnEnable()
     {
-        _subSceneList = FindObjectOfType<SubSceneList>();
+        _subSceneList = FindObjectOfType<NeutronScenes>();
         if (_subSceneList != null)
         {
             _serializedObject = new SerializedObject(_subSceneList);

@@ -12,7 +12,7 @@ namespace NeutronNetwork.Internal.Interfaces
         int GetCapacity();
         bool IsFixedSize();
         void SetCapacity(int size);
-        void Clear();
+        void Reset();
         void Close();
     }
 }

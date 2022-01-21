@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "NaughtyAttributes.Core",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "MarkupAttributes.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

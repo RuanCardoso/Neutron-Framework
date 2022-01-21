@@ -18,6 +18,7 @@ namespace NeutronNetwork.Internal
             get;
             set;
         }
+
         public IPEndPoint IPEndPoint
         {
             get;
@@ -41,6 +42,11 @@ namespace NeutronNetwork.Internal
 
         public override EndPoint Create(SocketAddress socketAddress)
         {
+            if (socketAddress.Family != AddressFamily)
+                throw new Exception($"0x0000001 fatal error ):");
+            if (socketAddress.Size < 8)
+                throw new Exception($"0x0000002 fatal error ):");
+
             if (SocketAddress != socketAddress)
             {
                 SocketAddress = socketAddress;
@@ -52,65 +58,65 @@ namespace NeutronNetwork.Internal
                 }
 
                 if (SocketAddress.GetHashCode() == 0)
-                    throw new Exception($"0x0000001 fatal error ):");
+                    throw new Exception($"0x0000003 fatal error ):");
             }
 
-            if (IPEndPoint == null)
-                IPEndPoint = GetIPEndPoint();
+            //if (IPEndPoint == null)
+            //    IPEndPoint = GetIPEndPoint();
 
-            return IPEndPoint;
+            return this;
         }
 
-        private byte GetBuffer(int offset)
-        {
-            return SocketAddress[offset];
-        }
+        //private byte GetBuffer(int offset)
+        //{
+        //    return SocketAddress[offset];
+        //}
 
-        private void SetBuffer(int offset, int value)
-        {
-            SocketAddress[offset] = (byte)value;
-        }
+        //private void SetBuffer(int offset, int value)
+        //{
+        //    SocketAddress[offset] = (byte)value;
+        //}
 
-        private IPEndPoint GetIPEndPoint()
-        {
-            IPAddress address = GetIPAddress();
-            int port = (int)((GetBuffer(2) << 8 & 0xFF00) | (GetBuffer(3)));
-            return new IPEndPoint(address, port);
-        }
+        //private IPEndPoint GetIPEndPoint()
+        //{
+        //    IPAddress address = GetIPAddress();
+        //    int port = (int)((GetBuffer(2) << 8 & 0xFF00) | (GetBuffer(3)));
+        //    return new IPEndPoint(address, port);
+        //}
 
-        private IPAddress GetIPAddress()
-        {
-            if (AddressFamily == AddressFamily.InterNetworkV6)
-            {
-                byte[] address = new byte[16];
-                for (int i = 0; i < address.Length; i++)
-                {
-                    address[i] = GetBuffer(i + 8);
-                }
+        //private IPAddress GetIPAddress()
+        //{
+        //    if (AddressFamily == AddressFamily.InterNetworkV6)
+        //    {
+        //        byte[] address = new byte[16];
+        //        for (int i = 0; i < address.Length; i++)
+        //        {
+        //            address[i] = GetBuffer(i + 8);
+        //        }
 
-                long scope = (long)((GetBuffer(27) << 24) +
-                                    (GetBuffer(26) << 16) +
-                                    (GetBuffer(25) << 8) +
-                                    (GetBuffer(24)));
+        //        long scope = (long)((GetBuffer(27) << 24) +
+        //                            (GetBuffer(26) << 16) +
+        //                            (GetBuffer(25) << 8) +
+        //                            (GetBuffer(24)));
 
-                return new IPAddress(address, scope);
+        //        return new IPAddress(address, scope);
 
-            }
-            else if (AddressFamily == AddressFamily.InterNetwork)
-            {
-                long address = (long)(
-                        (GetBuffer(4) & 0x000000FF) |
-                        (GetBuffer(5) << 8 & 0x0000FF00) |
-                        (GetBuffer(6) << 16 & 0x00FF0000) |
-                        (GetBuffer(7) << 24)
-                        ) & 0x00000000FFFFFFFF;
+        //    }
+        //    else if (AddressFamily == AddressFamily.InterNetwork)
+        //    {
+        //        long address = (long)(
+        //                (GetBuffer(4) & 0x000000FF) |
+        //                (GetBuffer(5) << 8 & 0x0000FF00) |
+        //                (GetBuffer(6) << 16 & 0x00FF0000) |
+        //                (GetBuffer(7) << 24)
+        //                ) & 0x00000000FFFFFFFF;
 
-                return new IPAddress(address);
+        //        return new IPAddress(address);
 
-            }
-            else
-                throw new SocketException((int)SocketError.AddressFamilyNotSupported);
-        }
+        //    }
+        //    else
+        //        throw new SocketException((int)SocketError.AddressFamilyNotSupported);
+        //}
 
         public override int GetHashCode() => SocketAddress.GetHashCode();
     }

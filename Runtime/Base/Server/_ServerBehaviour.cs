@@ -1,18 +1,25 @@
-﻿using NeutronNetwork.Components;
+﻿using MarkupAttributes;
+using NeutronNetwork.Attributes;
+using NeutronNetwork.Components;
+using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal;
 using NeutronNetwork.Internal.Packets;
 using NeutronNetwork.Internal.Wrappers;
-using NeutronNetwork.Naughty.Attributes;
 using NeutronNetwork.Packets;
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace NeutronNetwork.Server
 {
-    public class ServerBehaviour : MonoBehaviour
+    public class ServerBehaviour : MarkupBehaviour
     {
         #region Socket
         public TcpListener TcpListener
@@ -22,28 +29,28 @@ namespace NeutronNetwork.Server
         }
         #endregion
 
+        [SerializeField] [Box("Server Settings")] protected bool _autoStart = true;
+        [SerializeField] [HideInInspector] protected PhysicsMode _localPhysicsMode = PhysicsMode.Physics3D;
+
+        [SerializeField] [Naughty.Attributes.Scene] protected string[] _scenes;
+        [ReadOnly] public int _playerCount;
+
+        [SerializeField] [Box("Global Matchmaking")] protected NeutronGlobal _globalMatchmaking;
+        [Box("Local Matchmaking")] [Rename("Channels")] public ChannelDictionary ChannelsById = new();
+
         #region Collections
-        [SerializeField] private NeutronGlobal _serverMatchmaking;
-        [Label("Channels Matchmaking")] public ChannelDictionary ChannelsById = new ChannelDictionary();
-        public NeutronSafeDictionary<TcpClient, NeutronPlayer> PlayersBySocket = new NeutronSafeDictionary<TcpClient, NeutronPlayer>();
-        public NeutronSafeDictionary<int, NeutronPlayer> PlayersById = new NeutronSafeDictionary<int, NeutronPlayer>();
-        public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new NeutronSafeDictionary<string, int>();
+        public NeutronSafeDictionary<TcpClient, NeutronPlayer> PlayersBySocket = new();
+        public NeutronSafeDictionary<int, NeutronPlayer> PlayersById = new();
+        public NeutronSafeDictionary<string, int> RegisteredConnectionsByIp = new();
         #endregion
 
-        #region Fields
-        [SerializeField] [HorizontalLine] private bool _autoStart = true;
-        [SerializeField] private PhysicsMode _localPhysicsMode = PhysicsMode.Physics3D;
-        [SerializeField] [HideInInspector] [ReadOnly] private PlayerGlobalController _playerGlobalController;
-        [SerializeField] [HideInInspector] [ReadOnly] private ServerSide _serverSideController;
-        [SerializeField] private MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
-        [SerializeField] private OwnerMode _sceneObjectsOwner = OwnerMode.Server;
-        [SerializeField] [Label("Matchmaking Owner")] private OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
-        [SerializeField] [HideInInspector] [ReadOnly] private NeutronBehaviour[] _actions;
-        [SerializeField]
-        [InfoBox("Scenes must also be defined in Build Settings.")]
-        private string[] _scenes;
-        [ReadOnly] [HorizontalLine] public int _playerCount;
-        #endregion
+        [SerializeField] [Box("Matchmaking Settings")] [Rename("Mode")] protected MatchmakingMode _matchmakingMode = MatchmakingMode.Room;
+        [SerializeField] [Rename("Scene Obj's Owner")] protected OwnerMode _sceneObjectsOwner = OwnerMode.Server;
+        [SerializeField] [Rename("Manager Owner")] protected OwnerMode _matchmakingManagerOwner = OwnerMode.Server;
+
+        [SerializeField] [Foldout("References")] [ReadOnly] [Rename("Player GC")] protected PlayerGlobalController _playerGlobalController;
+        [SerializeField] [ReadOnly] [Rename("Server SC")] protected ServerSide _serverSideController;
+        [SerializeField] [ReadOnly] protected NeutronBehaviour[] _neutronBehaviours;
 
         #region Properties
         public bool IsReady
@@ -89,7 +96,7 @@ namespace NeutronNetwork.Server
 
         public NeutronBehaviour[] Actions
         {
-            get => _actions;
+            get => _neutronBehaviours;
         }
 
         public bool AutoStart => _autoStart;
@@ -114,39 +121,93 @@ namespace NeutronNetwork.Server
 
         private void GetActions()
         {
-            _actions = transform.root.GetComponentsInChildren<NeutronBehaviour>();
+            _neutronBehaviours = transform.root.GetComponentsInChildren<NeutronBehaviour>();
         }
 
+        [Naughty.Attributes.Button("Setup Scenes", Naughty.Attributes.EButtonEnableMode.Editor)]
         private void LoadScenes()
         {
-            SceneManager.sceneLoaded += OnLoadScene;
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                EditorSceneManager.sceneOpened += OnOpenScene;
+#endif
+
             foreach (string sceneName in _scenes)
             {
-                Scene scene = SceneManager.GetSceneByName(sceneName);
-                if (!scene.isLoaded)
-                    SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
+                if (Application.isPlaying)
+                {
+#if !UNITY_SERVER && !UNITY_EDITOR
+                    var rootGameObjects = SceneManager.GetSceneByName(sceneName).GetRootGameObjects();
+                    foreach (var gameObject in rootGameObjects)
+                        Destroy(gameObject);
+#endif
+                }
+                else
+                {
+#if UNITY_EDITOR
+                    string path = EditorBuildSettings.scenes.First(x => x.path.Contains(sceneName)).path;
+                    EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+#endif
+                }
             }
         }
 
         private void OnLoadScene(Scene scene, LoadSceneMode mode)
         {
+            HybridOnLoadScene(scene, (int)mode);
+        }
+
+#if UNITY_EDITOR
+        private void OnOpenScene(Scene scene, OpenSceneMode mode)
+        {
+            HybridOnLoadScene(scene, (int)mode);
+        }
+#endif
+
+        private void HybridOnLoadScene(Scene scene, int mode)
+        {
             var rootGameObjects = scene.GetRootGameObjects();
             foreach (var gameObject in rootGameObjects)
             {
-                if (mode == LoadSceneMode.Additive)
+#if UNITY_EDITOR
+                if (((LoadSceneMode)mode == LoadSceneMode.Additive) || ((OpenSceneMode)mode == OpenSceneMode.Additive))
+#else
+                if (((LoadSceneMode)mode == LoadSceneMode.Additive))
+#endif
                 {
                     if (!(gameObject.GetComponent<AllowOnServer>() != null))
-                        Destroy(gameObject);
+                    {
+                        if (Application.isPlaying)
+                            Destroy(gameObject);
+                        else
+                            DestroyImmediate(gameObject, false);
+                    }
                 }
             }
 
+            SceneHelper.MoveToContainer(new GameObject("(Server-Side)"), scene);
+
             if (_scenes.Length > 0)
             {
-                if (scene.name == _scenes[_scenes.Length - 1])
-                    SceneManager.sceneLoaded -= OnLoadScene;
+                if (scene.name == _scenes[^1])
+                {
+                    if (Application.isPlaying)
+                        SceneManager.sceneLoaded -= OnLoadScene;
+#if UNITY_EDITOR
+                    else
+                        EditorSceneManager.sceneOpened -= OnOpenScene;
+#endif
+                }
             }
             else
-                SceneManager.sceneLoaded -= OnLoadScene;
+            {
+                if (Application.isPlaying)
+                    SceneManager.sceneLoaded -= OnLoadScene;
+#if UNITY_EDITOR
+                else
+                    EditorSceneManager.sceneOpened -= OnOpenScene;
+#endif
+            }
         }
 
         protected void StartSocket()
@@ -156,7 +217,7 @@ namespace NeutronNetwork.Server
 #if UNITY_2018_4_OR_NEWER
                 //* Its Ok
 #if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
-                Controllers();
+                Load();
                 LoadScenes();
 #endif
 #if UNITY_SERVER && !UNITY_EDITOR
@@ -194,7 +255,6 @@ namespace NeutronNetwork.Server
 
         protected virtual void Awake()
         {
-            GetActions();
 #if !UNITY_SERVER || UNITY_EDITOR
             if (_autoStart)
                 StartSocket();
@@ -203,13 +263,23 @@ namespace NeutronNetwork.Server
 #endif
         }
 
-#pragma warning disable IDE0051
-        private void OnValidate()
-#pragma warning restore IDE0051
-        {
 #if UNITY_EDITOR
+        private void Reset()
+        {
+            OnValidate();
+        }
+
+        private void OnValidate()
+        {
             enabled = true;
+            Load();
+        }
 #endif
+
+        private void Load()
+        {
+            Controllers();
+            GetActions();
         }
     }
 }

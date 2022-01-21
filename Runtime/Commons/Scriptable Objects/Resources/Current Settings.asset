@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9686c1678339404f996fbfe24ea55a0, type: 3}
+  m_Name: Current Settings
+  m_EditorClassIdentifier: 
+  _editor: {fileID: 11400000, guid: 4ab730bedc9206541974d91cd5843203, type: 2}
+  _standalone: {fileID: 11400000, guid: 42909c0a16b81d14191d90d642c7f7f4, type: 2}
+  _android: {fileID: 11400000, guid: aa9959708b782a84b9ed7e611aff4a03, type: 2}
+  _server: {fileID: 11400000, guid: dd78811509a939c4bb71ccb82bfda31c, type: 2}

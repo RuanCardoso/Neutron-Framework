@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace NeutronNetwork.Helpers
 {
@@ -104,7 +107,7 @@ namespace NeutronNetwork.Helpers
             return NeutronModule.Synchronization.DefaultHandlers;
         }
 
-        public static Settings GetSettings()
+        public static StateSettings GetSettings()
         {
             return NeutronModule.Settings;
         }
@@ -113,5 +116,27 @@ namespace NeutronNetwork.Helpers
         {
             return GetSettings().NetworkSettings;
         }
+
+#if UNITY_EDITOR
+        public static void SetDefines(bool removeIfExists = false, params string[] newDefines)
+        {
+            BuildTarget activeBuildTarget = EditorUserBuildSettings.activeBuildTarget;
+            BuildTargetGroup targetGroup = BuildPipeline.GetBuildTargetGroup(activeBuildTarget);
+            List<string> defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(targetGroup).Split(';').ToList();
+
+            foreach (var define in newDefines)
+            {
+                if (!defines.Contains(define))
+                    defines.Add(define);
+                else
+                {
+                    if (removeIfExists)
+                        defines.Remove(define);
+                }
+            }
+
+            PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, string.Join(";", defines.ToArray()));
+        }
+#endif
     }
 }

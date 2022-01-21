@@ -1,38 +1,39 @@
 ﻿using NeutronNetwork;
 using NeutronNetwork.Editor;
 using NeutronNetwork.Examples.System.Default;
+using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Server;
+using NeutronNetwork.UI;
 using System.Diagnostics;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
+/// <summary>
+/// Draw the Neutron Editor Window.
+/// </summary>
 public class NeutronEditor : EditorWindow
 {
-    private static Process _clumsy;
+    private const string NEUTRON_NAME = "Neutron Controllers"; // Name of the game object that contains the Neutron controllers.
+    private static Process _clumsy; // The lag simulator.
 
-    [MenuItem("Neutron/Settings/File/Neutron &F11")]
+    [MenuItem("Neutron/Settings/File/Neutron &F11")] // Draw a menu item.
     private static void OpenSettings()
     {
-        Object asset = Resources.Load("Neutron Settings");
+        Object asset = Resources.Load<CurrentSettings>("Current Settings");
         if (asset != null)
         {
             if (AssetDatabase.OpenAsset(asset))
-                EditorGUIUtility.PingObject(asset);
+                EditorGUIUtility.PingObject(asset); // Open the asset.
         }
     }
 
-    [MenuItem("Neutron/Settings/File/Synchronization &F10")]
-    private static void OpenSynchronization()
-    {
-        Object asset = Resources.Load("Neutron Synchronization");
-        if (asset != null)
-        {
-            if (AssetDatabase.OpenAsset(asset))
-                EditorGUIUtility.PingObject(asset);
-        }
-    }
+    // [MenuItem("Neutron/Settings/File/Synchronization &F10")]
+    // private static void OpenSynchronization()
+    // {
+    //     NeutronNetwork.Helpers.Helper.SetDefines(true, "A");
+    // }
 
     [MenuItem("Neutron/Settings/File/Converters")]
     private static void OpenConverters()
@@ -45,41 +46,56 @@ public class NeutronEditor : EditorWindow
         }
     }
 
-    [MenuItem("Neutron/Settings/Setup/Controllers", priority = 0)]
+    [MenuItem("Neutron/Settings/Setup/Neutron Controllers", priority = 0)]
     private static void Setup()
     {
-        GameObject l_Controllers = GameObject.Find("Controllers");
-        if (l_Controllers == null)
+        GameObject control = GameObject.Find(NEUTRON_NAME); // Find the root of the Neutron controllers.
+        if (control == null)
         {
-            l_Controllers = new GameObject("Controllers");
-            GameObject l_Client = new GameObject("Client");
-            GameObject l_Server = new GameObject("Server");
-            GameObject l_Custom = new GameObject("Defines");
-            l_Controllers.AddComponent<SubSceneList>();
-            l_Client.transform.SetParent(l_Controllers.transform);
-            l_Server.transform.SetParent(l_Controllers.transform);
-            l_Custom.transform.SetParent(l_Controllers.transform);
-            l_Server.AddComponent<NeutronServer>();
-            EditorUtility.SetDirty(l_Controllers);
-            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+            control = new GameObject(NEUTRON_NAME);
+            if (control != null)
+            {
+                GameObject mainControl = new GameObject("Main");
+                //mainControl.tag = "mainControl";
+                GameObject clientControl = new GameObject("Client(Your Client-Side scripts)");
+                //clientControl.tag = "clientControl";
+                GameObject serverControl = new GameObject("Server(Your Server-Side scripts)");
+                //serverControl.tag = "serverControl";
+
+                mainControl.transform.SetParent(control.transform);
+                clientControl.transform.SetParent(control.transform);
+                serverControl.transform.SetParent(control.transform);
+
+                mainControl.AddComponent<NeutronServer>();
+
+                control.AddComponent<NeutronModule>();
+                control.AddComponent<NeutronSchedule>();
+                control.AddComponent<NeutronFramerate>();
+                control.AddComponent<NeutronStatistics>();
+                control.AddComponent<NeutronInterface>();
+
+                control.AddComponent<NeutronScenes>();
+
+                EditorUtility.SetDirty(control);
+
+                if (EditorUtility.DisplayDialog("Neutron", "Do you want to add the default Neutron controllers?", "Yes", "No"))
+                    SetupDefaultControllers(serverControl);
+                else
+                    EditorUtility.DisplayDialog("Neutron", "You must create your controllers for Neutron to work correctly, see the documentation.", "OK");
+
+                if (EditorUtility.DisplayDialog("Neutron", "Do you want to save the scene?", "Yes", "No"))
+                    EditorSceneManager.SaveOpenScenes();
+            }
         }
         else
             UnityEngine.Debug.LogError("A setup object has already been created.");
     }
 
-    [MenuItem("Neutron/Settings/Setup/Default Defines", priority = 0)]
-    private static void SetupDefaultDefines()
+    // [MenuItem("Neutron/Settings/Setup/Default Defines", priority = 0)]
+    private static void SetupDefaultControllers(GameObject control)
     {
-        GameObject l_Controllers = GameObject.Find("Controllers").transform.GetChild(2).gameObject;
-        if (l_Controllers != null)
-        {
-            l_Controllers.AddComponent<InternGlobalController>();
-            l_Controllers.AddComponent<InternServerController>();
-            EditorUtility.SetDirty(l_Controllers);
-            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
-        }
-        else
-            UnityEngine.Debug.LogError("Controllers object not found!");
+        control.AddComponent<InternGlobalController>();
+        control.AddComponent<InternServerController>();
     }
 
     [MenuItem("Neutron/Settings/Tools/Lag Simulation &F12")]
@@ -87,13 +103,11 @@ public class NeutronEditor : EditorWindow
     {
         string clumsyFilters = string.Empty;
         if (_clumsy != null && !_clumsy.HasExited)
-        {
             _clumsy.Kill();
-            LogHelper.Info("Lag simulation restarted!");
-        }
 
         var reference = Resources.Load<TextAsset>("clumsyref");
         string clumsyPath = AssetDatabase.GetAssetPath(reference);
+
         clumsyPath = clumsyPath.Replace($"{reference.name}.txt", string.Empty);
         clumsyPath = clumsyPath.Replace($"Assets", string.Empty);
         clumsyPath = string.Concat(Application.dataPath, clumsyPath);
@@ -101,12 +115,14 @@ public class NeutronEditor : EditorWindow
         clumsyPath = Path.GetFullPath(clumsyPath);
 
         int protocolId = EditorUtility.DisplayDialogComplex("Neutron", "Which protocol do you want to simulate lag?", "Tcp", "Udp", "Both");
+
         if (protocolId == 0)
             clumsyFilters = NeutronServer.filter_tcp_client_server.ToString();
         else if (protocolId == 1)
             clumsyFilters = NeutronServer.filter_udp_client_server.ToString();
         else if (protocolId == 2)
             clumsyFilters = NeutronServer.filter_tcp_udp_client_server.ToString();
+
         if (protocolId != 2)
         {
             int sideId = EditorUtility.DisplayDialogComplex("Neutron", "Do you want to simulate lag on server or client outbound?", "Server", "Client", "Both");
@@ -132,6 +148,7 @@ public class NeutronEditor : EditorWindow
                     clumsyFilters = NeutronServer.filter_udp_client_server.ToString();
             }
         }
+
         clumsyFilters = clumsyFilters.Replace(System.Environment.NewLine, string.Empty);
         if (clumsyFilters == string.Empty)
             clumsyFilters = "Neutron (:";

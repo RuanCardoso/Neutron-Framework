@@ -62,7 +62,7 @@ namespace NeutronNetwork
                 if (CreateNewObjectIfNotAvailable)
                     return _generator();
                 else
-                    LogHelper.Error($"Memory Leak: {Name}: You overflowed the pool! You won't get the performance benefits of the pool. Increase the pool capacity, if the error happens again, you may be forgetting to return the item to the pool.");
+                    LogHelper.Error($"Memory Leak: [>{Name}<]: You overflowed the pool! You won't get the performance benefits of the pool. Increase the pool capacity, if the error happens again, you may be forgetting to return the item to the pool.");
             }
 
             return _generator();

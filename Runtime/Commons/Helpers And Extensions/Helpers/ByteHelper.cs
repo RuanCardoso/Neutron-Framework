@@ -11,7 +11,7 @@ namespace NeutronNetwork.Helpers
 {
     public static class ByteHelper
     {
-        private static Settings Settings => Helper.GetSettings();
+        private static StateSettings Settings => Helper.GetSettings();
         private static NeutronConstantsSettings Constants => Helper.GetConstants();
 
         public static NeutronEventWithReturn<object, byte[]> OnCustomSerialization;

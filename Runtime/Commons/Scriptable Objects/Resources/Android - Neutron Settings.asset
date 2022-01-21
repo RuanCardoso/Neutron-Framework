@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0f743d5b456616469a5f7cb20e0a4d3, type: 3}
+  m_Name: Android - Neutron Settings
+  m_EditorClassIdentifier: 
+  AppId: 
+  Addresses:
+  - Address: localhost
+    Port: 1418
+  NeutronStream: 20
+  NeutronPacket: 20
+  AcceptPool: 3
+  SocketReceive: 120
+  SocketSend: 120
+  MaxPlayers: 60
+  BackLog: 10
+  FiltersLogging: 0
+  Serialization: 1
+  Compression: 3
+  _MultiplierSize: 1
+  KeepAlive: 2
+  MTUSize: 512
+  RecBufferSize: 8192
+  SendBufferSize: 8192
+  _KeepAlive: 5
+  _PacketSize: 2048
+  _NoDelay: 1
+  _ZeroStack: 0
+  _RecBufferSize: 8192
+  _SendBufferSize: 8192
+  GlobalSettings:
+    Addresses:
+    - localhost
+    Port: 1418
+    AppId: 01fd82b8-c745-4c44-88d6-897a28aaab23
+    Fps: 60
+    MaxPlayers: 300
+    StreamPoolCapacity: 1200
+    PacketPoolCapacity: 1200
+    Performance: 1
+    Serialization: 1
+    Compression: 0
+    NoDelay: 1
+    PerfomanceMode: 0
+  ClientSettings:
+    UdpKeepAlive: 2
+    TcpKeepAlive: 5
+  ServerSettings:
+    BackLog: 10
+    FiltersLog: 0
+  NetworkSettings:
+    MaxConnectionsPerIp: 2
+    MaxLatency: 150
+    ReceiveModel: 0
+    SendModel: 1
+    SendAsyncPattern: 1
+    ReceiveAsyncPattern: 1
+    Encoding: 5
+    HeaderSize: 2
+    Tcp:
+      MaxTcpPacketSize: 2048
+      TcpReceiveBufferSize: 8192
+      TcpSendBufferSize: 8192
+      BufferedStream: 0
+      BufferedStreamSize: 8192
+    Udp:
+      MaxUdpPacketSize: 512
+      UdpReceiveBufferSize: 8192
+      UdpSendBufferSize: 8192

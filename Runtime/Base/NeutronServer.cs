@@ -29,11 +29,6 @@ namespace NeutronNetwork.Server
     /// <summary>
     ///* This class is the server class, which is responsible for receiving and sending packets to the client.
     /// </summary>
-    [RequireComponent(typeof(NeutronModule))]
-    [RequireComponent(typeof(NeutronSchedule))]
-    [RequireComponent(typeof(NeutronFramerate))]
-    [RequireComponent(typeof(NeutronStatistics))]
-    [RequireComponent(typeof(NeutronUI))]
     [DefaultExecutionOrder(ExecutionOrder.NEUTRON_SERVER)]
     public class NeutronServer : ServerBase
     {
@@ -822,6 +817,7 @@ namespace NeutronNetwork.Server
         }
 
 
+#if UNITY_SERVER || UNITY_EDITOR || UNITY_NEUTRON_LAN
 #pragma warning disable IDE0051
         private void Update()
 #pragma warning restore IDE0051
@@ -832,6 +828,7 @@ namespace NeutronNetwork.Server
                 PacketProcessingStack();
             }
         }
+#endif
 
 #pragma warning disable IDE0051
         private void OnApplicationQuit()

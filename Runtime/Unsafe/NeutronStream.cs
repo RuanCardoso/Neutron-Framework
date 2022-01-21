@@ -58,38 +58,20 @@ namespace NeutronNetwork
             hWriter = new IWriter();
         }
 
+        /// <param name="capacity">* Define se o stream � recicl�vel.</param>
         /// <param name="capacity">* Define a capacidade do stream.</param>
-        public NeutronStream(int capacity)
+        public NeutronStream(bool isRecyclable = false, int capacity = 256)
         {
             Writer = new IWriter(capacity);
             Reader = new IReader(capacity);
             hWriter = new IWriter(capacity);
-            IsFixedSize = capacity > 0;
-        }
 
-        /// <param name="capacity">* Define se o stream � recicl�vel.</param>
-        public NeutronStream(bool isRecyclable)
-        {
-            Writer = new IWriter();
-            Reader = new IReader();
-            hWriter = new IWriter();
-            IsRecyclable = isRecyclable;
-        }
-
-        /// <param name="capacity">* Define se o stream � recicl�vel.</param>
-        /// <param name="capacity">* Define a capacidade do stream.</param>
-        public NeutronStream(bool isRecyclable, int capacity)
-        {
-            Writer = new IWriter(capacity);
-            Reader = new IReader(capacity);
-            hWriter = new IWriter(capacity);
             IsRecyclable = isRecyclable;
             IsFixedSize = capacity > 0;
         }
-
-        public void Dispose() => Dispose(true);
 
         private bool _disposing;
+        public void Dispose() => Dispose(true);
         private void Dispose(bool disposing)
         {
             if (!_disposing)
@@ -106,11 +88,10 @@ namespace NeutronNetwork
                     }
                     else
                     {
-                        Writer.Clear();
-                        Reader.Clear();
-                        hWriter.Clear();
-                        //* Recycle object again.
-                        Neutron.PooledNetworkStreams.Push(this);
+                        Writer.Reset();
+                        Reader.Reset();
+                        hWriter.Reset();
+                        Neutron.PooledNetworkStreams.Push(this); // Recycle
                     }
                 }
             }
@@ -120,7 +101,9 @@ namespace NeutronNetwork
 
         public class IWriter : INeutronWriter
         {
+            private byte[] _data;
             private byte[] _buffer = new byte[8]; //* Suporta at� double(8 bytes).
+            private int _totalBytesWritten = 0;
             private readonly MemoryStream _stream;
             private readonly bool _isFixedSize;
             private readonly int _fixedCapacity;
@@ -132,7 +115,7 @@ namespace NeutronNetwork
 
             public IWriter(int capacity)
             {
-                _stream = new MemoryStream(capacity);
+                _stream = new MemoryStream(_data = new byte[capacity]);
                 _fixedCapacity = capacity;
                 _isFixedSize = _fixedCapacity > 0;
             }
@@ -403,6 +386,7 @@ namespace NeutronNetwork
             public void Write(byte value)
             {
                 _stream.WriteByte(value);
+                _totalBytesWritten += 1;
             }
 
             /// <summary>
@@ -457,11 +441,35 @@ namespace NeutronNetwork
             /// <summary>
             ///* Escreve no buffer o tipo <see cref="string"/> com tamanho din�mico.
             /// </summary>
-            public void Write(string text)
+            public void Write(ReadOnlySpan<char> value)
             {
-                byte[] encodedText = NeutronModule.Encoding.GetBytes(text);
-                Write7BitEncodedInt(encodedText.Length);
-                Write(encodedText, 0, encodedText.Length);
+                int byteCount = NeutronModule.Encoding.GetByteCount(value); // Get the size of the string in bytes.
+
+                byte[] pooledBuffer = null;
+                if (!(byteCount <= NeutronModule.MaxStackAllocSize))
+                    pooledBuffer = Neutron.PooledByteArray.Rent(byteCount); // If the string is bigger than the max stack alloc size, use a pooled byte array.
+
+                Span<byte> buffer = (byteCount <= NeutronModule.MaxStackAllocSize) ? stackalloc byte[byteCount] : pooledBuffer;
+                if (pooledBuffer != null)
+                {
+                    if (pooledBuffer.Length < byteCount)
+                        throw new Exception($"Pooled byte array length is less than byte count: {pooledBuffer.Length} < {byteCount}");
+                    else
+                    {
+                        if (pooledBuffer.Length > byteCount)
+                            buffer = buffer[..byteCount]; // Truncate buffer to byteCount
+                    }
+                }
+
+                int countOfBytes = NeutronModule.Encoding.GetBytes(value, buffer);
+                if (countOfBytes != byteCount)
+                    throw new Exception($"Encoding byte count is different than byte count: {countOfBytes} != {byteCount}");
+
+                Write((ushort)countOfBytes); // Write the byte count in the header.
+                Write(buffer); // Write the bytes.
+
+                if (pooledBuffer != null)
+                    Neutron.PooledByteArray.Return(pooledBuffer); // Return the pooled byte array.
             }
 
             /// <summary>
@@ -516,15 +524,47 @@ namespace NeutronNetwork
             /// </summary>
             public void Write(byte[] buffer, int offset, int size)
             {
-                if (_isFixedSize)
+                try
                 {
-                    if (GetPosition() < _fixedCapacity)
-                        _stream.Write(buffer, offset, size);
-                    else
-                        throw new Exception("Overflowed the buffer capacity.");
-                }
-                else
                     _stream.Write(buffer, offset, size);
+                    _totalBytesWritten += size; // Total bytes written.
+                }
+                catch (NotSupportedException)
+                {
+                    throw new Exception($"You overflowed the buffer! Tip -> Increase the size of Stream Buffer Size({size}))");
+                }
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[] com tamanho fixo e n�o fixo, n�o registra cabe�alho.
+            /// </summary>
+            public void Write(ReadOnlySpan<byte> buffer, int offset, int size)
+            {
+                try
+                {
+                    _stream.Write(buffer[offset..(offset + size)]);
+                    _totalBytesWritten += size; // Total bytes written.
+                }
+                catch (NotSupportedException)
+                {
+                    throw new Exception($"You overflowed the maximum buffer size! -> {_totalBytesWritten}:{GetCapacity()}");
+                }
+            }
+
+            /// <summary>
+            ///* Escreve no buffer o tipo <see cref="byte"/>[] com tamanho fixo e n�o fixo, n�o registra cabe�alho.
+            /// </summary>
+            public void Write(ReadOnlySpan<byte> buffer)
+            {
+                try
+                {
+                    _stream.Write(buffer);
+                    _totalBytesWritten += buffer.Length; // Total bytes written.
+                }
+                catch (NotSupportedException)
+                {
+                    throw new Exception($"You overflowed the maximum buffer size! -> {_totalBytesWritten}:{GetCapacity()}");
+                }
             }
 
             /// <summary>
@@ -553,7 +593,7 @@ namespace NeutronNetwork
                     if (GetPosition() == GetCapacity())
                         SetPosition(0);
                     else
-                        throw new Exception("You did not fill the buffer or overflowed.");
+                        throw new Exception($"You did not fill the buffer or overflowed! -> {GetPosition()}:{GetCapacity()}");
                 }
                 else
                     throw new Exception("This stream has no defined size.");
@@ -596,7 +636,61 @@ namespace NeutronNetwork
             /// <returns></returns>
             public byte[] GetBuffer()
             {
-                return _stream.GetBuffer();
+                // return _stream.GetBuffer();
+                return _data;
+            }
+
+            /// <summary>
+            ///* Obt�m o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
+            public byte[] GetBufferAsCopy()
+            {
+                return GetBufferAsReadOnlySpan().ToArray();
+            }
+
+            /// <summary>
+            ///* Obt�m o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
+            public ReadOnlySpan<byte> GetBufferAsReadOnlySpan()
+            {
+                ReadOnlySpan<byte> buffer = GetBuffer();
+                buffer = buffer[.._totalBytesWritten];
+                return buffer;
+            }
+
+            /// <summary>
+            ///* Obt�m o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
+            public ReadOnlyMemory<byte> GetBufferAsReadOnlyMemory()
+            {
+                ReadOnlyMemory<byte> buffer = GetBuffer();
+                buffer = buffer[.._totalBytesWritten];
+                return buffer;
+            }
+
+            /// <summary>
+            ///* Obt�m o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
+            public Span<byte> GetBufferAsSpan()
+            {
+                Span<byte> buffer = GetBuffer();
+                buffer = buffer[.._totalBytesWritten];
+                return buffer;
+            }
+
+            /// <summary>
+            ///* Obt�m o buffer interno do stream.
+            /// </summary>
+            /// <returns></returns>
+            public Memory<byte> GetBufferAsMemory()
+            {
+                Memory<byte> buffer = GetBuffer();
+                buffer = buffer[.._totalBytesWritten];
+                return buffer;
             }
 
             public MemoryStream AsStream()
@@ -620,6 +714,16 @@ namespace NeutronNetwork
             public long GetPosition()
             {
                 return _stream.Position;
+            }
+
+            public int GetTotalBytesWritten()
+            {
+                return _totalBytesWritten;
+            }
+
+            public void SetTotalBytesWritten(int value)
+            {
+                _totalBytesWritten = value;
             }
 
             /// <summary>
@@ -652,9 +756,10 @@ namespace NeutronNetwork
             /// <summary>
             ///* Limpa o stream para reutiliza��o.
             /// </summary>
-            public void Clear()
+            public void Reset()
             {
-                _stream.SetLength(0);
+                _stream.Position = 0; // Reset the position to the start of the stream.
+                _totalBytesWritten = 0; // Reset the number of bytes written.
             }
 
             /// <summary>
@@ -665,14 +770,33 @@ namespace NeutronNetwork
                 _buffer = null;
                 _stream.Dispose();
             }
+
+            //private bool CanWrite(int size)
+            //{
+            //    if (_isFixedSize)
+            //    {
+            //        if (GetPosition() < _fixedCapacity)
+            //        {
+            //            _totalBytesWritten += size; // Total bytes written.
+            //            return true;
+            //        }
+            //        else
+            //            throw new Exception("Overflowed the buffer capacity.");
+            //    }
+            //    else
+            //    {
+            //        _totalBytesWritten += size; // Total bytes written.
+            //        return true;
+            //    }
+            //}
         }
+
         public class IReader : INeutronReader
         {
             private byte[] _buffer = new byte[8]; //* Suporta at� double(8 bytes).
+            private int _totalBytesWritten;
             private readonly MemoryStream _stream;
             private readonly bool _isFixedSize;
-            private int _bufferLength;
-            public byte[] _internalBuffer = new byte[0];
             public bool _autoDispose;
 
             public IReader()
@@ -798,7 +922,7 @@ namespace NeutronNetwork
 
             public byte[] ReadNext()
             {
-                int bytesRemaining = (int)(_bufferLength - _stream.Position);
+                int bytesRemaining = (int)(_totalBytesWritten - _stream.Position);
                 return ReadBytes(bytesRemaining);
             }
 
@@ -887,10 +1011,10 @@ namespace NeutronNetwork
 
             public string ReadString()
             {
-                int size = Read7BitEncodedInt();
-                byte[] textBuffer = new byte[size];
-                Read(size, textBuffer);
-                return NeutronModule.Encoding.GetString(textBuffer);
+                int size = ReadUShort();
+                byte[] buffer = new byte[size];
+                Read(size, buffer);
+                return NeutronModule.Encoding.GetString(buffer);
             }
 
             public unsafe float ReadFloat()
@@ -975,10 +1099,16 @@ namespace NeutronNetwork
 
             public void SetBuffer(byte[] buffer)
             {
-                _internalBuffer = buffer;
-                _bufferLength = _internalBuffer.Length;
-                _stream.Write(_internalBuffer, 0, _bufferLength);
-                SetPosition(0);
+                _totalBytesWritten = buffer.Length;
+                _stream.Write(buffer, 0, _totalBytesWritten); // Set the buffer.
+                SetPosition(0); // Reset the position to the beginning of the stream after the buffer is set.
+            }
+
+            public void SetBuffer(ReadOnlySpan<byte> buffer)
+            {
+                _totalBytesWritten = buffer.Length;
+                _stream.Write(buffer); // Set the buffer.
+                SetPosition(0); // Reset the position to the beginning of the stream after the buffer is set.
             }
 
             public void EndReadWithFixedCapacity()
@@ -1037,17 +1167,14 @@ namespace NeutronNetwork
                 _stream.Capacity = size;
             }
 
-            public void Clear()
+            public void Reset()
             {
-                _internalBuffer = null;
                 _stream.SetLength(0);
             }
 
             public void Close()
             {
-                _autoDispose = false;
                 _buffer = null;
-                _internalBuffer = null;
                 _stream.Dispose();
             }
         }

@@ -23,8 +23,8 @@ namespace NeutronNetwork.Examples.Chat
             base.Start();
             {
                 //* Get UI Components
-                _rcvField = NeutronUI.GetUIComponent<TMP_InputField>("Canvas", "Background", "rcvField");
-                _inputField = NeutronUI.GetUIComponent<TMP_InputField>("Canvas", "Background", "inputField");
+                _rcvField = NeutronInterface.GetUIComponent<TMP_InputField>("Canvas", "Background", "rcvField");
+                _inputField = NeutronInterface.GetUIComponent<TMP_InputField>("Canvas", "Background", "inputField");
             }
         }
 

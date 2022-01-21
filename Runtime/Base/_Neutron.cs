@@ -67,7 +67,7 @@ namespace NeutronNetwork
         ///* Get the settings of Neutron;
         /// </summary>
         /// <returns></returns>
-        private Settings Settings => Helper.GetSettings();
+        private StateSettings Settings => Helper.GetSettings();
         #endregion
 
         #region Collections

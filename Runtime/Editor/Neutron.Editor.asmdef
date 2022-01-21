@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "Neutron",
+        "MarkupAttributes.Editor",
         "NaughtyAttributes.Editor"
     ],
     "includePlatforms": [

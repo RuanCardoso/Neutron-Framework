@@ -22,7 +22,7 @@ namespace NeutronNetwork.Internal.Interfaces
         void WriteCompressed(Vector3 vector3);
         void Write(Int16 value);
         void Write(UInt16 value);
-        void Write(String text);
+        void Write(ReadOnlySpan<char> value);
         void Write(Vector2 vector);
         void Write(Vector3 vector);
         void Write<T>(T[] array);

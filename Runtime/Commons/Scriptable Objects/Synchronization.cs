@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace NeutronNetwork
 {
-    [CreateAssetMenu(menuName = "Neutron/Synchronization", fileName = "Neutron Synchronization")]
+    //[CreateAssetMenu(menuName = "Neutron/Synchronization", fileName = "Neutron Synchronization")]
     public class Synchronization : ScriptableObject
     {
         public NeutronDefaultHandlerSettings DefaultHandlers;
