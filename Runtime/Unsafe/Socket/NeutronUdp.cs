@@ -1,13 +1,18 @@
+using NeutronNetwork.Constants;
+using NeutronNetwork.Helpers;
 using NeutronNetwork.Internal.Components;
 using NeutronNetwork.Internal.Wrappers;
 using NeutronNetwork.Wrappers;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using UnityEngine;
+using ThreadPriority = System.Threading.ThreadPriority;
 
 // Created by: Ruan Cardoso(Brasil)
 // Email: neutron050322@gmail.com
@@ -18,7 +23,7 @@ namespace NeutronNetwork.Internal
     public enum ChannelMode : byte { Unreliable = 0, Reliable = 1, ReliableSequenced = 2 }
     public enum OperationMode : byte { Sequence = 0, Data = 1, Acknowledgement = 2 }
     public enum TargetMode : byte { All, Others, Single, Server }
-    public enum PacketType : byte { Connect }
+    public enum PacketType : byte { Connect = 1, Test = 2 } // Zero is reserved for the packet type(Default)..
     public class TransmissionPacket
     {
         /// <summary>
@@ -71,10 +76,41 @@ namespace NeutronNetwork.Internal
     public class UdpPacket
     {
         /// <summary>
+        /// The id used to identify the owner of the packet.
+        /// If the id is 0, the packet is a default packet, and it will be handled by the server.
+        /// Maximum id is ushort.MaxValue.
+        /// </summary>
+        public ushort PlayerId { get; } // Available for these modes: Reliable, ReliableSequenced, Unreliable
+        /// <summary>
+        /// The sequence(Ack) number, this number is used to re-transmit the packet if the packet is lost.
+        /// When the response is received, the sequence number is compared to the sequence number of the response.
+        /// If they are the same, the packet is considered to be received and will be removed from the transmission queue, otherwise it will be re-transmitted.
+        /// </summary>
+        public int SeqAck { get; } // Available for these modes: Reliable, ReliableSequenced
+        /// <summary>
+        /// Packet attempts to re-transmit, if packets are lost, this number will be increased.
+        /// If the number is greater than the maximum number of attempts, the packet will be discarded, because the EndPoint is not responding, disconnection will be detected?
+        /// Thread Safe: Because this value is incremented on both the main thread and the sending thread.
+        /// </summary>
+        public int Attempts = 0; /*{ get; set; }*/ // Available for these modes: Reliable, ReliableSequenced
+        /// <summary>
+        /// This date is used to calculate the time to wait before re-transmitting the packet.
+        /// If the packet is not received, the time will be increased by the time between each attempt.
+        /// If the time is greater or equal to the maximum time, the packet will be re-transmitted and the time will be reset to UtcNow.
+        /// </summary>
+        public DateTime LastSent { get; set; } // Available for these modes: Reliable, ReliableSequenced
+        /// <summary>
         /// This EndPoint is the EndPoint of the owner of this packet.
         /// This is commonly used to ignore the packet to the owner.
         /// </summary>
         public EndPoint EndPoint { get; } // Available for these modes: Unreliable, Reliable, ReliableSequenced
+        /// <summary>
+        /// Set the packet is a sequence packet, data packet or an acknowledgement packet.
+        /// sequence packet: The packet is a sequence packet, it is used to re-transmit the packet if the packet is lost.
+        /// data packet: The packet is a data packet, it is used to send data to the EndPoint.
+        /// acknowledgement packet: The packet is an acknowledgement packet, it is used to re-transmit the packet if the packet is lost.
+        /// </summary>
+        public OperationMode OperationMode { get; } // Available for these modes: Reliable, ReliableSequenced
         /// <summary>
         /// Define how be able to receive the packet.
         /// All: The packet will be received by all clients.
@@ -84,15 +120,61 @@ namespace NeutronNetwork.Internal
         /// </summary>
         public TargetMode TargetMode { get; } // Available for these modes: Unreliable, Reliable, ReliableSequenced
         /// <summary>
+        /// The channel used to send the packet.
+        /// Reliable: The packet will be sent on the reliable channel.
+        /// Unreliable: The packet will be sent on the unreliable channel.
+        /// ReliableSequenced: The packet will be sent on the reliable sequenced channel.
+        /// </summary>
+        public ChannelMode ChannelMode { get; } // Available for these modes: Reliable, ReliableSequenced
+        /// <summary>
+        /// The channel that the packet will be sent on.
+        /// Reliable or ReliableSequenced: The packet will be sent on the channel that is defined by the channel number.
+        /// Each player has a channel number that is defined by the player's ID.
+        /// </summary>
+        public ChannelData ChannelData { get; }  // Available for these modes: Reliable, ReliableSequenced
+        /// <summary>
         /// The data that will be sent.
         /// </summary>
         public byte[] Data { get; } // Available for these modes: Unreliable, Reliable, ReliableSequenced
 
-        public UdpPacket(EndPoint endPoint, TargetMode targetMode, byte[] data)
+        public UdpPacket(int seqAck, ushort playerId, DateTime lastSent, EndPoint endPoint, OperationMode operationMode, TargetMode targetMode, ChannelMode channelMode, ChannelData channelData, byte[] data)
         {
+            // Reliable and ReliableSequenced constructor.
+            PlayerId = playerId;
+            SeqAck = seqAck;
+            LastSent = lastSent;
             EndPoint = endPoint;
+            OperationMode = operationMode;
             TargetMode = targetMode;
+            ChannelMode = channelMode;
+            ChannelData = channelData;
             Data = data;
+        }
+
+        public UdpPacket(ushort playerId, EndPoint endPoint, OperationMode operationMode, TargetMode targetMode, ChannelMode channelMode, byte[] data)
+        {
+            // Unreliable constructor.
+            PlayerId = playerId;
+            EndPoint = endPoint;
+            OperationMode = operationMode;
+            TargetMode = targetMode;
+            ChannelMode = channelMode;
+            Data = data;
+        }
+
+        /// <summary>
+        /// Is attempt is greater than the maximum number of attempts, the packet will be discarded.
+        /// As we are working with reliable packets, this should never happen.
+        /// If it happens, it means that the EndPoint is not responding, a possible disconnection will be detected? or that client is really, really, really laggy?
+        /// With these assumptions, i think it's better to disconnect the client(KICK) and free the resources.
+        /// </summary>
+        public bool IsDisconnected()
+        {
+            // Thread safe: Simultaneous access to this value is not a problem.
+            int value = Interlocked.Increment(ref Attempts);
+            if (value >= 150)
+                LogHelper.Info($"Packet with sequence: {SeqAck} was lost and was not re-transmitted ):");
+            return value >= 150;
         }
     }
 
@@ -263,21 +345,28 @@ namespace NeutronNetwork.Internal
 
     public class SocketClient
     {
-        public SocketClient(ushort id, long address, int port)
+        public SocketClient(ushort id, EndPoint endPoint, long address, int port)
         {
             Id = id;
+            EndPoint = endPoint;
             Address = address;
             Port = port;
         }
 
         public ushort Id { get; set; }
+        public EndPoint EndPoint { get; set; }
         public long Address { get; set; }
         public int Port { get; set; }
     }
 
     public class NeutronUdp
     {
-        public bool _isConnected;
+        private ushort _id = 0;
+        /// <summary>
+        /// The Connected property gets the connection state of the Socket as of the last I/O operation. 
+        /// When it returns false, the Socket was either never connected, or is no longer connected
+        /// </summary>
+        private bool _isConnected;
         /// <summary>
         /// The socket used to receive and send the data, all data are received and sent simultaneously.
         /// Synchronous receive and send operations are used to avoid the overhead of asynchronous operations, 
@@ -294,6 +383,10 @@ namespace NeutronNetwork.Internal
         /// </summary>
         private EndPoint _destEndPoint;
         /// <summary>
+        /// The endpoint used to listen for data from the remote host.
+        /// </summary>
+        private EndPoint _srcEndPoint;
+        /// <summary>
         /// Used to cancel the receive and send operations, called when the socket is closed.
         /// Prevents the CPU from spinning, Thread.Abort() is not recommended, because it's not a good way to stop a thread and not work on Linux OS.
         /// The Dispose() method is called when the socket is closed, and the Dispose() method is called when the application is closed.
@@ -307,14 +400,21 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// This event is fired when the completed message is received.
         /// </summary>
-        internal event NeutronEventNoReturn<NeutronStream, EndPoint, ChannelMode, TargetMode, OperationMode, NeutronUdp> OnMessageCompleted;
+        internal event NeutronEventNoReturn<NeutronStream, ushort, EndPoint, ChannelMode, TargetMode, OperationMode, NeutronUdp> OnMessageCompleted;
         /// <summary>
         /// The list to store the connected clients.
         /// When a client connects, it's added to this list.
         /// When a client disconnects, it's removed from this list.
         /// Thread Safe: This list is used by the thread that is processing the received data, and the thread that is sending data.
         /// </summary>
-        internal NeutronSafeDictionary<EndPoint, SocketClient> Clients = new NeutronSafeDictionary<EndPoint, SocketClient>();
+        internal NeutronSafeDictionary<EndPoint, SocketClient> ClientsByEndPoint = new NeutronSafeDictionary<EndPoint, SocketClient>();
+        /// <summary>
+        /// The list to store the connected clients.
+        /// When a client connects, it's added to this list.
+        /// When a client disconnects, it's removed from this list.
+        /// Thread Safe: This list is used by the thread that is processing the received data, and the thread that is sending data.
+        /// </summary>
+        //internal NeutronSafeDictionary<ushort, SocketClient> ClientsById = new NeutronSafeDictionary<ushort, SocketClient>();
         /// <summary>
         /// Store the information of the channels.
         /// Ex: SentSequence, RecvSequence, Acknowledge....etc
@@ -325,7 +425,13 @@ namespace NeutronNetwork.Internal
         /// Disponible only for reliable channels.
         /// ValueTuple(Address, Port, ChannelMode)
         /// </summary>
-        internal NeutronSafeDictionary<(long, int, byte), ChannelData> ChannelsData = new NeutronSafeDictionary<(long, int, byte), ChannelData>() { };
+        internal NeutronSafeDictionary<(ushort, byte), ChannelData> ChannelsData = new NeutronSafeDictionary<(ushort, byte), ChannelData>() { };
+        /// <summary>
+        /// List of exlusive id's, used to prevent the same id to be used twice.
+        /// When a player connects, a unique id is removed from this list.
+        /// When a player disconnects, the id is added back to this list.
+        /// </summary>
+        private NeutronSafeQueueNonAlloc<ushort> _ids = new NeutronSafeQueueNonAlloc<ushort>();
 
         /// <summary>
         /// Associates a Socket with a local endpoint.
@@ -346,6 +452,12 @@ namespace NeutronNetwork.Internal
             // Bind the socket to the endpoint.
             // This address and port will be used to receive data from the remote host.
             _socket.Bind(endPoint);
+            // The LocalEndPoint property gets the local endpoint of the socket.
+            _srcEndPoint = endPoint;
+            // Add the availables id's to the list.
+            // This list is used to prevent the same id to be used twice.
+            for (ushort i = 1; i < ushort.MaxValue; i++)
+                _ids.Push(i);
         }
 
         /// <summary>
@@ -359,123 +471,177 @@ namespace NeutronNetwork.Internal
             // Why don't receive the data in the main thread?
             // Because the ReceiveFrom() method is blocking, FPS will be affected.
             // The Unity will be frozen until the data is received, but's not a good idead, right?
-            Receive();
+            StartReceiveThread();
             // Start the send thread.
             // This thread is used to send data to the remote host.
             // Why don't we send the data directly from the receive thread or Unity's main thread?
             // Because the send method is blocking, and we don't want to block Unity's main thread, FPS will be affected.
             // Let's the data to a queue, and the queue is processed in a thread.
-            Send();
+            StartSendThread();
         }
 
         /// <summary>
         /// Connect to the remote host.
         /// </summary>
-        public void Connect(EndPoint endPoint)
+        public IEnumerator Connect(EndPoint endPoint)
         {
-            // Create the local channels to send and receive data.
-            IPEndPoint iPEndPoint = (IPEndPoint)_socket.LocalEndPoint;
-#pragma warning disable 618
-            ChannelsData.TryAdd((iPEndPoint.Address.Address, iPEndPoint.Port, (byte)ChannelMode.Unreliable), new ChannelData());
-            ChannelsData.TryAdd((iPEndPoint.Address.Address, iPEndPoint.Port, (byte)ChannelMode.Reliable), new ChannelData());
-            ChannelsData.TryAdd((iPEndPoint.Address.Address, iPEndPoint.Port, (byte)ChannelMode.ReliableSequenced), new ChannelData());
-#pragma warning restore 618
-            _isConnected = true;
-            // The endpoint used to send data to the remote host, client only.
-            _destEndPoint = endPoint;
-            using (NeutronStream packet = Neutron.PooledNetworkStreams.Pull())
+            while (true)
             {
-                var writer = packet.Writer;
-                writer.WritePacket((byte)PacketType.Connect);
-                // The first packet is used to establish the connection.
-                Send(packet, ChannelMode.Reliable, TargetMode.Single);
+                if (_isConnected)
+                    break; // if the socket is connected, break the loop.
+                // The endpoint used to send data to the remote host, client only.
+                _destEndPoint = endPoint;
+                using (NeutronStream packet = Neutron.PooledNetworkStreams.Pull())
+                {
+                    var writer = packet.Writer;
+                    writer.WritePacket((byte)PacketType.Connect);
+                    // The first packet is used to establish the connection.
+                    // We are using unrealible channel, because we don't have and exclusive Id for the connection.
+                    // We need an id to identify the connection, and the id is the "symbolic link" for the EndPoint...
+                    // As we are using an unrealible channel, we need to send connection packets until we get a response.
+                    SendToServer(packet, ChannelMode.Unreliable, TargetMode.Single);
+                }
+                // Wait for the response.
+                yield return new WaitForSeconds(0.3f);
+                if (_isConnected)
+                    break; // if the socket is connected, break the loop.
             }
         }
 
+        /// <summary>
+        /// Process the internal packet queue.
+        /// </summary>
+        public PacketType OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        {
+            var reader = stream.Reader;
+            var writer = stream.Writer;
+            // Convert byte to packet type.
+            var packetType = (PacketType)reader.ReadByte();
+            switch (packetType)
+            {
+                // Let's process the packet.
+                case PacketType.Connect:
+                    {
+                        if (playerId == 0)
+                        {
+                            if (GetAvailableID(out ushort id))
+                            {
+                                AddChannel(id);
+                                writer.WritePacket((byte)PacketType.Connect);
+                                writer.Write(id);
+                                // Create the local channels to send and receive data.
+                                // IPEndPoint iPEndPoint = (IPEndPoint)endPoint;               
+                                udp.SendToClient(stream, channelMode, targetMode, opMode, playerId, endPoint);
+                            }
+                            else
+                                LogHelper.Error("[Neutron] -> No available id's.");
+                        }
+                        else
+                            LogHelper.Error($"[Neutron] -> Player {playerId} Already connected.");
+                    }
+                    break;
+                default:
+                    return packetType; // If not an internal packet, return the packet type to process it.
+            }
+            // If is a internal packet, return null to ignore it.
+            return default;
+        }
+
+        /// <summary>
+        /// Process the internal packet queue.
+        /// </summary>
+        public PacketType OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        {
+            var reader = stream.Reader;
+            var writer = stream.Writer;
+            // Convert byte to packet type.
+            var packetType = (PacketType)reader.ReadByte();
+            switch (packetType)
+            {
+                case PacketType.Connect:
+                    AddChannel(_id = reader.ReadUShort());
+                    _isConnected = true;
+                    break;
+                default:
+                    return packetType; // If not an internal packet, return the packet type to process it.
+            }
+            // If is a internal packet, return null to ignore it.
+            return default;
+        }
+
+        private void AddChannel(ushort playerId)
+        {
+            ChannelsData.TryAdd((playerId, (byte)ChannelMode.Reliable), new ChannelData());
+            ChannelsData.TryAdd((playerId, (byte)ChannelMode.ReliableSequenced), new ChannelData());
+        }
+
         float _reTime = 0f;
-        ChannelMode[] channelModes = { ChannelMode.Reliable, ChannelMode.ReliableSequenced };
         public void ReTransmit(float deltaTime)
         {
             _reTime -= deltaTime;
             if (_reTime <= 0)
             {
-                if (Clients.Count > 0)
+                //Re-try to send the data that was not received.
+                // This send is called when the data is lost.
+                if (ChannelsData.Count > 0)
                 {
-                    foreach (var cKvP in Clients.ToList())
+                    foreach (var pKvP in ChannelsData.ToList())
                     {
-                        // Re-try to send the data that was not received.
-                        // This send is called when the data is lost.
-                        for (int i = 0; i < channelModes.Length; i++)
+                        // Packets that are not received.
+                        var packets = pKvP.Value.PacketsToReTransmit.ToList();
+                        foreach (var packet in packets)
                         {
-                            var multiEndPoint = (cKvP.Value.Address, cKvP.Value.Port, (byte)channelModes[i]);
-                            if (ChannelsData[multiEndPoint].PacketsToReTransmit.Count > 0)
+                            LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key}.");
+                            TransmissionPacket transmissionPacket = packet.Value;
+                            // Calc the last time we sent the packet.
+                            TimeSpan currentTime = DateTime.UtcNow.Subtract(transmissionPacket.LastSent);
+                            // If the time elapsed is greater than X second, the packet is re-sent if the packet is not acknowledged.
+                            if (currentTime.TotalSeconds >= 0.120d)
                             {
-                                foreach (var pKvP in ChannelsData[multiEndPoint].PacketsToReTransmit.ToList())
-                                {
-                                    TransmissionPacket transmissionPacket = pKvP.Value;
-                                    // Calc the last time we sent the packet.
-                                    TimeSpan currentTime = DateTime.UtcNow.Subtract(transmissionPacket.LastSent);
-                                    // If the time elapsed is greater than X second, the packet is re-sent if the packet is not acknowledged.
-                                    if (currentTime.TotalSeconds >= 0.120d)
-                                    {
-                                        LogHelper.Error($"Re-transmit packet {pKvP.Key}");
-                                        if (transmissionPacket.IsDisconnected())
-                                            ChannelsData[multiEndPoint].PacketsToReTransmit.Remove(transmissionPacket.SeqAck, out _);
-                                        else
-                                            Send(transmissionPacket.Data);
-                                        // Set the last time to current time when the packet is sent.
-                                        transmissionPacket.LastSent = DateTime.UtcNow;
-                                    }
-                                }
+                                LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck}");
+                                if (transmissionPacket.IsDisconnected())
+                                    pKvP.Value.PacketsToReTransmit.Remove(transmissionPacket.SeqAck, out _);
+                                else
+                                    Enqueue(transmissionPacket.Data);
+                                // Set the last time to current time when the packet is sent.
+                                transmissionPacket.LastSent = DateTime.UtcNow;
                             }
                         }
                     }
                 }
+                else
+                    LogHelper.Error("[Neutron] -> No channels.");
                 _reTime = 0f;
             }
         }
 
-        private void CreateTransmissionPacket(ChannelData channelData, ChannelMode channel, TargetMode targetMode, OperationMode opMode, UdpPacket udpPacket, int seqAck)
+        private void CreateTransmissionPacket(UdpPacket udpPacket)
         {
-            // Don't create the transmission packet in Ack packets. 
-            // because we are retransmitting the packet to the owner of the packet, in this case,
-            // who takes care of the retransmission is the owner of the packet, 
-            // so we can't re-transmit the packet because it already does that, otherwise it's in a retransmission loop.
-            // Only clients who do not own(owner) the packet can re-transmit the packet.
-            if (opMode == OperationMode.Acknowledgement)
-                return;
-
-            // If channelData contains the packet, it means that the packet was lost, and we need to re-transmit it.
-            if (!channelData.PacketsToReTransmit.ContainsKey(seqAck))
-                channelData.PacketsToReTransmit.TryAdd(seqAck, new TransmissionPacket(seqAck, DateTime.UtcNow, udpPacket));
-            else
+            if (udpPacket.ChannelMode == ChannelMode.Reliable || udpPacket.ChannelMode == ChannelMode.ReliableSequenced)
             {
-                if (channelData.PacketsToReTransmit[seqAck].IsDisconnected())
-                    channelData.PacketsToReTransmit.Remove(seqAck, out _);
+                // Don't create the transmission packet in Ack packets. 
+                // because we are retransmitting the packet to the owner of the packet, in this case,
+                // who takes care of the retransmission is the owner of the packet, 
+                // so we can't re-transmit the packet because it already does that, otherwise it's in a retransmission loop.
+                // Only clients who do not own(owner) the packet can re-transmit the packet.
+                if (udpPacket.OperationMode == OperationMode.Acknowledgement)
+                    return;
+
+                // If channelData contains the packet, it means that the packet was lost, and we need to re-transmit it.
+                if (!udpPacket.ChannelData.PacketsToReTransmit.ContainsKey(udpPacket.SeqAck))
+                    udpPacket.ChannelData.PacketsToReTransmit.TryAdd(udpPacket.SeqAck, new TransmissionPacket(udpPacket.SeqAck, DateTime.UtcNow, udpPacket));
+                else
+                {
+                    if (udpPacket.ChannelData.PacketsToReTransmit[udpPacket.SeqAck].IsDisconnected())
+                        udpPacket.ChannelData.PacketsToReTransmit.Remove(udpPacket.SeqAck, out _);
+                }
             }
-        }
-
-        /// <summary>
-        /// Send the data to the remote host. Server->Client.
-        /// </summary>
-        public void Send(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode, OperationMode opMode, EndPoint endPoint)
-        {
-            if (opMode == OperationMode.Sequence)
-                Send(dataStream, channel, targetMode, endPoint);
-        }
-
-        /// <summary>
-        /// Send the data to the remote host. Client->Server.
-        /// </summary>
-        public void Send(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode)
-        {
-            Send(dataStream, channel, targetMode, OperationMode.Sequence, _destEndPoint, 0);
         }
 
         /// <summary>
         /// Enqueue the data to the send queue.
         /// </summary>
-        private void Send(UdpPacket udpPacket)
+        private void Enqueue(UdpPacket udpPacket)
         {
             // Enqueue data to send.
             // This operation is thread safe, it's necessary to lock the queue? Yes, because data can be enqueued from different threads,
@@ -486,12 +652,31 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// Send the data to the remote host. Server->Client.
         /// </summary>
-        private void Send(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode, EndPoint endPoint)
+        public void SendToClient(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode, OperationMode opMode, ushort playerId, EndPoint endPoint)
         {
-            Send(dataStream, channel, targetMode, OperationMode.Data, endPoint, 0);
+            if (opMode == OperationMode.Sequence)
+                SendToClient(dataStream, channel, targetMode, playerId, endPoint);
         }
 
-        private void Send(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode, OperationMode opMode, EndPoint endPoint, int seqAck = 0)
+        /// <summary>
+        /// Send the data to the remote host. Client->Server.
+        /// </summary>
+        public void SendToServer(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode)
+        {
+            if ((channel == ChannelMode.ReliableSequenced || channel == ChannelMode.Reliable) && _id == 0)
+                throw new Exception("[Neutron] -> You must connect to the server before sending data.");
+            Send(dataStream, channel, targetMode, OperationMode.Sequence, _id, _destEndPoint, 0);
+        }
+
+        /// <summary>
+        /// Send the data to the remote host. Server->Client.
+        /// </summary>
+        private void SendToClient(NeutronStream dataStream, ChannelMode channel, TargetMode targetMode, ushort playerId, EndPoint endPoint)
+        {
+            Send(dataStream, channel, targetMode, OperationMode.Data, playerId, endPoint, 0);
+        }
+
+        private void Send(NeutronStream dataStream, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, ushort playerId, EndPoint endPoint, int seqAck = 0)
         {
             // Get the data from the stream.
             // This data will be sent to the remote host.
@@ -501,16 +686,14 @@ namespace NeutronNetwork.Internal
             using (NeutronStream packet = Neutron.PooledNetworkStreams.Pull())
             {
                 var writer = packet.Writer;
-                writer.Write((byte)channel);
+                writer.Write((byte)channelMode);
                 writer.Write((byte)targetMode);
                 writer.Write((byte)opMode);
-                if (channel == ChannelMode.Reliable || channel == ChannelMode.ReliableSequenced)
+                writer.Write(playerId);
+                if (channelMode == ChannelMode.Reliable || channelMode == ChannelMode.ReliableSequenced)
                 {
-#pragma warning disable 618
-                    IPEndPoint iPEndPoint = !_isConnected ? (IPEndPoint)endPoint : (IPEndPoint)_socket.LocalEndPoint;
-                    var multiEndPoint = (iPEndPoint.Address.Address, iPEndPoint.Port, (byte)channel);
-#pragma warning restore 618
-                    ChannelData channelData = ChannelsData[multiEndPoint];
+                    (ushort, byte) chKey = (playerId, (byte)channelMode);
+                    ChannelData channelData = ChannelsData[chKey];
                     // If sequence is 0, the packet is sent as a new packet, otherwise it is a re-transmission.
                     if (seqAck == 0)
                         seqAck = Interlocked.Increment(ref channelData.SentAck);
@@ -520,23 +703,23 @@ namespace NeutronNetwork.Internal
                     // Create a copy of the packet.
                     byte[] pData = writer.GetBufferAsCopy();
                     // Create UdpPacket to send.
-                    UdpPacket udpPacket = new UdpPacket(endPoint, TargetMode.All, pData);
-                    //
-                    CreateTransmissionPacket(channelData, channel, targetMode, opMode, udpPacket, seqAck);
+                    // The packet includes the data and the endpoint.
+                    // The packet is sent to the remote host.
+                    UdpPacket udpPacket = new UdpPacket(seqAck, playerId, DateTime.UtcNow, endPoint, opMode, targetMode, channelMode, channelData, pData);
                     // Send the reliable packet.
-                    Send(udpPacket);
+                    Enqueue(udpPacket);
                 }
-                else if (channel == ChannelMode.Unreliable)
+                else if (channelMode == ChannelMode.Unreliable)
                 {
                     // Send the unreliable packet.
                     writer.Write(data);
-                    UdpPacket udpPacket = new UdpPacket(endPoint, targetMode, writer.GetBufferAsCopy());
-                    Send(udpPacket);
+                    UdpPacket udpPacket = new UdpPacket(playerId, endPoint, opMode, targetMode, channelMode, writer.GetBufferAsCopy());
+                    Enqueue(udpPacket);
                 }
             }
         }
 
-        private void Send()
+        private void StartSendThread()
         {
             new Thread(() =>
             {
@@ -546,32 +729,55 @@ namespace NeutronNetwork.Internal
                     // Le't get the data from the queue and send it.
                     // This collection is blocked until the data is available, prevents de CPU from spinning.
                     UdpPacket udpPacket = _dataToSend.Pull();
-                    switch (udpPacket.TargetMode)
+                    if (!_isConnected)
                     {
-                        case TargetMode.All:
-                            _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
-                            // Send the data to all the clients.
-                            foreach (var KvP in Clients.ToList())
-                            {
-                                if (KvP.Key != udpPacket.EndPoint)
-                                    _socket.SendTo(udpPacket.Data, KvP.Key);
-                                else continue;
-                            }
-                            break;
-                        case TargetMode.Others:
-                            // If the packet is sent to others, it's necessary to send it to all the clients except the sender.
-                            // The sender is the owner of the packet, so we don't need to send it to the sender.
-                            foreach (var KvP in Clients.ToList())
-                            {
-                                if (KvP.Key != udpPacket.EndPoint)
-                                    _socket.SendTo(udpPacket.Data, KvP.Key);
-                                else continue;
-                            }
-                            break;
-                        case TargetMode.Single:
-                            // Send the packet to the remote host.
-                            _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
-                            break;
+                        // isConnected is false, is server, so we need to send the data to the client or clients.
+                        switch (udpPacket.TargetMode)
+                        {
+                            // Send and Create the transmission packet.
+                            // This transmission packet is used to re-transmit the packet if the packet is lost.
+                            // The packet is not created if the packet is an acknowledgment packet or is a duplicate packet.
+                            case TargetMode.All:
+                                _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
+                                // Send the data to all the clients.
+                                foreach (var KvP in ClientsByEndPoint.ToList())
+                                {
+                                    if (KvP.Key != udpPacket.EndPoint)
+                                    {
+                                        _socket.SendTo(udpPacket.Data, KvP.Key);
+                                        CreateTransmissionPacket(udpPacket);
+                                    }
+                                    else
+                                        continue;
+                                }
+                                break;
+                            case TargetMode.Others:
+                                // If the packet is sent to others, it's necessary to send it to all the clients except the sender.
+                                // The sender is the owner of the packet, so we don't need to send it to the sender.
+                                foreach (var KvP in ClientsByEndPoint.ToList())
+                                {
+                                    if (KvP.Key != udpPacket.EndPoint)
+                                    {
+                                        _socket.SendTo(udpPacket.Data, KvP.Key);
+                                        CreateTransmissionPacket(udpPacket);
+                                    }
+                                    else
+                                        continue;
+                                }
+                                break;
+                            case TargetMode.Single:
+                                // Send the packet to the remote host.
+                                _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
+                                CreateTransmissionPacket(udpPacket);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        // isConnected is true, is client, so we need to send the data to the server.
+                        // Send the packet to the remote host.
+                        _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
+                        CreateTransmissionPacket(udpPacket);
                     }
                 }
             })
@@ -582,7 +788,7 @@ namespace NeutronNetwork.Internal
             }.Start();
         }
 
-        private void Receive()
+        private void StartReceiveThread()
         {
             new Thread(() =>
             {
@@ -624,25 +830,23 @@ namespace NeutronNetwork.Internal
                                 ChannelMode channel = (ChannelMode)reader.ReadByte();
                                 TargetMode targetMode = (TargetMode)reader.ReadByte();
                                 OperationMode opMode = (OperationMode)reader.ReadByte();
-#pragma warning disable 618
-                                IPEndPoint iPEndPoint = (IPEndPoint)_peerEndPoint;
-                                var multiEndPoint = (iPEndPoint.Address.Address, iPEndPoint.Port, (byte)channel);
-#pragma warning restore 618
+                                var playerId = reader.ReadUShort();
                                 // If the channel is reliable, let's read the sequence number.
                                 if (channel == ChannelMode.Reliable || channel == ChannelMode.ReliableSequenced)
                                 {
+                                    (ushort, byte) chKey = (playerId, (byte)channel);
                                     // The acknowledgement is the first 4 bytes of the packet.
                                     // Let's send it to the remote host to confirm that we received the packet.
                                     int seqAck = reader.ReadInt();
                                     // If the packet was confirmed, let's remove it from the list of packets to re-transmit.
                                     // After that, let's send the data to the remote host.
                                     if (opMode == OperationMode.Acknowledgement)
-                                        ChannelsData[multiEndPoint].PacketsToReTransmit.Remove(seqAck, out _);
+                                        ChannelsData[chKey].PacketsToReTransmit.Remove(seqAck, out _);
                                     else
                                     {
                                         // Send the acknowledgement to the remote host to confirm that we received the packet.
                                         // If the Ack is dropped, the remote host will resend the packet.
-                                        Send(NeutronStream.Empty, channel, TargetMode.Single, OperationMode.Acknowledgement, _peerEndPoint, seqAck);
+                                        Send(NeutronStream.Empty, channel, TargetMode.Single, OperationMode.Acknowledgement, playerId, _peerEndPoint, seqAck);
                                         // Read the left data in the packet.
                                         // All the data sent by the remote host is stored in the buffer.
                                         byte[] data = reader.ReadNext();
@@ -652,7 +856,7 @@ namespace NeutronNetwork.Internal
                                             // Let's to check if the packet is a duplicate.
                                             // If the packet is a duplicate, let's ignore it.
                                             // It's necessary to check if the packet is a duplicate, because the Ack can be lost, and the packet will be re-transmitted.
-                                            if (!ChannelsData[multiEndPoint].ReceivedSequences.TryAdd(seqAck, seqAck))
+                                            if (!ChannelsData[chKey].ReceivedSequences.TryAdd(seqAck, seqAck))
                                                 continue;
                                             // Let's send the data to the remote host.
                                             // Don't send the data to the remote host if the packet is a duplicate.
@@ -661,7 +865,7 @@ namespace NeutronNetwork.Internal
                                             {
                                                 var sReader = stream.Reader;
                                                 sReader.SetBuffer(data);
-                                                OnMessageCompleted?.Invoke(stream, _peerEndPoint, channel, targetMode, opMode, this);
+                                                OnMessageCompleted?.Invoke(stream, playerId, _peerEndPoint, channel, targetMode, opMode, this);
                                             }
                                         }
                                         else if (channel == ChannelMode.ReliableSequenced)
@@ -672,35 +876,35 @@ namespace NeutronNetwork.Internal
                                             // As the data is sequenced, the verification is easy.
                                             // Ex: If the last processed packet is 100, this means that all data between 0 and 100 was received and processed, sequencing assures us of this.
                                             // Then we can safely ignore and remove packets from 0 to 100.
-                                            if (seqAck <= ChannelsData[multiEndPoint].LastProcessedSequentialAck)
+                                            if (seqAck <= ChannelsData[chKey].LastProcessedSequentialAck)
                                                 continue;
                                             // Let's sequence the data and process when the sequence is correct and then remove it.
-                                            if (ChannelsData[multiEndPoint].SequentialData.TryAdd(seqAck, data))
+                                            if (ChannelsData[chKey].SequentialData.TryAdd(seqAck, data))
                                             {
-                                                if (ChannelsData[multiEndPoint].IsSequential())
+                                                if (ChannelsData[chKey].IsSequential())
                                                 {
-                                                    var KvPSenquentialData = ChannelsData[multiEndPoint].SequentialData.ToList();
+                                                    var KvPSenquentialData = ChannelsData[chKey].SequentialData.ToList();
                                                     for (int i = 0; i < KvPSenquentialData.Count; i++)
                                                     {
                                                         var KvP = KvPSenquentialData[i];
-                                                        if (KvP.Key > ChannelsData[multiEndPoint].LastProcessedSequentialAck)
+                                                        if (KvP.Key > ChannelsData[chKey].LastProcessedSequentialAck)
                                                         {
                                                             // Let's process the data and send it to the remote host again.
                                                             using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                                                             {
                                                                 var sReader = stream.Reader;
                                                                 sReader.SetBuffer(KvP.Value);
-                                                                OnMessageCompleted?.Invoke(stream, _peerEndPoint, channel, targetMode, opMode, this);
+                                                                OnMessageCompleted?.Invoke(stream, playerId, _peerEndPoint, channel, targetMode, opMode, this);
                                                             }
                                                             // Increment the last processed sequence.
                                                             // Indicates the last processed packet, used to discard the packets that were already processed.
                                                             // Any value lesser than this value means that the packet was already processed.
-                                                            ChannelsData[multiEndPoint].LastProcessedSequentialAck++;
+                                                            ChannelsData[chKey].LastProcessedSequentialAck++;
                                                         }
                                                         else
-                                                            ChannelsData[multiEndPoint].SequentialData.Remove(KvP.Key);
+                                                            ChannelsData[chKey].SequentialData.Remove(KvP.Key);
                                                     }
-                                                    ChannelsData[multiEndPoint].LastReceivedSequentialAck = KvPSenquentialData.Last().Key;
+                                                    ChannelsData[chKey].LastReceivedSequentialAck = KvPSenquentialData.Last().Key;
                                                 }
                                                 else {/*Waiting for more packets, to create the sequence*/}
                                             }
@@ -718,7 +922,7 @@ namespace NeutronNetwork.Internal
                                     {
                                         var sReader = stream.Reader;
                                         sReader.SetBuffer(data);
-                                        OnMessageCompleted?.Invoke(stream, _peerEndPoint, channel, targetMode, opMode, this);
+                                        OnMessageCompleted?.Invoke(stream, playerId, _peerEndPoint, channel, targetMode, opMode, this);
                                     }
                                 }
                             }
@@ -745,6 +949,18 @@ namespace NeutronNetwork.Internal
                 Priority = ThreadPriority.Highest,
                 IsBackground = true,
             }.Start();
+        }
+
+        private bool GetAvailableID(out ushort id)
+        {
+            if (_ids.Count > 0)
+            {
+                if (!_ids.TryPull(out id))
+                    id = 0;
+            }
+            else
+                id = 0;
+            return id > NeutronConstants.GENERATE_PLAYER_ID;
         }
 
         public Socket GetSocket()

@@ -175,7 +175,7 @@ namespace NeutronNetwork
             Physics2D.autoSimulation = _autoSimulation; // Set the physics simulation.
 #endif
 #if UNITY_SERVER && !UNITY_EDITOR
-            Debug.unityLogger.logEnabled = false; // Disable the unity logger.
+            Debug.unityLogger.logEnabled = true; // Disable the unity logger.
 #endif
             GameObject controllers = GameObject.Find("Neutron Controllers"); // Find the controllers object.
             if (controllers != null)

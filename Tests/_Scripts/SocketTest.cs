@@ -24,34 +24,28 @@ namespace NeutronNetwork.Tests
 #endif
         }
 
-        private void OnServerMessageCompleted(NeutronStream stream, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        private void OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
         {
             var reader = stream.Reader;
             var writer = stream.Writer;
-            switch ((PacketType)reader.ReadPacket())
+            switch (udp.OnServerMessageCompleted(stream, playerId, endPoint, channelMode, targetMode, opMode, udp))
             {
-                case PacketType.Connect:
-                    {
-                        ushort playerId = (ushort)UnityEngine.Random.Range(0, ushort.MaxValue);
-                        writer.Write(playerId);
-                        IPEndPoint iPEndPoint = (IPEndPoint)endPoint;
-#pragma warning disable 618
-                        udp.Clients.TryAdd(endPoint, new(playerId, iPEndPoint.Address.Address, iPEndPoint.Port));
-#pragma warning restore 618
-                    }
+                case PacketType.Test:
+                    writer.WritePacket((byte)PacketType.Test);
+                    writer.Write(reader.ReadInt());
+                    udp.SendToClient(stream, channelMode, targetMode, opMode, playerId, endPoint);
                     break;
             }
         }
 
-        private void OnClientMessageCompleted(NeutronStream stream, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        private void OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
         {
             var reader = stream.Reader;
-            switch ((PacketType)reader.ReadPacket())
+            var writer = stream.Writer;
+            switch (udp.OnClientMessageCompleted(stream, playerId, endPoint, channelMode, targetMode, opMode, udp))
             {
-                case PacketType.Connect:
-                    {
-                        LogHelper.Error(reader.ReadUShort());
-                    }
+                case PacketType.Test:
+                    Debug.Log("Hehehhe boy: " + reader.ReadInt());
                     break;
             }
         }
@@ -63,7 +57,7 @@ namespace NeutronNetwork.Tests
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
             Client.Init();
-            Client.Connect(pEndPoint);
+            StartCoroutine(Client.Connect(pEndPoint));
 #endif
         }
 
@@ -84,7 +78,7 @@ namespace NeutronNetwork.Tests
         public float Pps = 50;
         float timeToSend;
 
-        int number = 0;
+        int number = 10;
         private void Update()
         {
 #if UNITY_EDITOR || !UNITY_SERVER
@@ -99,16 +93,37 @@ namespace NeutronNetwork.Tests
 #endif
 #if !UNITY_EDITOR
 
-            //Server.ReTransmit(Time.deltaTime);
+            Server.ReTransmit(Time.deltaTime);
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
-            //Client.ReTransmit(Time.deltaTime);
+            Client.ReTransmit(Time.deltaTime);
             if (Input.GetKeyDown(KeyCode.Return))
             {
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
+                    stream.Writer.WritePacket((byte)PacketType.Test);
                     stream.Writer.Write(++number);
-                    Client.Send(stream, ChannelMode.ReliableSequenced, TargetMode.Single);
+                    Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.Single);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                {
+                    stream.Writer.WritePacket((byte)PacketType.Test);
+                    stream.Writer.Write(++number);
+                    Client.SendToServer(stream, ChannelMode.Reliable, TargetMode.Single);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.S))
+            {
+                using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                {
+                    stream.Writer.WritePacket((byte)PacketType.Test);
+                    stream.Writer.Write(++number);
+                    Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.Single);
                 }
             }
 #endif
