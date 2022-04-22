@@ -230,7 +230,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// This method is used to check if the all data is in sequence.
         /// Returns true if the all data is in sequence, otherwise returns false.
-        /// Every time a packet is received, this method is called to check if the data is in sequence.
+        /// Every time a packet is received, this method is called to check if the data is in sequence, if it is, the data is processed.
         /// </summary>
         public bool IsSequential()
         {
