@@ -399,6 +399,7 @@ namespace NeutronNetwork.Internal
         private NeutronBlockingQueue<UdpPacket> _dataToSend;
         /// <summary>
         /// This event is fired when the completed message is received.
+        /// No MulticastDelegate is used, because performance is critical here.
         /// </summary>
         internal event NeutronEventNoReturn<NeutronStream, ushort, EndPoint, ChannelMode, TargetMode, OperationMode, NeutronUdp> OnMessageCompleted;
         /// <summary>
@@ -511,7 +512,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// Process the internal packet queue.
         /// </summary>
-        public PacketType OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        internal PacketType OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
         {
             var reader = stream.Reader;
             var writer = stream.Writer;
@@ -550,7 +551,7 @@ namespace NeutronNetwork.Internal
         /// <summary>
         /// Process the internal packet queue.
         /// </summary>
-        public PacketType OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        internal PacketType OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
         {
             var reader = stream.Reader;
             var writer = stream.Writer;
@@ -609,8 +610,6 @@ namespace NeutronNetwork.Internal
                         }
                     }
                 }
-                else
-                    LogHelper.Error("[Neutron] -> No channels.");
                 _reTime = 0f;
             }
         }
