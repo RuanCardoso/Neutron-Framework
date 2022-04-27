@@ -114,7 +114,7 @@ namespace NeutronNetwork.Tests
             //     }
             // }
 #endif
-#if !UNITY_EDITOR
+#if !UNITY_EDITOR && UNITY_SERVER
 
             Server.ReTransmit(Time.deltaTime);
 #endif

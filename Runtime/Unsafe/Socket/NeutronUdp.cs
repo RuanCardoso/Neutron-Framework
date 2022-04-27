@@ -576,7 +576,7 @@ namespace NeutronNetwork.Internal
             ChannelsData.TryAdd((playerId, (byte)ChannelMode.ReliableSequenced), new ChannelData());
         }
 
-        float _reTime = 0f;
+        float _reTime = 1f;
         public void ReTransmit(float deltaTime)
         {
             _reTime -= deltaTime;
@@ -592,14 +592,21 @@ namespace NeutronNetwork.Internal
                         var packets = pKvP.Value.PacketsToReTransmit.ToList();
                         foreach (var packet in packets)
                         {
-                            LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key}.");
+                            LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key}. -> {packet.Value.Data.OperationMode}");
                             TransmissionPacket transmissionPacket = packet.Value;
                             // Calc the last time we sent the packet.
                             TimeSpan currentTime = DateTime.UtcNow.Subtract(transmissionPacket.LastSent);
                             // If the time elapsed is greater than X second, the packet is re-sent if the packet is not acknowledged.
-                            if (currentTime.TotalSeconds >= 0.120d)
+                            if (currentTime.TotalSeconds >= 2d)
                             {
+                                // LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key}.");
                                 LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck}");
+
+                                if (!pKvP.Value.PacketsToReTransmit.ContainsKey(transmissionPacket.SeqAck))
+                                    LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} not found.");
+                                else
+                                    LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} found.");
+
                                 if (transmissionPacket.IsDisconnected())
                                     pKvP.Value.PacketsToReTransmit.Remove(transmissionPacket.SeqAck, out _);
                                 else
@@ -610,7 +617,7 @@ namespace NeutronNetwork.Internal
                         }
                     }
                 }
-                _reTime = 0f;
+                _reTime = 1f;
             }
         }
 
@@ -626,6 +633,7 @@ namespace NeutronNetwork.Internal
                 if (udpPacket.OperationMode == OperationMode.Acknowledgement)
                     return;
 
+                LogHelper.Error($"Adicionando ACK {udpPacket.SeqAck}");
                 // If channelData contains the packet, it means that the packet was lost, and we need to re-transmit it.
                 if (!udpPacket.ChannelData.PacketsToReTransmit.ContainsKey(udpPacket.SeqAck))
                     udpPacket.ChannelData.PacketsToReTransmit.TryAdd(udpPacket.SeqAck, new TransmissionPacket(udpPacket.SeqAck, DateTime.UtcNow, udpPacket));
@@ -730,7 +738,10 @@ namespace NeutronNetwork.Internal
                     UdpPacket udpPacket = _dataToSend.Pull();
                     if (!_isConnected)
                     {
-                        // isConnected is false, is server, so we need to send the data to the client or clients.
+                        //! "CreateTransmissionPacket(udpPacket)" must be called before _socket.SendTo(udpPacket.Data, udpPacket.EndPoint), otherwise the packet will be lost.
+                        //! Sometimes the Ack will arrive before the transmission packet is created, and the packet will be lost, so we need to create the transmission packet before sending the packet.
+
+                        //! "isConnected" is false, is server, so we need to send the data to the client or clients.
                         switch (udpPacket.TargetMode)
                         {
                             // Send and Create the transmission packet.
@@ -743,8 +754,8 @@ namespace NeutronNetwork.Internal
                                 {
                                     if (KvP.Key != udpPacket.EndPoint)
                                     {
-                                        _socket.SendTo(udpPacket.Data, KvP.Key);
                                         CreateTransmissionPacket(udpPacket);
+                                        _socket.SendTo(udpPacket.Data, KvP.Key);
                                     }
                                     else
                                         continue;
@@ -757,8 +768,8 @@ namespace NeutronNetwork.Internal
                                 {
                                     if (KvP.Key != udpPacket.EndPoint)
                                     {
-                                        _socket.SendTo(udpPacket.Data, KvP.Key);
                                         CreateTransmissionPacket(udpPacket);
+                                        _socket.SendTo(udpPacket.Data, KvP.Key);
                                     }
                                     else
                                         continue;
@@ -766,8 +777,8 @@ namespace NeutronNetwork.Internal
                                 break;
                             case TargetMode.Single:
                                 // Send the packet to the remote host.
-                                _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
                                 CreateTransmissionPacket(udpPacket);
+                                _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
                                 break;
                         }
                     }
@@ -775,8 +786,8 @@ namespace NeutronNetwork.Internal
                     {
                         // isConnected is true, is client, so we need to send the data to the server.
                         // Send the packet to the remote host.
-                        _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
                         CreateTransmissionPacket(udpPacket);
+                        _socket.SendTo(udpPacket.Data, udpPacket.EndPoint);
                     }
                 }
             })
@@ -840,12 +851,19 @@ namespace NeutronNetwork.Internal
                                     // If the packet was confirmed, let's remove it from the list of packets to re-transmit.
                                     // After that, let's send the data to the remote host.
                                     if (opMode == OperationMode.Acknowledgement)
-                                        ChannelsData[chKey].PacketsToReTransmit.Remove(seqAck, out _);
+                                    {
+                                        LogHelper.Error($"Removendo Ack {seqAck}");
+                                        if (!ChannelsData[chKey].PacketsToReTransmit.Remove(seqAck, out _))
+                                            LogHelper.Error($"The packet with sequence number {seqAck} was not found in the list of packets to re-transmit -> {(ChannelsData[chKey].PacketsToReTransmit.ContainsKey(seqAck)).ToString()}");
+                                        else
+                                            LogHelper.Error($"The packet with sequence number {seqAck} was removed from the list of packets to re-transmit.");
+                                    }
                                     else
                                     {
                                         // Send the acknowledgement to the remote host to confirm that we received the packet.
                                         // If the Ack is dropped, the remote host will resend the packet.
                                         Send(NeutronStream.Empty, channel, TargetMode.Single, OperationMode.Acknowledgement, playerId, _peerEndPoint, seqAck);
+                                        LogHelper.Error($"The ack with sequence number {seqAck} was sent to the remote host.");
                                         // Read the left data in the packet.
                                         // All the data sent by the remote host is stored in the buffer.
                                         byte[] data = reader.ReadNext();
