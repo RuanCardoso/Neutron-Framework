@@ -1,3 +1,4 @@
+using System.Linq;
 using NeutronNetwork.Internal.Interfaces;
 using NeutronNetwork.Wrappers;
 
@@ -10,15 +11,17 @@ namespace NeutronNetwork.Internal.Wrappers
         private readonly object _lock = new object();
         //* Define a capacidade máxima do queue.
         private readonly int _capacity = 0;
+        private readonly bool _sort = false;
 
-        public NeutronSafeQueueNonAlloc() { }
+        public NeutronSafeQueueNonAlloc(bool sort = false) { _sort = sort; }
 
-        public NeutronSafeQueueNonAlloc(int capacity)
+        public NeutronSafeQueueNonAlloc(int capacity, bool sort = false)
         {
             _capacity = capacity;
+            _sort = sort;
         }
 
-        public void Push(T item)
+        public void Push(T item, bool sort = false)
         {
             lock (_lock)
             {
@@ -29,6 +32,9 @@ namespace NeutronNetwork.Internal.Wrappers
                 }
                 else
                     _queue.Enqueue(item);
+
+                if (sort)
+                    Sort();
             }
         }
 
@@ -58,6 +64,18 @@ namespace NeutronNetwork.Internal.Wrappers
                 }
                 else
                     return false;
+            }
+        }
+
+        public void Sort()
+        {
+            if (_sort)
+            {
+                var values = _queue.ToList();
+                values.Sort();
+                _queue.Clear();
+                foreach (var value in values)
+                    _queue.Enqueue(value);
             }
         }
 

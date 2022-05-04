@@ -25,7 +25,7 @@ MonoBehaviour:
   BackLog: 100
   FiltersLogging: 0
   Serialization: 1
-  Compression: 3
+  Compression: 0
   _MultiplierSize: 1
   KeepAlive: 2
   MTUSize: 512

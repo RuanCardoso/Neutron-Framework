@@ -26,7 +26,7 @@ namespace NeutronNetwork.Wrappers
             return base.Take();
         }
 
-        public void Push(T item)
+        public void Push(T item, bool sort = false)
         {
             base.Add(item);
         }

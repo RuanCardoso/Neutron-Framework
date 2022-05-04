@@ -18,24 +18,25 @@ MonoBehaviour:
     Port: 1418
   NeutronStream: 20
   NeutronPacket: 20
+  AcceptPool: 3
   SocketReceive: 120
   SocketSend: 120
   MaxPlayers: 60
   BackLog: 10
   FiltersLogging: 0
   Serialization: 1
-  Compression: 3
-  NoDelay: 1
+  Compression: 0
+  _MultiplierSize: 1
   KeepAlive: 2
-  PacketSize: 512
+  MTUSize: 512
   RecBufferSize: 8192
   SendBufferSize: 8192
   _KeepAlive: 5
   _PacketSize: 2048
+  _NoDelay: 1
+  _ZeroStack: 0
   _RecBufferSize: 8192
   _SendBufferSize: 8192
-  BufferedStream: 0
-  BufferedStreamSize: 8192
   GlobalSettings:
     Addresses:
     - localhost

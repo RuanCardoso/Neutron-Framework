@@ -2,7 +2,7 @@
 {
     public interface INeutronConsumer<T>
     {
-        void Push(T item);
+        void Push(T item, bool sort = false);
         T Pull();
         bool TryPull(out T item);
         void Dispose();

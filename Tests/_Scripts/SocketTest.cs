@@ -4,14 +4,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using TMPro;
 using UnityEngine;
 
 namespace NeutronNetwork.Tests
 {
     public class SocketTest : MonoBehaviour
     {
-        NeutronUdp Server = new NeutronUdp();
-        NeutronUdp Client = new NeutronUdp();
+        public TMP_InputField messageShow;
+        public TMP_InputField sentText;
+
+
+
+        NeutronSocket Server = new NeutronSocket();
+        NeutronSocket Client = new NeutronSocket();
 
         private List<int> receivedNumbers1 = new List<int>();
         private List<int> receivedNumbers2 = new List<int>();
@@ -22,7 +28,7 @@ namespace NeutronNetwork.Tests
         {
             Server.OnMessageCompleted += OnServerMessageCompleted;
             Client.OnMessageCompleted += OnClientMessageCompleted;
-#if !UNITY_EDITOR
+#if !UNITY_EDITOR && UNITY_SERVER
             Server.Bind(new IPEndPoint(IPAddress.Any, 5055));
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
@@ -31,7 +37,7 @@ namespace NeutronNetwork.Tests
             Console.Clear();
         }
 
-        private void OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        private void OnServerMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronSocket udp)
         {
             var reader = stream.Reader;
             var writer = stream.Writer;
@@ -39,13 +45,13 @@ namespace NeutronNetwork.Tests
             {
                 case PacketType.Test:
                     writer.WritePacket((byte)PacketType.Test);
-                    writer.Write(reader.ReadInt());
+                    writer.Write(reader.ReadString());
                     udp.SendToClient(stream, channelMode, targetMode, opMode, playerId, endPoint);
                     break;
             }
         }
 
-        private void OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronUdp udp)
+        private void OnClientMessageCompleted(NeutronStream stream, ushort playerId, EndPoint endPoint, ChannelMode channelMode, TargetMode targetMode, OperationMode opMode, NeutronSocket udp)
         {
             var reader = stream.Reader;
             var writer = stream.Writer;
@@ -53,18 +59,11 @@ namespace NeutronNetwork.Tests
             {
                 case PacketType.Test:
                     {
-                        switch (channelMode)
+                        string message = $"Player -> {playerId}: " + reader.ReadString();
+                        NeutronSchedule.ScheduleTask(() =>
                         {
-                            case ChannelMode.Unreliable:
-                                receivedNumbers1.Add(reader.ReadInt());
-                                break;
-                            case ChannelMode.Reliable:
-                                receivedNumbers2.Add(reader.ReadInt());
-                                break;
-                            case ChannelMode.ReliableSequenced:
-                                receivedNumbers3.Add(reader.ReadInt());
-                                break;
-                        }
+                            messageShow.text += message + "\n";
+                        });
                     }
                     break;
             }
@@ -72,11 +71,11 @@ namespace NeutronNetwork.Tests
 
         private void Start()
         {
-#if !UNITY_EDITOR
-            Server.Init();
+#if !UNITY_EDITOR && UNITY_SERVER
+            Server.InitThreads();
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
-            Client.Init();
+            Client.InitThreads();
             StartCoroutine(Client.Connect(pEndPoint));
 #endif
             Console.Clear();
@@ -84,7 +83,7 @@ namespace NeutronNetwork.Tests
 
         private void OnApplicationQuit()
         {
-#if !UNITY_EDITOR
+#if !UNITY_EDITOR && UNITY_SERVER
             Server.Close();
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
@@ -116,63 +115,132 @@ namespace NeutronNetwork.Tests
 #endif
 #if !UNITY_EDITOR && UNITY_SERVER
 
-            Server.ReTransmit(Time.deltaTime);
+            Server.Update(Time.deltaTime);
 #endif
 #if UNITY_EDITOR || !UNITY_SERVER
-            Client.ReTransmit(Time.deltaTime);
+            Client.Update(Time.deltaTime);
             if (Input.GetKeyDown(KeyCode.Return))
             {
                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                 {
                     stream.Writer.WritePacket((byte)PacketType.Test);
-                    stream.Writer.Write(++number1);
-                    Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.Single);
+                    stream.Writer.Write(sentText.text);
+                    Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.All);
                 }
+                sentText.text = "";
+                sentText.Select();
+                sentText.ActivateInputField();
             }
 
-            if (Input.GetKeyDown(KeyCode.R))
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                for (int i = 0; i < 20; i++)
                 {
-                    stream.Writer.WritePacket((byte)PacketType.Test);
-                    stream.Writer.Write(++number2);
-                    Client.SendToServer(stream, ChannelMode.Reliable, TargetMode.Single);
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.S))
-            {
-                using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
-                {
-                    stream.Writer.WritePacket((byte)PacketType.Test);
-                    stream.Writer.Write(++number3);
-                    Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.Single);
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.M))
-            {
-                int[] listsOfTests = { number1, number2, number3 };
-                string[] listsOfTestsStrings = { "Unreliable", "Reliable", "RealibleSequenced" };
-                List<List<int>> listsOfTestsList = new() { receivedNumbers1, receivedNumbers2, receivedNumbers3 };
-                for (int i = 0; i < listsOfTests.Length; i++)
-                {
-                    int number = listsOfTests[i];
-                    if (number > 0)
+                    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
-                        var missingNumbers = Enumerable.Range(1, number).Except(listsOfTestsList[i]);
-                        if (missingNumbers.Count() > 0)
-                            LogHelper.Error($"{listsOfTestsStrings[i]} -> Failed Packet: " + string.Join(", ", missingNumbers));
-                        var numbers = Enumerable.Range(1, number).Except(missingNumbers);
-                        if (numbers.Count() > 0)
-                        {
-                            LogHelper.Info($"{listsOfTestsStrings[i]} -> Success Packet: " + string.Join(", ", numbers));
-                            LogHelper.Info($"n: {string.Join(", ", listsOfTestsList[i])}");
-                            // if(i == 2)
-                        }
+                        stream.Writer.WritePacket((byte)PacketType.Test);
+                        stream.Writer.Write($"N: {i.ToString()}");
+                        Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.All);
                     }
+                    sentText.text = "";
+                    sentText.Select();
+                    sentText.ActivateInputField();
                 }
             }
+
+            if (Input.GetKeyDown(KeyCode.K))
+            {
+                for (int i = 0; i < 20; i++)
+                {
+                    using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+                    {
+                        stream.Writer.WritePacket((byte)PacketType.Test);
+                        stream.Writer.Write($"N: {i.ToString()}");
+                        Client.SendToServer(stream, ChannelMode.Reliable, TargetMode.All);
+                    }
+                    sentText.text = "";
+                    sentText.Select();
+                    sentText.ActivateInputField();
+                }
+            }
+
+            // if (Input.GetKeyDown(KeyCode.S))
+            // {
+            //     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+            //     {
+            //         stream.Writer.WritePacket((byte)PacketType.Test);
+            //         stream.Writer.Write(messageShow.text);
+            //         Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.Single);
+            //     }
+            // }
+
+            // if (Input.GetKeyDown(KeyCode.O))
+            // {
+            //     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+            //     {
+            //         stream.Writer.WritePacket((byte)PacketType.Test);
+            //         stream.Writer.Write(messageShow.text);
+            //         Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.Others);
+            //     }
+            // }
+            //             if (Input.GetKeyDown(KeyCode.Return))
+            //             {
+            //                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+            //                 {
+            //                     stream.Writer.WritePacket((byte)PacketType.Test);
+            //                     stream.Writer.Write(++number1);
+            //                     Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.All);
+            //                 }
+            //             }
+
+            //             if (Input.GetKeyDown(KeyCode.R))
+            //             {
+            //                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+            //                 {
+            //                     stream.Writer.WritePacket((byte)PacketType.Test);
+            //                     stream.Writer.Write(++number2);
+            //                     Client.SendToServer(stream, ChannelMode.Reliable, TargetMode.All);
+            //                 }
+            //             }
+
+            //             if (Input.GetKeyDown(KeyCode.S))
+            //             {
+            //                 using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
+            //                 {
+            //                     stream.Writer.WritePacket((byte)PacketType.Test);
+            //                     stream.Writer.Write(++number3);
+            //                     Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.All);
+            //                 }
+            //             }
+
+            //             if (Input.GetKeyDown(KeyCode.M))
+            //             {
+            //                 int[] listsOfTests = { number1, number2, number3 };
+            //                 string[] listsOfTestsStrings = { "Unreliable", "Reliable", "RealibleSequenced" };
+            //                 List<List<int>> listsOfTestsList = new() { receivedNumbers1, receivedNumbers2, receivedNumbers3 };
+            //                 for (int i = 0; i < listsOfTests.Length; i++)
+            //                 {
+            //                     int number = listsOfTests[i];
+            //                     if (number > 0)
+            //                     {
+            //                         var missingNumbers = Enumerable.Range(1, number).Except(listsOfTestsList[i]);
+            //                         if (missingNumbers.Count() > 0)
+            //                             LogHelper.Error($"{listsOfTestsStrings[i]} -> Failed Packet: " + string.Join(", ", missingNumbers));
+            //                         var numbers = Enumerable.Range(1, number).Except(missingNumbers);
+            //                         if (numbers.Count() > 0)
+            //                         {
+            // #if UNITY_EDITOR
+            //                             LogHelper.Info($"{listsOfTestsStrings[i]} -> Success Packet: " + string.Join(", ", numbers));
+            //                             LogHelper.Info($"n: {string.Join(", ", listsOfTestsList[i])}");
+            // #else
+            //                             LogHelper.Error($"{listsOfTestsStrings[i]} -> Success Packet: " + string.Join(", ", numbers));
+            //                             LogHelper.Error($"n: {string.Join(", ", listsOfTestsList[i])}");
+            // #endif
+            //                             // if(i == 2)
+            //                         }
+            //                     }
+            //                 }
+            //             }
 #endif
         }
     }

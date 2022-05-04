@@ -131,23 +131,23 @@ namespace NeutronNetwork
         #region Fields
 #pragma warning disable IDE0044
         [ANaughty.InfoBox("This option does not influence the \"C++ Compiler Configuration\" option in the player settings.", ANaughty.EInfoBoxType.Warning)]
-        [SerializeField] [Tooltip("Enables optimizations for Neutron.")] private BuildMode _buildMode = BuildMode.Debug; // The build mode.
+        [SerializeField][Tooltip("Enables optimizations for Neutron.")] private BuildMode _buildMode = BuildMode.Debug; // The build mode.
         [ANaughty.InfoBox("Neutron uses its own physics simulation system, you can implement your own simulation, see documentation.")]
         [ANaughty.InfoBox("This option is only valid for the default scene, this option is not valid for extra scenes created by Neutron.")]
-        [SerializeField] [Box("Physics")] [Tooltip("Sets whether the physics should be simulated automatically or not.")] private bool _autoSimulation = false; // Used to enable/disable the physics simulation.
+        [SerializeField][Box("Physics")][Tooltip("Sets whether the physics should be simulated automatically or not.")] private bool _autoSimulation = false; // Used to enable/disable the physics simulation.
         [ANaughty.InfoBox("This option sets the physics mode that Neutron scenes should run.")]
-        [SerializeField] [Tooltip("Provides options for 2D and 3D local physics.")] private PhysicsMode _physicsMode = PhysicsMode.Physics3D; // Used to set the physics mode.
+        [SerializeField][Tooltip("Provides options for 2D and 3D local physics.")] private PhysicsMode _physicsMode = PhysicsMode.Physics3D; // Used to set the physics mode.
         [SerializeField]
         [ANaughty.InfoBox("A lower value can penalize performance and very high values ​​can cause Stack Overflow.", ANaughty.EInfoBoxType.Warning)]
         [ANaughty.InfoBox("Stack Overflow cannot be caught by a try-catch block and the corresponding process is terminated.", ANaughty.EInfoBoxType.Warning)]
         [Box("Memory")]
-        [Range(0, 2048)] [Tooltip("The maximum size of data that can be allocated on the stack.")] private int _stackAllocSize = 256; // The maximum stack allocation size.
+        [Range(0, 2048)][Tooltip("The maximum size of data that can be allocated on the stack.")] private int _stackAllocSize = 256; // The maximum stack allocation size.
         [ANaughty.InfoBox("This option is only valid for the pool of Neutron Stream.")]
         [ANaughty.InfoBox("The higher the value, the more RAM will be used, depending on the amount of objects in the pool.", ANaughty.EInfoBoxType.Warning)]
-        [SerializeField] [Range(1, 65535)] [Tooltip("The maximum capacity of the Neutron Stream.")] private int _streamBufferSize = 256; // The maximum capacity of the Neutron Stream.
+        [SerializeField][Range(1, 65535)][Tooltip("The maximum capacity of the Neutron Stream.")] private int _streamBufferSize = 256; // The maximum capacity of the Neutron Stream.
         [ANaughty.InfoBox("Incremental(GC) spreads out the process of garbage collection over multiple frames.")]
-        [SerializeField] [Tooltip("This can significantly increase performance.")] private bool _incrementalGC = true; // Used to enable/disable the incremental GC.
-        [SerializeField] [Box("References")] [ReadOnly] private StateSettings _settings; // The current settings of the Neutron.
+        [SerializeField][Tooltip("This can significantly increase performance.")] private bool _incrementalGC = true; // Used to enable/disable the incremental GC.
+        [SerializeField][Box("References")][ReadOnly] private StateSettings _settings; // The current settings of the Neutron.
 #pragma warning restore IDE0044
         #endregion
 
@@ -195,14 +195,14 @@ namespace NeutronNetwork
 
             Neutron.PooledNetworkStreams = new NeutronPool<NeutronStream>(() => new NeutronStream(true, _streamBufferSize), Settings.NeutronStream, false, "Neutron Streams");
             Neutron.PooledNetworkPackets = new NeutronPool<NeutronPacket>(() => new NeutronPacket(), Settings.NeutronPacket, false, "Neutron Packets");
-            NeutronSocket.PooledSocketAsyncEventArgsForAccept = new NeutronPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs(), Settings.AcceptPool, false, "Accept Pool");
+            // NeutronSocket.PooledSocketAsyncEventArgsForAccept = new NeutronPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs(), Settings.AcceptPool, false, "Accept Pool");
 
             for (int i = 0; i < Settings.NeutronStream; i++)
                 Neutron.PooledNetworkStreams.Push(new NeutronStream(true, _streamBufferSize));
             for (int i = 0; i < Settings.NeutronPacket; i++)
                 Neutron.PooledNetworkPackets.Push(new NeutronPacket());
-            for (int i = 0; i < Settings.AcceptPool; i++)
-                NeutronSocket.PooledSocketAsyncEventArgsForAccept.Push(new SocketAsyncEventArgs());
+            // for (int i = 0; i < Settings.AcceptPool; i++)
+            //     NeutronSocket.PooledSocketAsyncEventArgsForAccept.Push(new SocketAsyncEventArgs());
         }
 
         private void LoadSettings()

@@ -210,7 +210,6 @@ namespace NeutronNetwork
             lock (Schedule.m_lockUpdate)
             {
                 // lock to prevent race condition.
-
                 Schedule._dispatchOnUpdate = action; // Set the action.
             }
         }
@@ -224,7 +223,6 @@ namespace NeutronNetwork
             lock (Schedule.m_lockFixedUpdate)
             {
                 // lock to prevent race condition.
-
                 Schedule._dispatchOnFixedUpdate = action; // Set the action.
             }
         }
