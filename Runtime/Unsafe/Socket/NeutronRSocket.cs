@@ -364,6 +364,20 @@ namespace NeutronNetwork.Internal
 
     public class NeutronSocket
     {
+        /// <summary>
+        /// Channels used to send and receive data.
+        /// Create a new channel(Unreliable, Reliable, ReliableSequenced) for every client.
+        /// </summary>
+        private static ChannelMode[] _channelModes =
+        {
+            ChannelMode.Unreliable,
+            ChannelMode.Reliable,
+            ChannelMode.ReliableSequenced
+        };
+
+        /// <summary>
+        /// Id of connection, used to identify the connection.
+        /// </summary>
         private ushort _id = 0;
         /// <summary>
         /// The Connected property gets the connection state of the Socket as of the last I/O operation. 
@@ -429,13 +443,17 @@ namespace NeutronNetwork.Internal
         /// Disponible only for reliable channels.
         /// ValueTuple(Id Of Player, ChannelMode)
         /// </summary>
-        internal NeutronSafeDictionary<(ushort, byte), ChannelData> ChannelsData = new NeutronSafeDictionary<(ushort, byte), ChannelData>() { };
+        internal NeutronSafeDictionary<(ushort, byte), ChannelData> ChannelsData = new NeutronSafeDictionary<(ushort, byte), ChannelData>();
         /// <summary>
         /// List of exlusive id's, used to prevent the same id to be used twice.
         /// When a player connects, a unique id is removed from this list.
         /// When a player disconnects, the id is added back to this list.
         /// </summary>
         private NeutronSafeQueueNonAlloc<ushort> _ids = new NeutronSafeQueueNonAlloc<ushort>(true);
+        /// <summary>
+        /// Returns whether the "Instance" is the Server or the Client.
+        /// </summary>
+        public bool IsServer => !_isConnected;
 
         /// <summary>
         /// Associates a Socket with a local endpoint.
@@ -589,18 +607,25 @@ namespace NeutronNetwork.Internal
             return default;
         }
 
+
         private void AddChannel(ushort playerId)
         {
-            ChannelsData.TryAdd((playerId, (byte)ChannelMode.Unreliable), new ChannelData());
-            ChannelsData.TryAdd((playerId, (byte)ChannelMode.Reliable), new ChannelData());
-            ChannelsData.TryAdd((playerId, (byte)ChannelMode.ReliableSequenced), new ChannelData());
+            for (int i = 0; i < _channelModes.Length; i++)
+            {
+                ChannelMode channelMode = _channelModes[i];
+                if (!ChannelsData.TryAdd((playerId, (byte)channelMode), new ChannelData()))
+                    LogHelper.Error($"Channel {channelMode} already exists!");
+            }
         }
 
         private void RemoveChannel(ushort playerId)
         {
-            ChannelsData.Remove((playerId, (byte)ChannelMode.Unreliable), out _);
-            ChannelsData.Remove((playerId, (byte)ChannelMode.Reliable), out _);
-            ChannelsData.Remove((playerId, (byte)ChannelMode.ReliableSequenced), out _);
+            for (int i = 0; i < _channelModes.Length; i++)
+            {
+                ChannelMode channelMode = _channelModes[i];
+                if (!ChannelsData.Remove((playerId, (byte)channelMode), out _))
+                    LogHelper.Error($"Channel {channelMode} not found!");
+            }
         }
 
         float _waitForRT = 0.1f;
@@ -617,30 +642,30 @@ namespace NeutronNetwork.Internal
                     {
                         // Packets that are not received.
                         var packets = pKvP.Value.PacketsToReTransmit.ToList();
-                        foreach (var packet in packets)
-                        {
-                            TransmissionPacket transmissionPacket = packet.Value;
-                            // Calc the last time we sent the packet.
-                            TimeSpan currentTime = DateTime.UtcNow.Subtract(transmissionPacket.LastSent);
-                            // If the time elapsed is greater than X second, the packet is re-sent if the packet is not acknowledged.
-                            if (currentTime.TotalSeconds >= 0.2d)
-                            {
-                                LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key} -> : {transmissionPacket.SeqAck.ToString()} -> {packet.Value.Data.ChannelMode}");
+                        // foreach (var packet in packets)
+                        // {
+                        //     // TransmissionPacket transmissionPacket = packet.Value;
+                        //     // // Calc the last time we sent the packet.
+                        //     // TimeSpan currentTime = DateTime.UtcNow.Subtract(transmissionPacket.LastSent);
+                        //     // // If the time elapsed is greater than X second, the packet is re-sent if the packet is not acknowledged.
+                        //     // if (currentTime.TotalSeconds >= 0.2d)
+                        //     // {
+                        //     //     LogHelper.Error($"[Neutron] -> Re-try to send packet {packet.Key} -> : {transmissionPacket.SeqAck.ToString()} -> {packet.Value.Data.ChannelMode}");
 
-                                // if (!pKvP.Value.PacketsToReTransmit.ContainsKey(transmissionPacket.SeqAck))
-                                //     LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} not found.");
-                                // else
-                                //     LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} found.");
+                        //     //     // if (!pKvP.Value.PacketsToReTransmit.ContainsKey(transmissionPacket.SeqAck))
+                        //     //     //     LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} not found.");
+                        //     //     // else
+                        //     //     //     LogHelper.Error($"Re-transmit packet {pKvP.Key} : {transmissionPacket.SeqAck} found.");
 
-                                (int, ushort) PTTKey = (transmissionPacket.SeqAck, transmissionPacket.Data.PlayerId);
-                                if (transmissionPacket.IsDisconnected())
-                                    pKvP.Value.PacketsToReTransmit.Remove(PTTKey, out _);
-                                else
-                                    Enqueue(transmissionPacket.Data);
-                                // Set the last time to current time when the packet is sent.
-                                transmissionPacket.LastSent = DateTime.UtcNow;
-                            }
-                        }
+                        //     //     (int, ushort) PTTKey = (transmissionPacket.SeqAck, transmissionPacket.Data.PlayerId);
+                        //     //     if (transmissionPacket.IsDisconnected())
+                        //     //         pKvP.Value.PacketsToReTransmit.Remove(PTTKey, out _);
+                        //     //     else
+                        //     //         Enqueue(transmissionPacket.Data);
+                        //     //     // Set the last time to current time when the packet is sent.
+                        //     //     transmissionPacket.LastSent = DateTime.UtcNow;
+                        //     // }
+                        // }
                     }
                 }
                 _waitForRT = 0.1f;
@@ -769,7 +794,7 @@ namespace NeutronNetwork.Internal
                     // Le't get the data from the queue and send it.
                     // This collection is blocked until the data is available, prevents de CPU from spinning.
                     UdpPacket udpPacket = _dataToSend.Pull();
-                    if (!_isConnected)
+                    if (IsServer)
                     {
                         //! "CreateTransmissionPacket(udpPacket)" must be called before _socket.SendTo(udpPacket.Data, udpPacket.EndPoint), otherwise the packet will be lost.
                         //! Sometimes the Ack will arrive before the transmission packet is created, and the packet will be lost, so we need to create the transmission packet before sending the packet.
@@ -890,14 +915,15 @@ namespace NeutronNetwork.Internal
                                     // After that, let's send the data to the remote host.
                                     if (opMode == OperationMode.Acknowledgement)
                                     {
-                                        if (_isConnected)
+                                        if (!IsServer)
                                         {
+                                            ChannelsData[chKey].PacketsToReTransmit.Remove((seqAck, playerId), out _);
                                             //ChannelsData[chKey].PacketsToReTransmit.Remove(seqAck, out _);
-                                            LogHelper.Error($"Removing packet -> {seqAck} : {playerId} : {channel}");
-                                            if (!ChannelsData[chKey].PacketsToReTransmit.Remove((seqAck, playerId), out _))
-                                                LogHelper.Error($"The packet with sequence number {seqAck} was not found in the list of packets to re-transmit -> {(ChannelsData[chKey].PacketsToReTransmit.ContainsKey((seqAck, playerId))).ToString()}");
-                                            else
-                                                LogHelper.Error($"The packet with sequence number {seqAck} was removed from the list of packets to re-transmit.");
+                                            // LogHelper.Error($"Removing packet -> {seqAck} : {playerId} : {channel}");
+                                            // if (!ChannelsData[chKey].PacketsToReTransmit.Remove((seqAck, playerId), out _))
+                                            //     LogHelper.Error($"The packet with sequence number {seqAck} was not found in the list of packets to re-transmit -> {(ChannelsData[chKey].PacketsToReTransmit.ContainsKey((seqAck, playerId))).ToString()}");
+                                            // else
+                                            //     LogHelper.Error($"The packet with sequence number {seqAck} was removed from the list of packets to re-transmit.");
                                         }
                                         else
                                         {

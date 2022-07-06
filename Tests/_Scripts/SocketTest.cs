@@ -59,11 +59,11 @@ namespace NeutronNetwork.Tests
             {
                 case PacketType.Test:
                     {
-                        string message = $"Player -> {playerId}: " + reader.ReadString();
-                        NeutronSchedule.ScheduleTask(() =>
-                        {
-                            messageShow.text += message + "\n";
-                        });
+                        // string message = $"Player -> {playerId}: " + reader.ReadString();
+                        // NeutronSchedule.ScheduleTask(() =>
+                        // {
+                        //     messageShow.text += message + "\n";
+                        // });
                     }
                     break;
             }
@@ -134,7 +134,7 @@ namespace NeutronNetwork.Tests
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                for (int i = 0; i < 20; i++)
+                for (int i = 0; i < 1; i++)
                 {
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
@@ -142,25 +142,19 @@ namespace NeutronNetwork.Tests
                         stream.Writer.Write($"N: {i.ToString()}");
                         Client.SendToServer(stream, ChannelMode.ReliableSequenced, TargetMode.All);
                     }
-                    sentText.text = "";
-                    sentText.Select();
-                    sentText.ActivateInputField();
                 }
             }
 
             if (Input.GetKeyDown(KeyCode.K))
             {
-                for (int i = 0; i < 20; i++)
+                for (int i = 0; i < 120; i++)
                 {
                     using (NeutronStream stream = Neutron.PooledNetworkStreams.Pull())
                     {
                         stream.Writer.WritePacket((byte)PacketType.Test);
                         stream.Writer.Write($"N: {i.ToString()}");
-                        Client.SendToServer(stream, ChannelMode.Reliable, TargetMode.All);
+                        Client.SendToServer(stream, ChannelMode.Unreliable, TargetMode.Single);
                     }
-                    sentText.text = "";
-                    sentText.Select();
-                    sentText.ActivateInputField();
                 }
             }
 
