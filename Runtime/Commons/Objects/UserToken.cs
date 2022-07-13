@@ -66,11 +66,11 @@ namespace NeutronNetwork.Internal
             set;
         }
 
-        internal NeutronSocket Socket
-        {
-            get;
-            set;
-        }
+        // internal NeutronSocket Socket
+        // {
+        //     get;
+        //     set;
+        // }
 
         public int isReceiving = 0;
         public AutoResetEvent AutoResetEvent { get; set; } = new(false);
